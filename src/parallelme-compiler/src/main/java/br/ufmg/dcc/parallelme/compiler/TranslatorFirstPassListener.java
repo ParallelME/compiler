@@ -20,7 +20,7 @@ import br.ufmg.dcc.parallelme.compiler.userlibrary.*;
  * This first pass listener is responsible for creating the symbol table and
  * list all those imports from user library classes that must be removed.
  * 
- * @author Wilson de Carvalho
+ * @author Wilson de Carvalho, Pedro Caldeira
  */
 public class TranslatorFirstPassListener extends ScopeDrivenListener {
 	// List of those tokens that must be removed from the output code.

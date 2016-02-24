@@ -20,7 +20,7 @@ import br.ufmg.dcc.parallelme.compiler.userlibrary.classes.RGBA;
 /**
  * Definitions for RenderScript runtime.
  * 
- * @author Wilson de Carvalho
+ * @author Wilson de Carvalho, Pedro Caldeira
  */
 public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	private final String templateInitString = "RenderScript mRS = RenderScript.create(<mainClassName>.getAppContext());\n";
