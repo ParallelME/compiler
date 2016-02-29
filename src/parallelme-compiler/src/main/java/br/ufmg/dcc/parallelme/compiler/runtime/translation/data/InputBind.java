@@ -7,7 +7,7 @@
  *  DCC-UFMG
  */
 
-package br.ufmg.dcc.parallelme.compiler.runtime.translationdata;
+package br.ufmg.dcc.parallelme.compiler.runtime.translation.data;
 
 /**
  * Defines the input bind data that must be passed to the runtime to translate

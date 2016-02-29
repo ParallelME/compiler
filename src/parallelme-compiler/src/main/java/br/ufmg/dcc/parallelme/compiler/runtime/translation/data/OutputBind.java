@@ -7,7 +7,7 @@
  *  DCC-UFMG
  */
 
-package br.ufmg.dcc.parallelme.compiler.runtime.translationdata;
+package br.ufmg.dcc.parallelme.compiler.runtime.translation.data;
 
 import br.ufmg.dcc.parallelme.compiler.symboltable.TokenAddress;
 

@@ -9,7 +9,10 @@
 
 package br.ufmg.dcc.parallelme.compiler.runtime;
 
-import br.ufmg.dcc.parallelme.compiler.runtime.translationdata.*;
+import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.InputBind;
+import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.Iterator;
+import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.OutputBind;
+import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.Variable;
 
 /**
  * All those runtime specific definitions must be implemented on classes derived
@@ -19,7 +22,7 @@ import br.ufmg.dcc.parallelme.compiler.runtime.translationdata.*;
  */
 public interface RuntimeDefinition {
 	/**
-	 * Get the initialization string for a given variable definition.
+	 * Get the initialization string for this runtime.
 	 * 
 	 * @return Initialization string.
 	 */
@@ -29,7 +32,7 @@ public interface RuntimeDefinition {
 	 * Get the initialization string for a given variable definition.
 	 * 
 	 * @param firstFunctionNumber
-	 *            The number of the first function that will be in initialized.
+	 *            The number of the first function that will be initialized.
 	 * @param functionCount
 	 *            Number of functions that will be created.
 	 * 
@@ -39,7 +42,7 @@ public interface RuntimeDefinition {
 			int functionCount);
 
 	/**
-	 * Get the necessary imports for the runtime.
+	 * Get the necessary imports for this runtime.
 	 * 
 	 * @return String with the necessary imports.
 	 */

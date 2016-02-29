@@ -7,29 +7,31 @@
  *  DCC-UFMG
  */
 
-package br.ufmg.dcc.parallelme.compiler.runtime.translationdata;
-
+package br.ufmg.dcc.parallelme.compiler.runtime.translation.data;
 
 /**
- * Basic information for runtime literal parameters.
+ * Basic information for runtime variable parameters.
  * 
  * @author Wilson de Carvalho
- * @see Parameter
+ * @see ParameterDescriptor
  */
-public class Literal implements Parameter {
-	public final String value;
+public class Variable implements Parameter {
+	public final String name;
 	public final String typeName;
+	public final String typeParameterName;
 
-	public Literal(String value, String typeName) {
-		this.value = value;
+	public Variable(String name, String typeName, String typeParameter) {
+		this.name = name;
 		this.typeName = typeName;
+		this.typeParameterName = typeParameter;
 	}
 
 	@Override
 	public boolean equals(Object other) {
 		if (other.getClass() == this.getClass()) {
-			return ((Literal) other).value == this.value
-					&& ((Literal) other).typeName == this.typeName;
+			return ((Variable) other).name == this.name
+					&& ((Variable) other).typeName == this.typeName
+					&& ((Variable) other).typeParameterName == this.typeParameterName;
 		} else {
 			return false;
 		}
@@ -37,6 +39,6 @@ public class Literal implements Parameter {
 
 	@Override
 	public String toString() {
-		return this.value;
+		return this.name;
 	}
 }

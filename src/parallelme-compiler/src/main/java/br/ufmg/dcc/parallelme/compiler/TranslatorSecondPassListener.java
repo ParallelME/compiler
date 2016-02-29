@@ -18,7 +18,11 @@ import org.antlr.v4.runtime.TokenStream;
 import br.ufmg.dcc.parallelme.compiler.antlr.JavaParser;
 import br.ufmg.dcc.parallelme.compiler.antlr.JavaParser.ExpressionContext;
 import br.ufmg.dcc.parallelme.compiler.antlr.JavaParser.StatementContext;
-import br.ufmg.dcc.parallelme.compiler.runtime.translationdata.*;
+import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.Iterator;
+import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.OutputBind;
+import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.UserFunction;
+import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.UserLibraryData;
+import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.Variable;
 import br.ufmg.dcc.parallelme.compiler.symboltable.*;
 import br.ufmg.dcc.parallelme.compiler.userlibrary.*;
 

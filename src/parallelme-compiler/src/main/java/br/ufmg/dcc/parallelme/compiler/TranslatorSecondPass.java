@@ -21,7 +21,7 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 
 import br.ufmg.dcc.parallelme.compiler.runtime.*;
-import br.ufmg.dcc.parallelme.compiler.runtime.translationdata.*;
+import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.*;
 import br.ufmg.dcc.parallelme.compiler.symboltable.*;
 import br.ufmg.dcc.parallelme.compiler.userlibrary.UserLibraryClassFactory;
 import br.ufmg.dcc.parallelme.compiler.userlibrary.UserLibraryCollectionClass;

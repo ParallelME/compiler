@@ -11,7 +11,7 @@ package br.ufmg.dcc.parallelme.compiler.runtime;
 
 import org.stringtemplate.v4.ST;
 
-import br.ufmg.dcc.parallelme.compiler.runtime.translationdata.*;
+import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.*;
 import br.ufmg.dcc.parallelme.compiler.userlibrary.UserLibraryClass;
 import br.ufmg.dcc.parallelme.compiler.userlibrary.UserLibraryClassFactory;
 import br.ufmg.dcc.parallelme.compiler.userlibrary.classes.BitmapImage;

@@ -7,7 +7,7 @@
  *  DCC-UFMG
  */
 
-package br.ufmg.dcc.parallelme.compiler.runtime.translationdata;
+package br.ufmg.dcc.parallelme.compiler.runtime.translation.data;
 
 /**
  * Defines the basic user library data that must be passed to the runtime to

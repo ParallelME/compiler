@@ -9,8 +9,8 @@
 
 package br.ufmg.dcc.parallelme.compiler.runtime;
 
-import br.ufmg.dcc.parallelme.compiler.runtime.translationdata.Iterator;
-import br.ufmg.dcc.parallelme.compiler.runtime.translationdata.Variable;
+import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.Iterator;
+import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.Variable;
 
 /**
  * Code useful for specfic runtime definition implementation.
