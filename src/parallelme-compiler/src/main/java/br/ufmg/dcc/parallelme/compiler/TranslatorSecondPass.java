@@ -135,11 +135,11 @@ public class TranslatorSecondPass {
 				.argumentsToVariableParameter(creator.arguments);
 		InputBind inputBind = new InputBind(variable, functionNumber, arguments);
 		String createAllocationString = this.runtime
-				.getCreateAllocationString(inputBind);
+				.createAllocation(inputBind);
 		tokenStreamRewriter.replace(variableSymbol.statementAddress.start,
 				variableSymbol.statementAddress.stop, createAllocationString);
 		String inputBindFunction = this.runtime
-				.getCreateAllocationFunction(inputBind);
+				.createAllocationFunction(inputBind);
 		if (!inputBindFunction.isEmpty()) {
 			String functionCode = this.runtime.getCFunctionHeader(packageName)
 					+ "\n" + inputBindFunction;
@@ -204,7 +204,7 @@ public class TranslatorSecondPass {
 			if (userLibraryData instanceof Iterator) {
 				Iterator iterator = (Iterator) userLibraryData;
 				// 1. Replace iterator code
-				String iteratorCall = this.runtime.getIteratorString(
+				String iteratorCall = this.runtime.getIterator(
 						iterator.getVariable(), iterator.sequentialNumber);
 				tokenStreamRewriter.replace(
 						iterator.getStatementAddress().start,
@@ -239,9 +239,9 @@ public class TranslatorSecondPass {
 				tokenStreamRewriter.replace(
 						outputBind.getStatementAddress().start,
 						outputBind.getStatementAddress().stop,
-						this.runtime.getAllocationDataOutputString(outputBind));
+						this.runtime.getAllocationData(outputBind));
 				String outputBindFunction = this.runtime
-						.getAllocationDataOutputFunction(outputBind);
+						.getAllocationDataFunction(outputBind);
 				if (!outputBindFunction.isEmpty()) {
 					String functionCode = this.runtime
 							.getCFunctionHeader(packageName)

@@ -9,6 +9,11 @@
 
 package br.ufmg.dcc.parallelme.compiler.runtime.translation;
 
+/**
+ * Java2C wrapper.
+ * 
+ * @author Wilson de Carvalho
+ */
 public class Java2C implements CTranslator {
 	/**
 	 * {@inheritDoc}
@@ -18,5 +23,4 @@ public class Java2C implements CTranslator {
 		// TODO Integrate Java2C.
 		return javaCode;
 	}
-
 }

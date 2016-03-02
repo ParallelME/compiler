@@ -9,6 +9,7 @@
 
 package br.ufmg.dcc.parallelme.compiler.runtime;
 
+import br.ufmg.dcc.parallelme.compiler.runtime.translation.CTranslator;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.Iterator;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.Variable;
 
@@ -22,6 +23,11 @@ public abstract class RuntimeDefinitionImpl implements RuntimeDefinition {
 	private final String outSuffix = "Out";
 	private final String functionName = "function";
 	private final String prefix = "$";
+	private final CTranslator cCodeTranslator;
+
+	public RuntimeDefinitionImpl(CTranslator cCodeTranslator) {
+		this.cCodeTranslator = cCodeTranslator;
+	}
 
 	protected String getVariableInName(Variable variable) {
 		return prefix + variable.name + inSuffix;
@@ -49,9 +55,10 @@ public abstract class RuntimeDefinitionImpl implements RuntimeDefinition {
 	@Override
 	public String translateIteratorCode(Iterator iterator) {
 		return this.getIteratorFunctionSignature(iterator)
-				+ this.translateUserLibraryType(
+				+ this.translateVariable(
 						iterator.getUserFunctionData().variableArgument,
-						iterator.getUserFunctionData().CCode);
+						this.cCodeTranslator.translate(iterator
+								.getUserFunctionData().CCode));
 	}
 
 	/**

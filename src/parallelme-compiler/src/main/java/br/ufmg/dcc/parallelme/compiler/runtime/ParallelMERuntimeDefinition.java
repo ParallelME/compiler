@@ -27,15 +27,15 @@ import br.ufmg.dcc.parallelme.compiler.userlibrary.UserLibraryClassFactory;
 import br.ufmg.dcc.parallelme.compiler.userlibrary.classes.*;
 
 /**
- * Definitions for RenderScript runtime.
+ * Definitions for ParallelME runtime.
  * 
  * @author Wilson de Carvalho, Pedro Caldeira
  */
-public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
+public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	private final String templateInitString = "RenderScript mRS = RenderScript.create(<mainClassName>.getAppContext());\n";
 	private final String templateFunctionsString = "<functions:{function|ScriptC_<function> <function>_script = new ScriptC_<function>(mRS);\n}>";
 
-	public RenderScriptRuntimeDefinition(CTranslator cCodeTranslator) {
+	public ParallelMERuntimeDefinition(CTranslator cCodeTranslator) {
 		super(cCodeTranslator);
 	}
 
@@ -235,7 +235,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	 */
 	@Override
 	public String getCFileExtension() {
-		return "rs";
+		return "c";
 	}
 
 	/**
@@ -248,10 +248,47 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	}
 
 	/**
-	 * Not necessary for RenderScript runtime.
+	 * {@inheritDoc}
 	 */
 	@Override
 	public void exportInternalLibrary(String destinationFolder)
 			throws IOException {
+		// Copy all files and directories under ParallelME resource folder to
+		// the destination folder.
+		String resourceName = "ParallelME";
+		URL resource = ClassLoader.getSystemClassLoader().getResource(
+				resourceName);
+		if (resource == null) {
+			String msg = resourceName
+					+ " resource folder is missing in this JAR. Please recompile the project.";
+			SimpleLogger.error(msg);
+			throw new RuntimeException(msg);
+		}
+		File resourceDir = null;
+		try {
+			resourceDir = new File(resource.toURI());
+		} catch (URISyntaxException e) {
+			SimpleLogger
+					.error(resource
+							+ " does not appear to be a valid URL / URI, thus it won't be copied to '"
+							+ destinationFolder + "'.");
+			resourceDir = null;
+		}
+		if (resourceDir != null && resourceDir.exists()) {
+			// Get the list of the files contained in the package
+			String[] list = resourceDir.list();
+			for (int i = 0; i < list.length; i++) {
+				String fileOrDirName = list[i];
+				File source = new File(resourceDir.getAbsolutePath()
+						+ File.separator + fileOrDirName);
+				File destiny = new File(destinationFolder + File.separator
+						+ fileOrDirName);
+				if (source.isDirectory()) {
+					FileUtils.copyDirectory(source, destiny);
+				} else if (source.isFile()) {
+					FileUtils.copyFile(source, destiny);
+				}
+			}
+		}
 	}
 }

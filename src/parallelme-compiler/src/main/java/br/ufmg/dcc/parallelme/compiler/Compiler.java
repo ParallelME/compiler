@@ -35,7 +35,19 @@ public class Compiler {
 		this.targetRuntime = targetRuntime;
 	}
 
-	public void compile(String[] files, String destinationFolder) throws IOException {
+	/**
+	 * Compile a list of files storing them on the folder informed.
+	 * 
+	 * @param files
+	 *            List of files that must be compiled.
+	 * @param destinationFolder
+	 *            Destination folder.
+	 * @throws IOException
+	 *             Exception thrown in case of issue while reading or writing
+	 *             files.
+	 */
+	public void compile(String[] files, String destinationFolder)
+			throws IOException {
 		RootSymbol[] symbolTables = new RootSymbol[files.length];
 		ParseTree[] parseTrees = new ParseTree[files.length];
 		JavaParser[] javaParser = new JavaParser[files.length];
@@ -48,6 +60,7 @@ public class Compiler {
 				this.targetRuntime);
 		for (int i = 0; i < files.length; i++) {
 			String file = files[i];
+			SimpleLogger.info("1st pass file - " + file);
 			FileInputStream is = new FileInputStream(file);
 			try {
 				CommonTokenStream tokenStream = new CommonTokenStream(
@@ -77,8 +90,12 @@ public class Compiler {
 		TranslatorSecondPass secondPass = new TranslatorSecondPass(
 				this.targetRuntime, destinationFolder);
 		for (int i = 0; i < files.length; i++) {
+			String file = files[i];
+			SimpleLogger.info("2nd pass file - " + file);
 			secondPass.run(tokenStreams[i], symbolTables[i], parseTrees[i],
 					iteratorsCounters[i]);
 		}
+		// Export internal library files for this target runtime
+		this.targetRuntime.exportInternalLibrary(destinationFolder);
 	}
 }

@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import br.ufmg.dcc.parallelme.compiler.runtime.RenderScriptRuntimeDefinition;
+import br.ufmg.dcc.parallelme.compiler.runtime.translation.Java2C;
 
 /**
  * Main file for calling ParallelME compiler.
@@ -38,7 +39,9 @@ public class Main {
 				}
 				if (inputInfo != null && inputInfo.length > 0
 						&& outputInfo != null) {
-					(new Compiler(new RenderScriptRuntimeDefinition()))
+					SimpleLogger.logError = true;
+					SimpleLogger.logInfo = true;
+					(new Compiler(new RenderScriptRuntimeDefinition(new Java2C())))
 							.compile(inputInfo, outputInfo);
 				} else {
 					printHelpMsg();

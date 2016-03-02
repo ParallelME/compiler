@@ -143,8 +143,9 @@ public class ScopeDrivenListener extends JavaBaseListener {
 			// method body to translate it to C in the future.
 			if (foo) {
 				methodBodySymbol = new MethodBodySymbol(ctx.methodBody()
-						.getText(), methodSymbol, new TokenAddress(
-						ctx.methodBody().start, ctx.methodBody().stop));
+						.getText(), methodSymbol, new TokenAddress(ctx
+						.methodBody().block().start,
+						ctx.methodBody().block().stop));
 				methodSymbol.addSymbol(methodBodySymbol);
 			}
 		}

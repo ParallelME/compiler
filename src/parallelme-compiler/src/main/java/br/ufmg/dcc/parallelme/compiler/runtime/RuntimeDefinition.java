@@ -9,6 +9,8 @@
 
 package br.ufmg.dcc.parallelme.compiler.runtime;
 
+import java.io.IOException;
+
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.InputBind;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.Iterator;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.OutputBind;
@@ -57,7 +59,7 @@ public interface RuntimeDefinition {
 	 * 
 	 * @return A string with the declaration for the new allocation.
 	 */
-	public String getCreateAllocationString(InputBind inputBind);
+	public String createAllocation(InputBind inputBind);
 
 	/**
 	 * Creates the code that is necessary to perform input binding.
@@ -68,7 +70,7 @@ public interface RuntimeDefinition {
 	 * 
 	 * @return A string with the declaration for the new allocation.
 	 */
-	public String getCreateAllocationFunction(InputBind inputBind);
+	public String createAllocationFunction(InputBind inputBind);
 
 	/**
 	 * Gets the data back from the allocation.
@@ -79,7 +81,7 @@ public interface RuntimeDefinition {
 	 * 
 	 * @return A string with the code to get the data from the allocation.
 	 */
-	public String getAllocationDataOutputString(OutputBind outputBind);
+	public String getAllocationData(OutputBind outputBind);
 
 	/**
 	 * Creates the code that is necessary to perform ouput binding.
@@ -90,7 +92,7 @@ public interface RuntimeDefinition {
 	 * 
 	 * @return A string with the code to get the data from the allocation.
 	 */
-	public String getAllocationDataOutputFunction(OutputBind outputBind);
+	public String getAllocationDataFunction(OutputBind outputBind);
 
 	/**
 	 * Runs an iterator function.
@@ -103,23 +105,29 @@ public interface RuntimeDefinition {
 	 *            created along with the allocation statements.
 	 * @return A string with the code to call an iterator function.
 	 */
-	public String getIteratorString(Variable userLibraryObject,
-			int functionNumber);
+	public String getIterator(Variable userLibraryObject, int functionNumber);
 
 	/**
-	 * Translates user library objects declared on the C code to a correspondent
-	 * runtime-specific type. Example: replaces all RGBA objects by float3 on
-	 * RenderScript.
+	 * Translates a given type to an equivalent runtime type. Example: translate
+	 * RGB type to float3 on RenderScript.
 	 * 
-	 * @param userLibraryObject
-	 *            Description of the original user library object that will be
-	 *            used to create the allocation.
+	 * @param typeName
+	 *            Type that must be translated.
+	 * @return A string with the equivalent type for this runtime.
+	 */
+	public String translateType(String typeName);
+
+	/**
+	 * Translates variables on the give code to a correspondent runtime-specific
+	 * type. Example: replaces all RGB objects by float3 on RenderScript.
+	 * 
+	 * @param variable
+	 *            Variable that must be translated.
 	 * @param code
 	 *            Original code that must have the reference replaced.
-	 * @return A string with the new code replaced.
+	 * @return A string with the new code with the variable replaced.
 	 */
-	public String translateUserLibraryType(Variable userLibraryObject,
-			String code);
+	public String translateVariable(Variable variable, String code);
 
 	/**
 	 * Create a unique name for a given function number.
@@ -152,4 +160,17 @@ public interface RuntimeDefinition {
 	 *            Name of the function package.
 	 */
 	public String getCFunctionHeader(String packageName);
+
+	/**
+	 * Exports the internal library files needed for this runtime.
+	 * 
+	 * @param destinationFolder
+	 *            Destination folder.
+	 * 
+	 * @throws IOException
+	 *             Exception thrown in case of failures during file or directory
+	 *             handling.
+	 */
+	public void exportInternalLibrary(String destinationFolder)
+			throws IOException;
 }
