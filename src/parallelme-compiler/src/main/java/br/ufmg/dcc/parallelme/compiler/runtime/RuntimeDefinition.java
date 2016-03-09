@@ -10,10 +10,12 @@
 package br.ufmg.dcc.parallelme.compiler.runtime;
 
 import java.io.IOException;
+import java.util.List;
 
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.InputBind;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.Iterator;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.OutputBind;
+import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.UserLibraryData;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.Variable;
 
 /**
@@ -46,9 +48,12 @@ public interface RuntimeDefinition {
 	/**
 	 * Get the necessary imports for this runtime.
 	 * 
+	 * @param iteratorsAndBinds
+	 *            List of all iterators and binds found in a given class.
+	 * 
 	 * @return String with the necessary imports.
 	 */
-	public String getImports();
+	public String getImports(List<UserLibraryData> iteratorsAndBinds);
 
 	/**
 	 * Create an allocation for the informed input bind.
@@ -175,6 +180,9 @@ public interface RuntimeDefinition {
 	/**
 	 * Exports the internal library files needed for this runtime.
 	 * 
+	 * @param packageName
+	 *            Package name that will be used for files that will be
+	 *            exported.
 	 * @param destinationFolder
 	 *            Destination folder.
 	 * 
@@ -182,6 +190,6 @@ public interface RuntimeDefinition {
 	 *             Exception thrown in case of failures during file or directory
 	 *             handling.
 	 */
-	public void exportInternalLibrary(String destinationFolder)
-			throws IOException;
+	public void exportInternalLibrary(String packageName,
+			String destinationFolder) throws IOException;
 }

@@ -88,6 +88,15 @@ public class TranslatorSecondPass {
 					packageName, lastIteratorCount, classSymbol);
 			this.bindRuntimeOutputData(tokenStreamRewriter, iteratorsAndBinds,
 					packageName);
+			if (listener.getUserLibraryDetected()) {
+				// Remove user library imports (if any)
+				this.removeUserLibraryImports(tokenStreamRewriter,
+						listener.getImportTokens());
+				// If user library classes were detected, we must insert the
+				// runtime
+				// imports
+				this.insertRuntimeImports(tokenStreamRewriter, classSymbol, iteratorsAndBinds);
+			}
 			// After code translation, stores the output code in a Java file
 			this.writeOutputFile(classSymbol.name + ".java",
 					tokenStreamRewriter.getText());
@@ -235,7 +244,6 @@ public class TranslatorSecondPass {
 						lastFunctionCount, iteratorsAndBinds.size()));
 		tokenStreamRewriter.insertAfter(classSymbol.bodyAddress.start,
 				initialization.toString());
-
 	}
 
 	/**
@@ -268,6 +276,26 @@ public class TranslatorSecondPass {
 	}
 
 	/**
+	 * Remove user library imports.
+	 */
+	private void removeUserLibraryImports(
+			TokenStreamRewriter tokenStreamRewriter,
+			Collection<TokenAddress> importTokens) {
+		for (TokenAddress importToken : importTokens) {
+			tokenStreamRewriter.delete(importToken.start, importToken.stop);
+		}
+	}
+
+	/**
+	 * Insert necessary imports for the runtime usage.
+	 */
+	private void insertRuntimeImports(TokenStreamRewriter tokenStreamRewriter,
+			Symbol classTable, ArrayList<UserLibraryData> iteratorsAndBinds) {
+		tokenStreamRewriter.insertBefore(classTable.tokenAddress.start,
+				this.runtime.getImports(iteratorsAndBinds));
+	}
+
+	/**
 	 * Create a C files for the iterators provided.
 	 */
 	private void translateCCode(String packageName, Iterator iterator) {
@@ -296,5 +324,4 @@ public class TranslatorSecondPass {
 				writer.close();
 		}
 	}
-
 }

@@ -52,12 +52,8 @@ public class Compiler {
 		ParseTree[] parseTrees = new ParseTree[files.length];
 		JavaParser[] javaParser = new JavaParser[files.length];
 		TokenStreamRewriter[] tokenStreams = new TokenStreamRewriter[files.length];
-		int[] iteratorsCounters = new int[files.length];
-		int iteratorCount = 0;
-
 		// ####### First pass #######
-		TranslatorFirstPass firstPass = new TranslatorFirstPass(
-				this.targetRuntime);
+		TranslatorFirstPass firstPass = new TranslatorFirstPass();
 		for (int i = 0; i < files.length; i++) {
 			String file = files[i];
 			SimpleLogger.info("1st pass file - " + file);
@@ -73,19 +69,17 @@ public class Compiler {
 				TokenStreamRewriter tokenStreamRewriter = new TokenStreamRewriter(
 						tokenStream);
 				// Executes the first pass
-				firstPass.run(tokenStreamRewriter, symbolTable, tree,
-						iteratorCount);
+				firstPass.run(tokenStreamRewriter, symbolTable, tree);
 				// Stores objects by file for next compiler pass
 				tokenStreams[i] = tokenStreamRewriter;
 				javaParser[i] = parser;
 				parseTrees[i] = tree;
 				symbolTables[i] = symbolTable;
-				iteratorsCounters[i] = firstPass.getIteratorsCount();
-				iteratorCount += firstPass.getIteratorsCount();
 			} finally {
 				is.close();
 			}
 		}
+		int iteratorCount = 0;
 		// ####### Second pass #######
 		TranslatorSecondPass secondPass = new TranslatorSecondPass(
 				this.targetRuntime, destinationFolder);
@@ -93,9 +87,10 @@ public class Compiler {
 			String file = files[i];
 			SimpleLogger.info("2nd pass file - " + file);
 			secondPass.run(tokenStreams[i], symbolTables[i], parseTrees[i],
-					iteratorsCounters[i]);
+					iteratorCount);
+			iteratorCount += secondPass.getFunctionsCount();
 		}
 		// Export internal library files for this target runtime
-		this.targetRuntime.exportInternalLibrary(destinationFolder);
+		this.targetRuntime.exportInternalLibrary("", destinationFolder);
 	}
 }

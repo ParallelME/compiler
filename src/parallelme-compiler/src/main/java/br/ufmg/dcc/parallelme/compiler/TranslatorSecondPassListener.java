@@ -10,6 +10,7 @@
 package br.ufmg.dcc.parallelme.compiler;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -50,6 +51,8 @@ public class TranslatorSecondPassListener extends ScopeDrivenListener {
 	private int lastFunctionCount;
 	// Stores package name.
 	private String packageName;
+	// List of those tokens that must be removed from the output code.
+	private final ArrayList<TokenAddress> importTokens = new ArrayList<TokenAddress>();
 
 	/**
 	 * Constructor.
@@ -87,6 +90,30 @@ public class TranslatorSecondPassListener extends ScopeDrivenListener {
 	 */
 	public String getPackageName() {
 		return this.packageName;
+	}
+
+	/**
+	 * List user library import statements.
+	 * 
+	 * @return A collection of token addresses.
+	 */
+	public Collection<TokenAddress> getImportTokens() {
+		return this.importTokens;
+	}
+
+	/**
+	 * Insert those import declarations that contains ParallelME packages in the
+	 * list of imports that must be removed from the output code.
+	 * 
+	 * @param ctx
+	 *            Import context.
+	 */
+	@Override
+	public void enterImportDeclaration(JavaParser.ImportDeclarationContext ctx) {
+		String importDeclaration = ctx.qualifiedName().getText();
+		if (importDeclaration.contains(PackageDefinition.getBasePackage())) {
+			this.importTokens.add(new TokenAddress(ctx.start, ctx.stop));
+		}
 	}
 
 	/**
@@ -258,6 +285,7 @@ public class TranslatorSecondPassListener extends ScopeDrivenListener {
 			UserLibraryCollectionClass userLibraryClass,
 			JavaParser.ExpressionContext ctx) {
 		boolean ret = false;
+		System.out.println(ctx.parent.getText());
 		if (ctx.parent.getText().equals(
 				variable.name + "."
 						+ userLibraryClass.getDataOutputMethodName())) {
@@ -280,6 +308,7 @@ public class TranslatorSecondPassListener extends ScopeDrivenListener {
 	private void getOutputBindData(
 			UserLibraryVariableSymbol userLibraryVariableSymbol,
 			StatementContext stx) {
+		System.out.println(stx.getText());
 		List<ExpressionContext> expression = stx.statementExpression()
 				.expression().expression();
 		if (expression.size() == 2) {
@@ -295,10 +324,11 @@ public class TranslatorSecondPassListener extends ScopeDrivenListener {
 						userLibraryVariableSymbol.name,
 						userLibraryVariableSymbol.typeName,
 						userLibraryVariableSymbol.typeParameterName);
+				TokenAddress statementAddress = this
+						.getCurrentStatementAddress();
 				this.iteratorsAndBinds.add(new OutputBind(userLibraryVariable,
 						destinationVariable, this.iteratorsAndBinds.size()
-								+ lastFunctionCount, new TokenAddress(
-								stx.start, stx.stop)));
+								+ lastFunctionCount, statementAddress));
 			}
 		}
 	}

@@ -9,15 +9,11 @@
 
 package br.ufmg.dcc.parallelme.compiler.runtime;
 
-import java.io.File;
 import java.io.IOException;
-import java.net.URISyntaxException;
-import java.net.URL;
+import java.util.List;
 
-import org.apache.commons.io.FileUtils;
 import org.stringtemplate.v4.ST;
 
-import br.ufmg.dcc.parallelme.compiler.SimpleLogger;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.BoxedTypes;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.CTranslator;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.PrimitiveTypes;
@@ -59,7 +55,8 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	public String getFunctionInitializationString(int firstFunctionNumber,
 			int functionCount) {
 		ST st = new ST(templateFunctionsString);
-		for (int i = firstFunctionNumber; i < functionCount; i++) {
+		for (int i = firstFunctionNumber; i < firstFunctionNumber
+				+ functionCount; i++) {
 			st.add("functions", this.getFunctionName(i));
 		}
 		return st.render();
@@ -69,8 +66,20 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public String getImports() {
-		return "import android.support.v8.renderscript.*;\n\n";
+	public String getImports(List<UserLibraryData> iteratorsAndBinds) {
+		StringBuffer imports = new StringBuffer();
+		imports.append("import android.support.v8.renderscript.*;\n");
+		boolean exportedHDR = false;
+		for (UserLibraryData userLibraryData : iteratorsAndBinds) {
+			if (!exportedHDR
+					&& userLibraryData.getVariable().typeName.equals(HDRImage
+							.getName())) {
+				imports.append("import br.ufmg.dcc.parallelme.userlibrary.RGBE;\n");
+				exportedHDR = true;
+			}
+		}
+		imports.append("\n");
+		return imports.toString();
 	}
 
 	/**
@@ -81,28 +90,60 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 		String ret = "";
 		String inputObject = this.getVariableInName(inputBind.getVariable());
 		String outputObject = this.getVariableOutName(inputBind.getVariable());
-		String dataTypeObject = this.getPrefix() + inputBind.getVariable()
-				+ "DataType";
+		String dataTypeInputObject = this.getPrefix() + inputBind.getVariable()
+				+ "InDataType";
+		String dataTypeOutputObject = this.getPrefix()
+				+ inputBind.getVariable() + "OutDataType";
 		UserLibraryClass userLibraryClass = UserLibraryClassFactory
 				.create(inputBind.getVariable().typeName);
 		// If the user library class is a BitmapImage, there is only a single
 		// constructor in which the parameter is a Bitmap. Thus we just get the
 		// first element of the arguments' array and work with it.
 		if (userLibraryClass instanceof BitmapImage) {
-			ret = "Type " + dataTypeObject + ";\n" + inputObject
+			ret = "Type " + dataTypeInputObject + ";\n" + inputObject
 					+ " = Allocation.createFromBitmap(mRS, "
 					+ inputBind.getParameters()[0] + ", "
 					+ "Allocation.MipmapControl.MIPMAP_NONE, "
 					+ "Allocation.USAGE_SCRIPT | Allocation.USAGE_SHARED);\n"
-					+ dataTypeObject
+					+ dataTypeInputObject
 					+ " = new Type.Builder(mRS, Element.F32_3(mRS))" + ".setX("
 					+ inputObject + ".getType().getX())" + ".setY("
 					+ inputObject + ".getType().getY())" + ".create();\n"
 					+ outputObject + " = Allocation.createTyped(mRS, "
-					+ dataTypeObject + ");\n"
+					+ dataTypeInputObject + ");\n"
 					+ this.getFunctionName(inputBind.sequentialNumber)
 					+ "_script.forEach_root(" + inputObject + ", "
 					+ outputObject + ");";
+		} else if (userLibraryClass instanceof HDRImage) {
+			String resourceData = this.getPrefix() + inputBind.getVariable()
+					+ "ResourceData";
+			StringBuilder params = new StringBuilder();
+			for (int i = 0; i < inputBind.getParameters().length; i++) {
+				params.append(inputBind.getParameters()[i]);
+				if (i != (inputBind.getParameters().length - 1))
+					params.append(",");
+			}
+			String resourceDataCreation = "RGBE " + resourceData
+					+ " = RGBE.loadFromResource(" + params.toString() + ");\n";
+			String typeInput = "Type " + dataTypeInputObject
+					+ " = Type.Builder(mRS, Element.RGBA_8888(mRS))\n\t"
+					+ ".setX(" + resourceData + ".width)\n\t" + ".setY("
+					+ resourceData + ".height)" + "\n\t.create();\n";
+			String typeOutput = "Type " + dataTypeOutputObject
+					+ " = Type.Builder(mRS, Element.F32_4(mRS))\n\t" + ".setX("
+					+ resourceData + ".width)" + "\n\t.setY(" + resourceData
+					+ ".height)" + "\n\t.create();\n";
+			String allocations = inputObject
+					+ " = Allocation.createTyped(mRS, "
+					+ dataTypeInputObject
+					+ ", Allocation.MipmapControl.MIPMAP_NONE, Allocation.USAGE_SCRIPT);\n"
+					+ outputObject + " = Allocation.createTyped(mRS, "
+					+ dataTypeOutputObject + ");\n" + inputObject
+					+ ".copyFrom(" + resourceData + ");\n"
+					+ this.getFunctionName(inputBind.sequentialNumber)
+					+ "_script.forEach_root(" + inputObject + ", "
+					+ outputObject + ");";
+			ret = resourceDataCreation + typeInput + typeOutput + allocations;
 		}
 		return ret;
 	}
@@ -122,7 +163,10 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 		// first element of the arguments' array and work with it.
 		if (userLibraryClass instanceof BitmapImage) {
 			ret = "Allocation " + inputObject + ", " + outputObject + ";\n";
+		} else if (userLibraryClass instanceof HDRImage) {
+			ret = "Allocation " + inputObject + ", " + outputObject + ";\n";
 		}
+
 		return ret;
 	}
 
@@ -272,44 +316,10 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	 * Not necessary for RenderScript runtime.
 	 */
 	@Override
-	public void exportInternalLibrary(String destinationFolder)
-			throws IOException {
+	public void exportInternalLibrary(String packageName,
+			String destinationFolder) throws IOException {
 		// Copy all files and directories under ParallelME resource folder to
 		// the destination folder.
-		String resourceName = "ParallelME";
-		URL resource = ClassLoader.getSystemClassLoader().getResource(
-				resourceName);
-		if (resource == null) {
-			String msg = resourceName
-					+ " resource folder is missing in this JAR. Please recompile the project.";
-			SimpleLogger.error(msg);
-			throw new RuntimeException(msg);
-		}
-		File resourceDir = null;
-		try {
-			resourceDir = new File(resource.toURI());
-		} catch (URISyntaxException e) {
-			SimpleLogger
-					.error(resource
-							+ " does not appear to be a valid URL / URI, thus it won't be copied to '"
-							+ destinationFolder + "'.");
-			resourceDir = null;
-		}
-		if (resourceDir != null && resourceDir.exists()) {
-			// Get the list of the files contained in the package
-			String[] list = resourceDir.list();
-			for (int i = 0; i < list.length; i++) {
-				String fileOrDirName = list[i];
-				File source = new File(resourceDir.getAbsolutePath()
-						+ File.separator + fileOrDirName);
-				File destiny = new File(destinationFolder + File.separator
-						+ fileOrDirName);
-				if (source.isDirectory()) {
-					FileUtils.copyDirectory(source, destiny);
-				} else if (source.isFile()) {
-					FileUtils.copyFile(source, destiny);
-				}
-			}
-		}
+		// String resourceName = "RenderScript";
 	}
 }

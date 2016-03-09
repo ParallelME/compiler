@@ -13,6 +13,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.List;
 
 import org.apache.commons.io.FileUtils;
 import org.stringtemplate.v4.ST;
@@ -69,7 +70,7 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public String getImports() {
+	public String getImports(List<UserLibraryData> iteratorsAndBinds) {
 		return "import android.support.v8.renderscript.*;\n\n";
 	}
 
@@ -272,8 +273,8 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public void exportInternalLibrary(String destinationFolder)
-			throws IOException {
+	public void exportInternalLibrary(String packageName,
+			String destinationFolder) throws IOException {
 		// Copy all files and directories under ParallelME resource folder to
 		// the destination folder.
 		String resourceName = "ParallelME";

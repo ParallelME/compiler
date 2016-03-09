@@ -29,6 +29,8 @@ public class UserLibraryClassFactory {
 	public static UserLibraryClass create(String className) {
 		if (className.equals(BitmapImage.getName()))
 			return new BitmapImage();
+		else if (className.equals(HDRImage.getName()))
+			return new HDRImage();
 		else if (className.equals(UserFunction.getName()))
 			return new UserFunction();
 		else if (className.equals(RGBA.getName()))

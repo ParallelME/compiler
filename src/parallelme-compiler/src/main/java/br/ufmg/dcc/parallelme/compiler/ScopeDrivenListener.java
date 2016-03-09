@@ -194,7 +194,7 @@ public class ScopeDrivenListener extends JavaBaseListener {
 	 * @return Statement address. Null if no statement is currently being
 	 *         visited.
 	 */
-	private TokenAddress getCurrentStatementAddress() {
+	protected TokenAddress getCurrentStatementAddress() {
 		TokenAddress ret = null;
 		if (this.currentStatement != null) {
 			ret = new TokenAddress(this.currentStatement.start,
