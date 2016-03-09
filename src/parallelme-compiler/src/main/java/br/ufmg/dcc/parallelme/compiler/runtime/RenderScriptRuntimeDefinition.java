@@ -78,7 +78,41 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	 */
 	@Override
 	public String createAllocation(InputBind inputBind) {
-		String allocationString = "";
+		String ret = "";
+		String inputObject = this.getVariableInName(inputBind.getVariable());
+		String outputObject = this.getVariableOutName(inputBind.getVariable());
+		String dataTypeObject = this.getPrefix() + inputBind.getVariable()
+				+ "DataType";
+		UserLibraryClass userLibraryClass = UserLibraryClassFactory
+				.create(inputBind.getVariable().typeName);
+		// If the user library class is a BitmapImage, there is only a single
+		// constructor in which the parameter is a Bitmap. Thus we just get the
+		// first element of the arguments' array and work with it.
+		if (userLibraryClass instanceof BitmapImage) {
+			ret = "Type " + dataTypeObject + ";\n" + inputObject
+					+ " = Allocation.createFromBitmap(mRS, "
+					+ inputBind.getParameters()[0] + ", "
+					+ "Allocation.MipmapControl.MIPMAP_NONE, "
+					+ "Allocation.USAGE_SCRIPT | Allocation.USAGE_SHARED);\n"
+					+ dataTypeObject
+					+ " = new Type.Builder(mRS, Element.F32_3(mRS))" + ".setX("
+					+ inputObject + ".getType().getX())" + ".setY("
+					+ inputObject + ".getType().getY())" + ".create();\n"
+					+ outputObject + " = Allocation.createTyped(mRS, "
+					+ dataTypeObject + ");\n"
+					+ this.getFunctionName(inputBind.sequentialNumber)
+					+ "_script.forEach_root(" + inputObject + ", "
+					+ outputObject + ");";
+		}
+		return ret;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String declareAllocation(InputBind inputBind) {
+		String ret = "";
 		String inputObject = this.getVariableInName(inputBind.getVariable());
 		String outputObject = this.getVariableOutName(inputBind.getVariable());
 		UserLibraryClass userLibraryClass = UserLibraryClassFactory
@@ -87,22 +121,9 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 		// constructor in which the parameter is a Bitmap. Thus we just get the
 		// first element of the arguments' array and work with it.
 		if (userLibraryClass instanceof BitmapImage) {
-			allocationString = "Allocation " + inputObject + ", "
-					+ outputObject + ";\n" + "Type dataType;\n" + inputObject
-					+ " = Allocation.createFromBitmap(mRS, "
-					+ inputBind.getParameters()[0] + ", "
-					+ "Allocation.MipmapControl.MIPMAP_NONE, "
-					+ "Allocation.USAGE_SCRIPT | Allocation.USAGE_SHARED);\n"
-					+ "dataType = new Type.Builder(mRS, Element.F32_3(mRS))"
-					+ ".setX(" + inputObject + ".getType().getX())" + ".setY("
-					+ inputObject + ".getType().getY())" + ".create();\n"
-					+ outputObject
-					+ " = Allocation.createTyped(mRS, dataType);\n"
-					+ this.getFunctionName(inputBind.sequentialNumber)
-					+ "_script.forEach_root(" + inputObject + ", "
-					+ outputObject + ");";
+			ret = "Allocation " + inputObject + ", " + outputObject + ";\n";
 		}
-		return allocationString;
+		return ret;
 	}
 
 	/**
@@ -253,5 +274,42 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	@Override
 	public void exportInternalLibrary(String destinationFolder)
 			throws IOException {
+		// Copy all files and directories under ParallelME resource folder to
+		// the destination folder.
+		String resourceName = "ParallelME";
+		URL resource = ClassLoader.getSystemClassLoader().getResource(
+				resourceName);
+		if (resource == null) {
+			String msg = resourceName
+					+ " resource folder is missing in this JAR. Please recompile the project.";
+			SimpleLogger.error(msg);
+			throw new RuntimeException(msg);
+		}
+		File resourceDir = null;
+		try {
+			resourceDir = new File(resource.toURI());
+		} catch (URISyntaxException e) {
+			SimpleLogger
+					.error(resource
+							+ " does not appear to be a valid URL / URI, thus it won't be copied to '"
+							+ destinationFolder + "'.");
+			resourceDir = null;
+		}
+		if (resourceDir != null && resourceDir.exists()) {
+			// Get the list of the files contained in the package
+			String[] list = resourceDir.list();
+			for (int i = 0; i < list.length; i++) {
+				String fileOrDirName = list[i];
+				File source = new File(resourceDir.getAbsolutePath()
+						+ File.separator + fileOrDirName);
+				File destiny = new File(destinationFolder + File.separator
+						+ fileOrDirName);
+				if (source.isDirectory()) {
+					FileUtils.copyDirectory(source, destiny);
+				} else if (source.isFile()) {
+					FileUtils.copyFile(source, destiny);
+				}
+			}
+		}
 	}
 }

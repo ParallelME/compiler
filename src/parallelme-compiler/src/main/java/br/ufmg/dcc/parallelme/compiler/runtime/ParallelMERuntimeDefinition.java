@@ -78,7 +78,41 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	 */
 	@Override
 	public String createAllocation(InputBind inputBind) {
-		String allocationString = "";
+		String ret = "";
+		String inputObject = this.getVariableInName(inputBind.getVariable());
+		String outputObject = this.getVariableOutName(inputBind.getVariable());
+		String dataTypeObject = this.getPrefix() + inputBind.getVariable()
+				+ "DataType";
+		UserLibraryClass userLibraryClass = UserLibraryClassFactory
+				.create(inputBind.getVariable().typeName);
+		// If the user library class is a BitmapImage, there is only a single
+		// constructor in which the parameter is a Bitmap. Thus we just get the
+		// first element of the arguments' array and work with it.
+		if (userLibraryClass instanceof BitmapImage) {
+			ret = "Type " + dataTypeObject + ";\n" + inputObject
+					+ " = Allocation.createFromBitmap(mRS, "
+					+ inputBind.getParameters()[0] + ", "
+					+ "Allocation.MipmapControl.MIPMAP_NONE, "
+					+ "Allocation.USAGE_SCRIPT | Allocation.USAGE_SHARED);\n"
+					+ dataTypeObject
+					+ " = new Type.Builder(mRS, Element.F32_3(mRS))" + ".setX("
+					+ inputObject + ".getType().getX())" + ".setY("
+					+ inputObject + ".getType().getY())" + ".create();\n"
+					+ outputObject + " = Allocation.createTyped(mRS, "
+					+ dataTypeObject + ");\n"
+					+ this.getFunctionName(inputBind.sequentialNumber)
+					+ "_script.forEach_root(" + inputObject + ", "
+					+ outputObject + ");";
+		}
+		return ret;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String declareAllocation(InputBind inputBind) {
+		String ret = "";
 		String inputObject = this.getVariableInName(inputBind.getVariable());
 		String outputObject = this.getVariableOutName(inputBind.getVariable());
 		UserLibraryClass userLibraryClass = UserLibraryClassFactory
@@ -87,22 +121,9 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 		// constructor in which the parameter is a Bitmap. Thus we just get the
 		// first element of the arguments' array and work with it.
 		if (userLibraryClass instanceof BitmapImage) {
-			allocationString = "Allocation " + inputObject + ", "
-					+ outputObject + ";\n" + "Type dataType;\n" + inputObject
-					+ " = Allocation.createFromBitmap(mRS, "
-					+ inputBind.getParameters()[0] + ", "
-					+ "Allocation.MipmapControl.MIPMAP_NONE, "
-					+ "Allocation.USAGE_SCRIPT | Allocation.USAGE_SHARED);\n"
-					+ "dataType = new Type.Builder(mRS, Element.F32_3(mRS))"
-					+ ".setX(" + inputObject + ".getType().getX())" + ".setY("
-					+ inputObject + ".getType().getY())" + ".create();\n"
-					+ outputObject
-					+ " = Allocation.createTyped(mRS, dataType);\n"
-					+ this.getFunctionName(inputBind.sequentialNumber)
-					+ "_script.forEach_root(" + inputObject + ", "
-					+ outputObject + ");";
+			ret = "Allocation " + inputObject + ", " + outputObject + ";\n";
 		}
-		return allocationString;
+		return ret;
 	}
 
 	/**

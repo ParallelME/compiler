@@ -43,6 +43,7 @@ public class ScopeDrivenListener extends JavaBaseListener {
 	// Stores the current statement to be evaluated separatelly during
 	// expression check.
 	protected JavaParser.StatementContext currentStatement;
+	protected JavaParser.LocalVariableDeclarationStatementContext currentVariableStatement;
 
 	/**
 	 * Constructor.
@@ -162,9 +163,6 @@ public class ScopeDrivenListener extends JavaBaseListener {
 		}
 	}
 
-	/**
-	 * Detects those statements that uses user library objects.
-	 */
 	@Override
 	public void enterStatement(JavaParser.StatementContext ctx) {
 		this.currentStatement = ctx;
@@ -173,6 +171,39 @@ public class ScopeDrivenListener extends JavaBaseListener {
 	@Override
 	public void exitStatement(JavaParser.StatementContext ctx) {
 		this.currentStatement = null;
+	}
+
+	@Override
+	public void enterLocalVariableDeclarationStatement(
+			JavaParser.LocalVariableDeclarationStatementContext ctx) {
+		this.currentVariableStatement = ctx;
+	}
+
+	@Override
+	public void exitLocalVariableDeclarationStatement(
+			JavaParser.LocalVariableDeclarationStatementContext ctx) {
+		this.currentVariableStatement = null;
+	}
+
+	/**
+	 * Creates a new token for the address of the current statement. Accordingly
+	 * to ANTLR structure, a statement can be stored on several different
+	 * classes, so instances of these classes are stored in objects during the
+	 * walk and filtered here, since only one will exist at a time.
+	 * 
+	 * @return Statement address. Null if no statement is currently being
+	 *         visited.
+	 */
+	private TokenAddress getCurrentStatementAddress() {
+		TokenAddress ret = null;
+		if (this.currentStatement != null) {
+			ret = new TokenAddress(this.currentStatement.start,
+					this.currentStatement.stop);
+		} else if (this.currentVariableStatement != null) {
+			ret = new TokenAddress(this.currentVariableStatement.start,
+					this.currentVariableStatement.stop);
+		}
+		return ret;
 	}
 
 	/**
@@ -238,46 +269,88 @@ public class ScopeDrivenListener extends JavaBaseListener {
 	public void enterCreator(JavaParser.CreatorContext ctx) {
 		// Gets the constructor arguments
 		ArrayList<Symbol> arguments = new ArrayList<>();
-		if (ctx.classCreatorRest().arguments().expressionList() != null) {
+		if (ctx.classCreatorRest() != null
+				&& ctx.classCreatorRest().arguments().expressionList() != null) {
 			arguments = this.createSymbols(ctx.classCreatorRest().arguments()
 					.expressionList().expression());
 		}
-		// Gets the variable that will hold this creator (if any)
 		if (ctx.parent.parent.parent instanceof VariableDeclaratorContext) {
+			// Case 1: ClassName objectName = new ClassName(p1, p2, ..., pn);
 			VariableDeclaratorContext variableCtx = (VariableDeclaratorContext) ctx.parent.parent.parent;
 			String variableName = variableCtx.variableDeclaratorId().getText();
-			VariableSymbol variableSymbol = (VariableSymbol) this.currentScope
-					.getSymbolUnderScope(variableName, VariableSymbol.class);
-			// It may be an user library class, so search again
-			if (variableSymbol == null)
-				variableSymbol = (VariableSymbol) this.currentScope
-						.getSymbolUnderScope(variableName,
-								UserLibraryVariableSymbol.class);
-			// If the variable was found this is a named object, otherwise it is
-			// an anonymous object.
-			if (variableSymbol != null) {
-				this.previousScope = this.currentScope;
-				this.currentScope = variableSymbol;
-				if (!ctx.createdName().typeArgumentsOrDiamond().isEmpty()) {
-					String[] ret = this.getTypeData(ctx.createdName());
-					this.newScope(new CreatorSymbol(variableName, ret[0],
-							ret[1], arguments, variableSymbol,
-							new TokenAddress(ctx.start, ctx.stop)));
-				} else {
-					this.newScope(new CreatorSymbol(variableName, ctx
-							.createdName().getText(), "", arguments,
-							variableSymbol, new TokenAddress(variableCtx.start,
-									variableCtx.stop)));
-				}
-			}
+			this.createCreatorSymbol(ctx, variableName, arguments);
+		} else if (ctx.parent.parent instanceof ExpressionContext) {
+			// Case 2:
+			// objectName = new ClassName(p1, p2, ..., pn);
+			// OR
+			// this.objectName = new ClassName(p1, p2, ..., pn);
+			// OR
+			// ANYTHING.objectName = new ClassName(p1, p2, ..., pn);
+			ExpressionContext expressionCtx = (ExpressionContext) ctx.parent.parent;
+			this.creatorSymbolCase2(ctx, expressionCtx, arguments);
 		} else {
+			// Case 3:
+			// someObject.method(new ClassName(p1, p2, ..., pn));
+			// OR
+			// someObject.method(new ClassName(p1, p2, ..., pn) { ... });
 			this.anonymousObjectsCounter += 1;
 			String[] ret = this.getTypeData(ctx.createdName());
 			this.newScope(new CreatorSymbol(
 					SymbolTableDefinitions.anonymousObjectPrefix
-							+ this.anonymousObjectsCounter, ret[0], ret[1],
+							+ this.anonymousObjectsCounter, "", ret[0], ret[1],
 					arguments, this.currentScope, new TokenAddress(ctx.start,
-							ctx.stop)));
+							ctx.stop), this.getCurrentStatementAddress()));
+		}
+	}
+
+	/**
+	 * Extracts creator information for cases like:
+	 * 
+	 * objectName = new ClassName(p1, p2, ..., pn);<br>
+	 * OR <br>
+	 * this.objectName = new ClassName(p1, p2, ..., pn); <br>
+	 * OR <br>
+	 * ANYTHING.objectName = new ClassName(p1, p2, ..., pn);
+	 */
+	private void creatorSymbolCase2(JavaParser.CreatorContext creatorCtx,
+			ExpressionContext expressionCtx, List<Symbol> arguments) {
+		List<ExpressionContext> expressions = expressionCtx.expression();
+		// Checks if is case of "expression = expression"
+		if (!expressions.isEmpty() && expressions.size() == 2) {
+			ExpressionContext foo = expressions.get(0);
+			// Checks case "objectName = new ClassName(p1, p2, ..., pn);"
+			if (foo.primary() != null) {
+				String variableName = foo.primary().getText();
+				this.createCreatorSymbol(creatorCtx, variableName, arguments);
+			} else if (foo.Identifier() != null) {
+				// Check cases:
+				// this.objectName = new ClassName(p1, p2, ..., pn);
+				// OR
+				// ANYTHING.objectName = new ClassName(p1, p2, ..., pn);
+				String variableName = foo.Identifier().getText();
+				this.createCreatorSymbol(creatorCtx, variableName, arguments);
+			}
+		}
+	}
+
+	/**
+	 * To avoid code duplication, we create a creator symbol (wow, this is
+	 * funny) here.
+	 */
+	private void createCreatorSymbol(JavaParser.CreatorContext creatorCtx,
+			String variableName, List<Symbol> arguments) {
+		if (!creatorCtx.createdName().typeArgumentsOrDiamond().isEmpty()) {
+			String[] ret = this.getTypeData(creatorCtx.createdName());
+			this.newScope(new CreatorSymbol("$" + variableName + "Creator",
+					variableName, ret[0], ret[1], arguments, this.currentScope,
+					new TokenAddress(creatorCtx.start, creatorCtx.stop), this
+							.getCurrentStatementAddress()));
+		} else {
+			this.newScope(new CreatorSymbol("$" + variableName + "Creator",
+					variableName, creatorCtx.createdName().getText(), "",
+					arguments, this.currentScope, new TokenAddress(
+							creatorCtx.start, creatorCtx.stop), this
+							.getCurrentStatementAddress()));
 		}
 	}
 
@@ -358,28 +431,8 @@ public class ScopeDrivenListener extends JavaBaseListener {
 	@Override
 	public void enterLocalVariableDeclaration(
 			JavaParser.LocalVariableDeclarationContext ctx) {
-		// Get variable type and its parametrized type (if any)
-		String ret[] = this.getTypeData(ctx.type());
-		String variableType = ret[0];
-		String typeParameter = ret[1];
-		for (VariableDeclaratorContext variable : ctx.variableDeclarators()
-				.variableDeclarator()) {
-			String variableName = variable.variableDeclaratorId().getText();
-			if (UserLibraryClassFactory.isValidClass(variableType)) {
-				this.currentScope.addSymbol(new UserLibraryVariableSymbol(
-						variableName, variableType, typeParameter,
-						this.currentScope, new TokenAddress(variable
-								.variableDeclaratorId().start, variable
-								.variableDeclaratorId().stop),
-						new TokenAddress(ctx.start, ctx.stop)));
-			} else {
-				this.currentScope.addSymbol(new VariableSymbol(variableName,
-						variableType, typeParameter, this.currentScope,
-						new TokenAddress(variable.variableDeclaratorId().start,
-								variable.variableDeclaratorId().stop),
-						new TokenAddress(ctx.start, ctx.stop)));
-			}
-		}
+		this.createVariable(ctx.variableDeclarators(), ctx.type(),
+				this.getCurrentStatementAddress());
 	}
 
 	/**
@@ -392,6 +445,48 @@ public class ScopeDrivenListener extends JavaBaseListener {
 		if (this.currentScope instanceof VariableSymbol) {
 			this.previousScope = this.currentScope;
 			this.currentScope = this.currentScope.enclosingScope;
+		}
+	}
+
+	@Override
+	public void enterFieldDeclaration(JavaParser.FieldDeclarationContext ctx) {
+		this.createVariable(ctx.variableDeclarators(), ctx.type(),
+				new TokenAddress(ctx.start, ctx.stop));
+	}
+
+	/**
+	 * Creates variable symbol for local variables and field declarations.
+	 * 
+	 * @param variablesCtx
+	 *            Variable declarator context.
+	 * @param typeCtx
+	 *            Type context.
+	 * @param statementAddress
+	 *            Token address for the variable's statement.
+	 */
+	public void createVariable(VariableDeclaratorsContext variablesCtx,
+			TypeContext typeCtx, TokenAddress statementAddress) {
+		String ret[] = this.getTypeData(typeCtx);
+		String variableType = ret[0];
+		String typeParameter = ret[1];
+		for (VariableDeclaratorContext variable : variablesCtx
+				.variableDeclarator()) {
+			String variableName = variable.variableDeclaratorId().getText();
+			if (UserLibraryClassFactory.isValidClass(variableType)) {
+				this.currentScope
+						.addSymbol(new UserLibraryVariableSymbol(variableName,
+								variableType, typeParameter, this.currentScope,
+								new TokenAddress(variable
+										.variableDeclaratorId().start, variable
+										.variableDeclaratorId().stop),
+								statementAddress));
+			} else {
+				this.currentScope.addSymbol(new VariableSymbol(variableName,
+						variableType, typeParameter, this.currentScope,
+						new TokenAddress(variable.variableDeclaratorId().start,
+								variable.variableDeclaratorId().stop),
+						statementAddress));
+			}
 		}
 	}
 }

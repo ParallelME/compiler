@@ -16,11 +16,11 @@ package br.ufmg.dcc.parallelme.compiler.runtime.translation.data;
  * @author Wilson de Carvalho
  */
 public class UserFunction {
-	public final String CCode;
+	public final String Code;
 	public final Variable variableArgument;
 
-	public UserFunction(String CCode, Variable variableArgument) {
-		this.CCode = CCode;
+	public UserFunction(String Code, Variable variableArgument) {
+		this.Code = Code;
 		this.variableArgument = variableArgument;
 	}
 }

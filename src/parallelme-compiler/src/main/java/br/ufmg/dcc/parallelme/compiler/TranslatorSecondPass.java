@@ -25,6 +25,7 @@ import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.*;
 import br.ufmg.dcc.parallelme.compiler.symboltable.*;
 import br.ufmg.dcc.parallelme.compiler.userlibrary.UserLibraryClassFactory;
 import br.ufmg.dcc.parallelme.compiler.userlibrary.UserLibraryCollectionClass;
+import br.ufmg.dcc.parallelme.compiler.util.Pair;
 
 /**
  * Translates the user code written with the user library to a runtime
@@ -70,11 +71,11 @@ public class TranslatorSecondPass {
 				.getIteratorsAndBinds();
 		String packageName = listener.getPackageName();
 		// 2. Perform input data binding
-		ArrayList<UserLibraryVariableSymbol> variables = this
-				.getVariablesWithCreators(symbolTable);
-		for (VariableSymbol variable : variables) {
-			this.bindRuntimeInputData(tokenStreamRewriter, variable,
-					iteratorsAndBinds, packageName, iteratorsAndBinds.size());
+		for (Pair<UserLibraryVariableSymbol, CreatorSymbol> pair : this
+				.getVariablesWithCreators(symbolTable)) {
+			this.bindRuntimeInputData(tokenStreamRewriter, pair.left,
+					pair.right, iteratorsAndBinds, packageName,
+					iteratorsAndBinds.size());
 		}
 		// 3. Replace iterators and perform output data binding
 		ArrayList<Symbol> classSymbols = symbolTable
@@ -99,18 +100,20 @@ public class TranslatorSecondPass {
 	 * 
 	 * @return
 	 */
-	private ArrayList<UserLibraryVariableSymbol> getVariablesWithCreators(
+	private ArrayList<Pair<UserLibraryVariableSymbol, CreatorSymbol>> getVariablesWithCreators(
 			Symbol classTable) {
-		ArrayList<UserLibraryVariableSymbol> variables = new ArrayList<>();
+		ArrayList<Pair<UserLibraryVariableSymbol, CreatorSymbol>> variables = new ArrayList<>();
 		// Get all creators' symbols
 		ArrayList<Symbol> creators = classTable.getSymbols(CreatorSymbol.class);
 		// And filter those creators that correspond to user library instances.
 		for (Symbol symbol : creators) {
 			CreatorSymbol creator = (CreatorSymbol) symbol;
-			if (creator.enclosingScope instanceof UserLibraryVariableSymbol) {
-				UserLibraryVariableSymbol variable = (UserLibraryVariableSymbol) creator.enclosingScope;
+			UserLibraryVariableSymbol variable = (UserLibraryVariableSymbol) creator.enclosingScope
+					.getSymbolUnderScope(creator.attributedObjectName,
+							UserLibraryVariableSymbol.class);
+			if (variable != null) {
 				if (UserLibraryClassFactory.create(variable.typeName) instanceof UserLibraryCollectionClass) {
-					variables.add(variable);
+					variables.add(new Pair<>(variable, creator));
 				}
 			}
 		}
@@ -121,23 +124,30 @@ public class TranslatorSecondPass {
 	 * Perform memory binding for data input on the provided runtime.
 	 */
 	private void bindRuntimeInputData(TokenStreamRewriter tokenStreamRewriter,
-			VariableSymbol variableSymbol,
+			VariableSymbol variableSymbol, CreatorSymbol creatorSymbol,
 			ArrayList<UserLibraryData> iteratorsAndBinds, String packageName,
 			int functionNumber) {
-		CreatorSymbol creator = (CreatorSymbol) variableSymbol
-				.getSymbols(CreatorSymbol.class).iterator().next();
 		// Creates a variable description to avoid unnecessary
 		// coupling between the runtime definition and compiler
 		// core.
 		Variable variable = new Variable(variableSymbol.name,
 				variableSymbol.typeName, variableSymbol.typeParameterName);
 		Parameter[] arguments = this
-				.argumentsToVariableParameter(creator.arguments);
+				.argumentsToVariableParameter(creatorSymbol.arguments);
 		InputBind inputBind = new InputBind(variable, functionNumber, arguments);
-		String createAllocationString = this.runtime
-				.createAllocation(inputBind);
-		tokenStreamRewriter.replace(variableSymbol.statementAddress.start,
-				variableSymbol.statementAddress.stop, createAllocationString);
+		String inputBindDeclaration = this.runtime.declareAllocation(inputBind);
+		String inputBindCreation = this.runtime.createAllocation(inputBind);
+		tokenStreamRewriter.insertBefore(variableSymbol.statementAddress.start,
+				inputBindDeclaration);
+		tokenStreamRewriter.insertAfter(creatorSymbol.statementAddress.stop,
+				inputBindCreation);
+		tokenStreamRewriter.delete(variableSymbol.statementAddress.start,
+				variableSymbol.statementAddress.stop);
+		if (!variableSymbol.statementAddress
+				.equals(creatorSymbol.statementAddress)) {
+			tokenStreamRewriter.delete(creatorSymbol.statementAddress.start,
+					creatorSymbol.statementAddress.stop);
+		}
 		String inputBindFunction = this.runtime
 				.createAllocationFunction(inputBind);
 		if (!inputBindFunction.isEmpty()) {

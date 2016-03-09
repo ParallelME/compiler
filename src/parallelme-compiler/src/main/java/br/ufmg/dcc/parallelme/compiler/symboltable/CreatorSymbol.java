@@ -21,16 +21,22 @@ public class CreatorSymbol extends Symbol {
 	public final Collection<Symbol> arguments;
 	// Creator class type
 	public final String typeName;
+	// Attributed object name (if any)
+	public final String attributedObjectName;
 	// Type parametrized on the creator
 	public final String typeParameterName;
+	public final TokenAddress statementAddress;
 
-	public CreatorSymbol(String name, String typeName,
-			String typeParameterName, Collection<Symbol> arguments,
-			Symbol enclosingScope, TokenAddress tokenAddress) {
+	public CreatorSymbol(String name, String attributedObjectName,
+			String typeName, String typeParameterName,
+			Collection<Symbol> arguments, Symbol enclosingScope,
+			TokenAddress tokenAddress, TokenAddress statementAddress) {
 		super(name, enclosingScope, tokenAddress);
 		this.typeName = typeName;
+		this.attributedObjectName = attributedObjectName;
 		this.typeParameterName = typeParameterName;
 		this.arguments = arguments;
+		this.statementAddress = statementAddress;
 	}
 
 	/**
@@ -46,7 +52,8 @@ public class CreatorSymbol extends Symbol {
 			ret.delete(ret.length() - 2, ret.length());
 		ret.append("]");
 		return super.readableTableHeader() + ", " + this.typeName + ", "
-				+ this.typeParameterName + ", " + ret.toString();
+				+ attributedObjectName + ", " + this.typeParameterName + ", "
+				+ ret.toString();
 	}
 
 	@Override
@@ -55,7 +62,8 @@ public class CreatorSymbol extends Symbol {
 			CreatorSymbol foo = (CreatorSymbol) other;
 			return super.equals(other) && foo.arguments == this.arguments
 					&& foo.typeName == this.typeName
-					&& foo.typeParameterName == this.typeParameterName;
+					&& foo.typeParameterName == this.typeParameterName
+					&& foo.statementAddress == this.statementAddress;
 		} else {
 			return false;
 		}

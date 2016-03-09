@@ -51,15 +51,26 @@ public interface RuntimeDefinition {
 	public String getImports();
 
 	/**
-	 * Create an allocation definition for the informed expression context.
+	 * Create an allocation for the informed input bind.
 	 * 
 	 * @param inputBind
 	 *            Object containing the necessary information to build an
 	 *            allocation.
 	 * 
-	 * @return A string with the declaration for the new allocation.
+	 * @return A string with the creation for the new allocation.
 	 */
 	public String createAllocation(InputBind inputBind);
+
+	/**
+	 * Declare an allocation based on the informed expression context.
+	 * 
+	 * @param inputBind
+	 *            Object containing the necessary information to declare an
+	 *            allocation.
+	 * 
+	 * @return A string with the declaration for the new allocation.
+	 */
+	public String declareAllocation(InputBind inputBind);
 
 	/**
 	 * Creates the code that is necessary to perform input binding.
