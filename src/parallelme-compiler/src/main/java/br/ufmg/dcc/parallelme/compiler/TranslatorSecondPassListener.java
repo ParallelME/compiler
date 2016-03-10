@@ -285,7 +285,6 @@ public class TranslatorSecondPassListener extends ScopeDrivenListener {
 			UserLibraryCollectionClass userLibraryClass,
 			JavaParser.ExpressionContext ctx) {
 		boolean ret = false;
-		System.out.println(ctx.parent.getText());
 		if (ctx.parent.getText().equals(
 				variable.name + "."
 						+ userLibraryClass.getDataOutputMethodName())) {
@@ -308,7 +307,6 @@ public class TranslatorSecondPassListener extends ScopeDrivenListener {
 	private void getOutputBindData(
 			UserLibraryVariableSymbol userLibraryVariableSymbol,
 			StatementContext stx) {
-		System.out.println(stx.getText());
 		List<ExpressionContext> expression = stx.statementExpression()
 				.expression().expression();
 		if (expression.size() == 2) {

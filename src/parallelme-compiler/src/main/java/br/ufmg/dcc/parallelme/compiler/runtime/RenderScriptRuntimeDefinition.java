@@ -230,6 +230,8 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 			translatedCode = this.translateRGBVariable(variable, code);
 		} else if (variable.typeName.equals(RGBA.getName())) {
 			translatedCode = this.translateRGBAVariable(variable, code);
+		} else if (variable.typeName.equals(Pixel.getName())) {
+			translatedCode = this.translatePixelVariable(variable, code);
 		} else if (PrimitiveTypes.isPrimitive(variable.typeName)) {
 			translatedCode = code.replaceAll(variable.typeName,
 					PrimitiveTypes.getCType(variable.typeName));
@@ -249,6 +251,8 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 		if (typeName.equals(RGB.getName())) {
 			translatedType = "float3";
 		} else if (typeName.equals(RGBA.getName())) {
+			translatedType = "float4";
+		} else if (typeName.equals(Pixel.getName())) {
 			translatedType = "float4";
 		} else if (PrimitiveTypes.isPrimitive(typeName)) {
 			translatedType = PrimitiveTypes.getCType(typeName);
@@ -277,6 +281,18 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 		return ret;
 	}
 
+	private String translatePixelVariable(Variable variable, String code) {
+		String ret = code.replaceAll(variable.typeName,
+				this.translateType(variable.typeName));
+		ret = ret.replaceAll(variable.name + ".x", "x");
+		ret = ret.replaceAll(variable.name + ".y", "y");
+		ret = ret.replaceAll(variable.name + ".rgba.red", variable.name + ".s0");
+		ret = ret.replaceAll(variable.name + ".rgba.green", variable.name + ".s1");
+		ret = ret.replaceAll(variable.name + ".rgba.blue", variable.name + ".s2");
+		ret = ret.replaceAll(variable.name + ".rgba.alpha", variable.name + ".s3");
+		return ret;
+	}
+
 	/**
 	 * {@inheritDoc}
 	 */
@@ -285,7 +301,8 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 		String functionSignature = "";
 		String parameterTypeTranslated = this.translateType(iterator
 				.getUserFunctionData().variableArgument.typeName);
-		if (iterator.getVariable().typeName.equals(BitmapImage.getName())) {
+		if (iterator.getVariable().typeName.equals(BitmapImage.getName())
+				|| iterator.getVariable().typeName.equals(HDRImage.getName())) {
 			functionSignature = parameterTypeTranslated
 					+ " __attribute__((kernel)) root("
 					+ parameterTypeTranslated + " "

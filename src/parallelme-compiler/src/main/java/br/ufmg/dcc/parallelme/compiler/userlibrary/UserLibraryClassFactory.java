@@ -33,8 +33,12 @@ public class UserLibraryClassFactory {
 			return new HDRImage();
 		else if (className.equals(UserFunction.getName()))
 			return new UserFunction();
+		else if (className.equals(RGB.getName()))
+			return new RGB();
 		else if (className.equals(RGBA.getName()))
 			return new RGBA();
+		else if (className.equals(Pixel.getName()))
+			return new Pixel();
 		else
 			return null;
 	}
