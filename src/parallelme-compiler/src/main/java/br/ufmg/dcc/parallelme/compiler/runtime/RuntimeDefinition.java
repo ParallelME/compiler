@@ -111,17 +111,15 @@ public interface RuntimeDefinition {
 	public String getAllocationDataFunction(OutputBind outputBind);
 
 	/**
-	 * Runs an iterator function.
+	 * Returns the code that will be placed in the translated Java code to run a
+	 * given iterator.
 	 * 
-	 * @param userLibraryObject
-	 *            Description of the original user library object that will be
-	 *            used to create the allocation.
-	 * @param functionNumber
-	 *            The sequential number representing the function that will be
-	 *            created along with the allocation statements.
-	 * @return A string with the code to call an iterator function.
+	 * @param iterator
+	 *            The iterator that must be called from the Java code.
+	 *
+	 * @return A string with the code to call the iterator.
 	 */
-	public String getIterator(Variable userLibraryObject, int functionNumber);
+	public String getIterator(Iterator iterator);
 
 	/**
 	 * Translates a given type to an equivalent runtime type. Example: translate

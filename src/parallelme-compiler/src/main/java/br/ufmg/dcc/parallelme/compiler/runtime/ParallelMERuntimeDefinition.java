@@ -171,10 +171,8 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	/**
 	 * {@inheritDoc}
 	 */
-	public String getIterator(Variable userLibraryObject, int functionNumber) {
-		return this.getFunctionName(functionNumber) + "_script.forEach_root("
-				+ this.getVariableOutName(userLibraryObject) + ", "
-				+ this.getVariableOutName(userLibraryObject) + ");";
+	public String getIterator(Iterator iterator) {
+		return "";
 	}
 
 	/**

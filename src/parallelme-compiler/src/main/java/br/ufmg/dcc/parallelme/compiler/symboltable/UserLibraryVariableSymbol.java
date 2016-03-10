@@ -17,9 +17,9 @@ package br.ufmg.dcc.parallelme.compiler.symboltable;
  */
 public class UserLibraryVariableSymbol extends VariableSymbol {
 	public UserLibraryVariableSymbol(String name, String typeName,
-			String typeParameterName, Symbol enclosingScope,
+			String typeParameterName, String modifier, Symbol enclosingScope,
 			TokenAddress tokenAddress, TokenAddress expressionAddress) {
-		super(name, typeName, typeParameterName, enclosingScope, tokenAddress,
-				expressionAddress);
+		super(name, typeName, typeParameterName, modifier, enclosingScope,
+				tokenAddress, expressionAddress);
 	}
 }

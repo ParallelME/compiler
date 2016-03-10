@@ -110,17 +110,20 @@ public class ScopeDrivenListener extends JavaBaseListener {
 				String ret[] = this.getTypeData(parameter.type());
 				String typeName = ret[0];
 				String typeParameter = ret[1];
+				String modifier = "";
+				if (!parameter.variableModifier().isEmpty())
+					modifier = parameter.variableModifier(0).getText();
 				Symbol argumentSymbol;
 				if (UserLibraryClassFactory.isValidClass(typeName)) {
 					argumentSymbol = new UserLibraryVariableSymbol(
-							argumentName, typeName, typeParameter,
+							argumentName, typeName, typeParameter, modifier,
 							this.currentScope, new TokenAddress(
 									parameter.start, parameter.stop),
 							new TokenAddress(ctx.start, ctx.stop));
 				} else {
 					argumentSymbol = new VariableSymbol(argumentName, typeName,
-							typeParameter, this.currentScope, new TokenAddress(
-									parameter.start, parameter.stop),
+							typeParameter, modifier, this.currentScope,
+							new TokenAddress(parameter.start, parameter.stop),
 							new TokenAddress(ctx.start, ctx.stop));
 				}
 				arguments.add(argumentSymbol);
@@ -432,7 +435,7 @@ public class ScopeDrivenListener extends JavaBaseListener {
 	public void enterLocalVariableDeclaration(
 			JavaParser.LocalVariableDeclarationContext ctx) {
 		this.createVariable(ctx.variableDeclarators(), ctx.type(),
-				this.getCurrentStatementAddress());
+				ctx.variableModifier(), this.getCurrentStatementAddress());
 	}
 
 	/**
@@ -451,7 +454,8 @@ public class ScopeDrivenListener extends JavaBaseListener {
 	@Override
 	public void enterFieldDeclaration(JavaParser.FieldDeclarationContext ctx) {
 		this.createVariable(ctx.variableDeclarators(), ctx.type(),
-				new TokenAddress(ctx.start, ctx.stop));
+				new ArrayList<VariableModifierContext>(), new TokenAddress(
+						ctx.start, ctx.stop));
 	}
 
 	/**
@@ -465,27 +469,35 @@ public class ScopeDrivenListener extends JavaBaseListener {
 	 *            Token address for the variable's statement.
 	 */
 	public void createVariable(VariableDeclaratorsContext variablesCtx,
-			TypeContext typeCtx, TokenAddress statementAddress) {
+			TypeContext typeCtx,
+			List<VariableModifierContext> variableModifiers,
+			TokenAddress statementAddress) {
 		String ret[] = this.getTypeData(typeCtx);
 		String variableType = ret[0];
 		String typeParameter = ret[1];
 		for (VariableDeclaratorContext variable : variablesCtx
 				.variableDeclarator()) {
 			String variableName = variable.variableDeclaratorId().getText();
+			String modifier = "";
+			if (!variableModifiers.isEmpty()) {
+				modifier = variableModifiers.get(0).getText();
+			}
 			if (UserLibraryClassFactory.isValidClass(variableType)) {
 				this.currentScope
 						.addSymbol(new UserLibraryVariableSymbol(variableName,
-								variableType, typeParameter, this.currentScope,
-								new TokenAddress(variable
+								variableType, typeParameter, modifier,
+								this.currentScope, new TokenAddress(variable
 										.variableDeclaratorId().start, variable
 										.variableDeclaratorId().stop),
 								statementAddress));
 			} else {
-				this.currentScope.addSymbol(new VariableSymbol(variableName,
-						variableType, typeParameter, this.currentScope,
-						new TokenAddress(variable.variableDeclaratorId().start,
-								variable.variableDeclaratorId().stop),
-						statementAddress));
+				this.currentScope
+						.addSymbol(new VariableSymbol(variableName,
+								variableType, typeParameter, modifier,
+								this.currentScope, new TokenAddress(variable
+										.variableDeclaratorId().start, variable
+										.variableDeclaratorId().stop),
+								statementAddress));
 			}
 		}
 	}

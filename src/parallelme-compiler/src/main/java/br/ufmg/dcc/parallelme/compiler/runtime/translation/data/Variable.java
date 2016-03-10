@@ -19,11 +19,13 @@ public class Variable implements Parameter {
 	public final String name;
 	public final String typeName;
 	public final String typeParameterName;
+	public final String modifier;
 
-	public Variable(String name, String typeName, String typeParameter) {
+	public Variable(String name, String typeName, String typeParameter, String modifier) {
 		this.name = name;
 		this.typeName = typeName;
 		this.typeParameterName = typeParameter;
+		this.modifier = modifier;
 	}
 
 	@Override

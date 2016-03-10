@@ -18,14 +18,16 @@ package br.ufmg.dcc.parallelme.compiler.symboltable;
 public class VariableSymbol extends Symbol {
 	public final String typeName;
 	public final String typeParameterName;
+	public final String modifier;
 	public final TokenAddress statementAddress;
 
 	public VariableSymbol(String name, String typeName,
-			String typeParameterName, Symbol enclosingScope,
+			String typeParameterName, String modifier, Symbol enclosingScope,
 			TokenAddress tokenAddress, TokenAddress statementAddress) {
 		super(name, enclosingScope, tokenAddress);
 		this.typeName = typeName;
 		this.typeParameterName = typeParameterName;
+		this.modifier = modifier;
 		this.statementAddress = statementAddress;
 	}
 
@@ -35,7 +37,7 @@ public class VariableSymbol extends Symbol {
 	@Override
 	protected String readableTableHeader() {
 		return super.readableTableHeader() + ", " + typeName + ", "
-				+ typeParameterName;
+				+ typeParameterName + ", " + modifier;
 	}
 
 	@Override
@@ -44,6 +46,7 @@ public class VariableSymbol extends Symbol {
 			VariableSymbol foo = (VariableSymbol) other;
 			return super.equals(other) && foo.typeName == this.typeName
 					&& foo.typeParameterName == this.typeParameterName
+					&& foo.modifier == this.modifier
 					&& foo.statementAddress == this.statementAddress;
 		} else {
 			return false;

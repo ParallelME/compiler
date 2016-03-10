@@ -115,29 +115,22 @@ public abstract class Symbol {
 	}
 
 	/**
-	 * Search for a valid symbol under this scope and among the scope of the
-	 * inner symbols.
+	 * Search for a valid symbol among the inner symbols.
 	 * 
 	 * @param name
 	 *            Name of the symbol being searched.
 	 * @return Symbol object if found, null otherwise.
 	 */
-	public Symbol getSymbol(String name) {
+	public Symbol getInnerSymbol(String name) {
+		Symbol symbol = null;
 		if (this.innerSymbols.containsKey(name)) {
-			return this.innerSymbols.get(name);
-		} else {
-			for (Symbol symbol : this.innerSymbols.values()) {
-				Symbol ret = symbol.getSymbol(name);
-				if (ret != null)
-					return ret;
-			}
+			symbol = this.innerSymbols.get(name);
 		}
-		return null;
+		return symbol;
 	}
 
 	/**
-	 * Search for a valid symbol under this scope and among the scope of the
-	 * inner symbols.
+	 * Search for a valid symbol among the inner symbols.
 	 * 
 	 * @param name
 	 *            Name of the symbol being searched.
@@ -146,21 +139,14 @@ public abstract class Symbol {
 	 * 
 	 * @return Symbol object if found, null otherwise.
 	 */
-	public Symbol getSymbol(String name, Class<?> symbolClass) {
-		Symbol ret = null;
+	public Symbol getInnerSymbol(String name, Class<?> symbolClass) {
+		Symbol symbol = null;
 		if (this.innerSymbols.containsKey(name)) {
 			if (this.innerSymbols.get(name).getClass() == symbolClass) {
-				ret = this.innerSymbols.get(name);
+				symbol = this.innerSymbols.get(name);
 			}
 		}
-		if (ret == null) {
-			for (Symbol symbol : this.innerSymbols.values()) {
-				ret = symbol.getSymbol(name, symbolClass);
-				if (ret != null)
-					return ret;
-			}
-		}
-		return ret;
+		return symbol;
 	}
 
 	/**

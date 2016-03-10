@@ -95,7 +95,8 @@ public class TranslatorSecondPass {
 				// If user library classes were detected, we must insert the
 				// runtime
 				// imports
-				this.insertRuntimeImports(tokenStreamRewriter, classSymbol, iteratorsAndBinds);
+				this.insertRuntimeImports(tokenStreamRewriter, classSymbol,
+						iteratorsAndBinds);
 			}
 			// After code translation, stores the output code in a Java file
 			this.writeOutputFile(classSymbol.name + ".java",
@@ -140,7 +141,8 @@ public class TranslatorSecondPass {
 		// coupling between the runtime definition and compiler
 		// core.
 		Variable variable = new Variable(variableSymbol.name,
-				variableSymbol.typeName, variableSymbol.typeParameterName);
+				variableSymbol.typeName, variableSymbol.typeParameterName,
+				variableSymbol.modifier);
 		Parameter[] arguments = this
 				.argumentsToVariableParameter(creatorSymbol.arguments);
 		InputBind inputBind = new InputBind(variable, functionNumber, arguments);
@@ -202,7 +204,7 @@ public class TranslatorSecondPass {
 			} else if (argument instanceof VariableSymbol) {
 				VariableSymbol variable = (VariableSymbol) argument;
 				ret[i] = new Variable(variable.name, variable.typeName,
-						variable.typeParameterName);
+						variable.typeParameterName, variable.modifier);
 			} else {
 				// TODO Must throw an error in case argument is not literal nor
 				// literal.
@@ -223,8 +225,7 @@ public class TranslatorSecondPass {
 			if (userLibraryData instanceof Iterator) {
 				Iterator iterator = (Iterator) userLibraryData;
 				// 1. Replace iterator code
-				String iteratorCall = this.runtime.getIterator(
-						iterator.getVariable(), iterator.sequentialNumber);
+				String iteratorCall = this.runtime.getIterator(iterator);
 				tokenStreamRewriter.replace(
 						iterator.getStatementAddress().start,
 						iterator.getStatementAddress().stop, iteratorCall);

@@ -11,6 +11,7 @@ package br.ufmg.dcc.parallelme.compiler;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -42,6 +43,9 @@ public class TranslatorSecondPassListener extends ScopeDrivenListener {
 	private StatementType statementType = StatementType.None;
 	// Stores the user library variables under the scope.
 	private Map<String, Symbol> userLibraryVariablesUnderScope;
+	// Stores all those libraries that are used inside an interator, but are
+	// declared outside its method scope.
+	private Map<String, VariableSymbol> iteratorExternalVariables;
 	private Iterator currentIteratorData;
 	private final ArrayList<UserLibraryData> iteratorsAndBinds;
 	// Token stream used to extract original code data.
@@ -140,6 +144,7 @@ public class TranslatorSecondPassListener extends ScopeDrivenListener {
 				&& this.currentIteratorData != null) {
 			this.getIteratorData();
 			this.currentIteratorData = null;
+			this.iteratorExternalVariables = null;
 		}
 		this.statementType = StatementType.None;
 	}
@@ -187,7 +192,18 @@ public class TranslatorSecondPassListener extends ScopeDrivenListener {
 							originalMethodContent, new Variable(
 									argumentVariable.name,
 									argumentVariable.typeName,
-									argumentVariable.typeParameterName));
+									argumentVariable.typeParameterName,
+									argumentVariable.modifier));
+					// Add all those external variables found on the iterator to
+					// be used in the second pass.
+					for (VariableSymbol variable : this.iteratorExternalVariables
+							.values()) {
+						this.currentIteratorData
+								.addExternalVariable(new Variable(
+										variable.name, variable.typeName,
+										variable.typeParameterName,
+										variable.modifier));
+					}
 					this.currentIteratorData
 							.setUserFunctionData(userFunctionData);
 					this.iteratorsAndBinds.add(this.currentIteratorData);
@@ -202,27 +218,46 @@ public class TranslatorSecondPassListener extends ScopeDrivenListener {
 	}
 
 	private void checkExpression(JavaParser.ExpressionContext ctx) {
+		String expression = ctx.getText();
 		// To avoid unnecessary user variable check, only performs verification
 		// as long as there is a different scope.
 		if (this.currentScope != this.previousScope) {
 			this.userLibraryVariablesUnderScope = this.currentScope
 					.getSymbolsUnderScope(UserLibraryVariableSymbol.class);
+
 		}
 		// Checks if this expression contains an user library variable
-		if (this.userLibraryVariablesUnderScope.containsKey(ctx.getText())) {
+		if (this.userLibraryVariablesUnderScope.containsKey(expression)) {
 			UserLibraryVariableSymbol variable = (UserLibraryVariableSymbol) this.userLibraryVariablesUnderScope
-					.get(ctx.getText());
+					.get(expression);
 			UserLibraryClass userLibraryClass = UserLibraryClassFactory
 					.create(variable.typeName);
 			// Check if the declared object is a collection
 			if (userLibraryClass instanceof UserLibraryCollectionClassImpl) {
 				if (this.isIterator(variable, this.currentStatement, ctx)) {
 					this.statementType = StatementType.Iterator;
+					this.iteratorExternalVariables = new LinkedHashMap<>();
 					this.getIteratorData(variable);
 				} else if (this.isOutputBind(variable,
 						(UserLibraryCollectionClassImpl) userLibraryClass, ctx)) {
 					this.statementType = StatementType.OutputBind;
 					this.getOutputBindData(variable, this.currentStatement);
+				}
+			}
+		}
+		// Check if this expression is equivalent to a symbol that is not under
+		// this scope, but is under the enclosing scope. In this case, it is
+		// possible to find all those variables that are used in a user function
+		// implementation, but was in fact declared outside its scope.
+		if (this.statementType == StatementType.Iterator) {
+			Symbol variable = this.currentScope.getInnerSymbol(expression,
+					VariableSymbol.class);
+			if (variable == null) {
+				VariableSymbol variableEncScope = (VariableSymbol) this.currentScope.enclosingScope
+						.getSymbolUnderScope(expression, VariableSymbol.class);
+				if (variableEncScope != null) {
+					this.iteratorExternalVariables.put(variableEncScope.name,
+							variableEncScope);
 				}
 			}
 		}
@@ -266,7 +301,8 @@ public class TranslatorSecondPassListener extends ScopeDrivenListener {
 	 */
 	private void getIteratorData(UserLibraryVariableSymbol variable) {
 		Variable variableParameter = new Variable(variable.name,
-				variable.typeName, variable.typeParameterName);
+				variable.typeName, variable.typeParameterName,
+				variable.modifier);
 		this.currentIteratorData = new Iterator(variableParameter,
 				this.iteratorsAndBinds.size() + this.lastFunctionCount,
 				new TokenAddress(this.currentStatement.start,
@@ -310,18 +346,20 @@ public class TranslatorSecondPassListener extends ScopeDrivenListener {
 		List<ExpressionContext> expression = stx.statementExpression()
 				.expression().expression();
 		if (expression.size() == 2) {
-			Symbol destinationSymbol = this.currentScope.getSymbol(expression
-					.get(0).getText());
+			Symbol destinationSymbol = this.currentScope
+					.getInnerSymbol(expression.get(0).getText());
 			if (destinationSymbol instanceof VariableSymbol) {
 				VariableSymbol destinationVariableSymbol = (VariableSymbol) destinationSymbol;
 				Variable destinationVariable = new Variable(
 						destinationVariableSymbol.name,
 						destinationVariableSymbol.typeName,
-						destinationVariableSymbol.typeParameterName);
+						destinationVariableSymbol.typeParameterName,
+						destinationVariableSymbol.modifier);
 				Variable userLibraryVariable = new Variable(
 						userLibraryVariableSymbol.name,
 						userLibraryVariableSymbol.typeName,
-						userLibraryVariableSymbol.typeParameterName);
+						userLibraryVariableSymbol.typeParameterName,
+						userLibraryVariableSymbol.modifier);
 				TokenAddress statementAddress = this
 						.getCurrentStatementAddress();
 				this.iteratorsAndBinds.add(new OutputBind(userLibraryVariable,

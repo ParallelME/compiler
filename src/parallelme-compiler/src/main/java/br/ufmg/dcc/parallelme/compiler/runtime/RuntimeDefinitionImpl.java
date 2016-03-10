@@ -23,7 +23,7 @@ public abstract class RuntimeDefinitionImpl implements RuntimeDefinition {
 	private final String outSuffix = "Out";
 	private final String functionName = "function";
 	private final String prefix = "$";
-	private final CTranslator cCodeTranslator;
+	protected final CTranslator cCodeTranslator;
 
 	public RuntimeDefinitionImpl(CTranslator cCodeTranslator) {
 		this.cCodeTranslator = cCodeTranslator;
@@ -47,24 +47,6 @@ public abstract class RuntimeDefinitionImpl implements RuntimeDefinition {
 
 	protected String getPrefix() {
 		return prefix;
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String translateIteratorCode(Iterator iterator) {
-		String returnString = "return "
-				+ iterator.getUserFunctionData().variableArgument.name + ";";
-		String code2Translate = iterator.getUserFunctionData().Code;
-		// Remove the last curly brace to add the return statement
-		code2Translate = code2Translate.substring(0,
-				code2Translate.lastIndexOf("}"));
-		code2Translate = code2Translate + "\n" + returnString + "\n}";
-		return this.getIteratorFunctionSignature(iterator)
-				+ this.translateVariable(
-						iterator.getUserFunctionData().variableArgument,
-						this.cCodeTranslator.translate(code2Translate));
 	}
 
 	/**

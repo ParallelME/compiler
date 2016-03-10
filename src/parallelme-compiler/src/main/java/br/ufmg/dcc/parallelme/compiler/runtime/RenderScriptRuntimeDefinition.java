@@ -175,13 +175,33 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	 */
 	@Override
 	public String createAllocationFunction(InputBind inputBind) {
-		return "float3 __attribute__((kernel)) root(uchar4 in, uint32_t x, uint32_t y) {"
-				+ "\nfloat3 out;"
-				+ "\nout.s0 = ((float) in.r) / 255.0f;"
-				+ "\nout.s1 = ((float) in.g) / 255.0f;"
-				+ "\nout.s2 = ((float) in.b) / 255.0f;"
-				+ "\nreturn out;"
-				+ "\n}";
+		String ret = "";
+		if (inputBind.getVariable().typeName.equals(BitmapImage.getName())) {
+			ret = "float3 __attribute__((kernel)) root(uchar4 in, uint32_t x, uint32_t y) {"
+					+ "\n\tfloat3 out;"
+					+ "\n\tout.s0 = ((float) in.r) / 255.0f;"
+					+ "\n\tout.s1 = ((float) in.g) / 255.0f;"
+					+ "\n\tout.s2 = ((float) in.b) / 255.0f;"
+					+ "\n\treturn out;" + "\n}";
+		} else if (inputBind.getVariable().typeName.equals(HDRImage.getName())) {
+			ret = "float4 __attribute__((kernel)) root(uchar4 in, uint32_t x, uint32_t y) {"
+					+ "\n\tfloat4 out;"
+					+ "\n\tfloat f;"
+					+ "\n\tif(in.s3 != 0) {"
+					+ "\n\t\tf = ldexp(1.0f, (in.s3 & 0xFF) - (128 + 8));"
+					+ "\n\t\tout.s0 = (in.s0 & 0xFF) * f;"
+					+ "\n\t\tout.s1 = (in.s1 & 0xFF) * f;"
+					+ "\n\t\tout.s2 = (in.s2 & 0xFF) * f;"
+					+ "\n\t} else {"
+					+ "\n\t\tout.s0 = 0.0f;"
+					+ "\n\t\tout.s1 = 0.0f;"
+					+ "\n\t\tout.s2 = 0.0f;"
+					+ "\n\t}"
+					+ "\n\treturn out;"
+					+ "\n}";
+		}
+
+		return ret;
 	}
 
 	/**
@@ -202,22 +222,76 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	 */
 	@Override
 	public String getAllocationDataFunction(OutputBind outputBind) {
-		return "uchar4 __attribute__((kernel)) root(float3 in, uint32_t x, uint32_t y) {"
-				+ "\nuchar4 out;"
-				+ "\nout.r = (uchar) (in.s0 * 255.0f);"
-				+ "\nout.g = (uchar) (in.s1 * 255.0f);"
-				+ "\nout.b = (uchar) (in.s2 * 255.0f);"
-				+ "\nout.a = 255;"
-				+ "\nreturn out;" + "\n}";
+		String ret = "";
+		String typeName = outputBind.getVariable().typeName;
+		if (typeName.equals(BitmapImage.getName())
+				|| typeName.equals(HDRImage.getName())) {
+			String varType;
+			if (typeName.equals(HDRImage.getName())) {
+				varType = "float4";
+			} else {
+				varType = "float3";
+			}
+			ret = "uchar4 __attribute__((kernel)) root(" + varType
+					+ " in, uint32_t x, uint32_t y) {" + "\n\tuchar4 out;"
+					+ "\n\tout.r = (uchar) (in.s0 * 255.0f);"
+					+ "\n\tout.g = (uchar) (in.s1 * 255.0f);"
+					+ "\n\tout.b = (uchar) (in.s2 * 255.0f);"
+					+ "\n\tout.a = 255;" + "\n\treturn out;" + "\n}";
+		}
+		return ret;
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
-	public String getIterator(Variable userLibraryObject, int functionNumber) {
-		return this.getFunctionName(functionNumber) + "_script.forEach_root("
-				+ this.getVariableOutName(userLibraryObject) + ", "
-				+ this.getVariableOutName(userLibraryObject) + ");";
+	public String getIterator(Iterator iterator) {
+		String functionObjectName = this
+				.getFunctionName(iterator.sequentialNumber) + "_script";
+		String ret = functionObjectName + ".forEach_root("
+				+ this.getVariableOutName(iterator.getVariable()) + ", "
+				+ this.getVariableOutName(iterator.getVariable()) + ");\n";
+		if (!iterator.getExternalVariables().isEmpty()) {
+			StringBuffer inputVariables = new StringBuffer();
+			StringBuffer outputVariables = new StringBuffer();
+			for (Variable variable : iterator.getExternalVariables()) {
+				inputVariables.append(functionObjectName + ".set_"
+						+ variable.name + "(" + variable.name + ");\n");
+				// Only non-final variables can be returned to the Java code.
+				if (!variable.modifier.equals("final"))
+					outputVariables.append(variable.name + " = "
+							+ functionObjectName + ".get_" + variable.name
+							+ "();\n");
+			}
+			ret = inputVariables.toString() + ret + outputVariables.toString();
+		}
+		return ret;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String translateIteratorCode(Iterator iterator) {
+		String returnString = "return "
+				+ iterator.getUserFunctionData().variableArgument.name + ";";
+		String code2Translate = iterator.getUserFunctionData().Code;
+		// Remove the last curly brace to add the return statement
+		code2Translate = code2Translate.substring(0,
+				code2Translate.lastIndexOf("}"));
+		code2Translate = code2Translate + "\n" + returnString + "\n}";
+		// Insert external variables as global variables
+		StringBuffer externalVariables = new StringBuffer();
+		for (Variable variable : iterator.getExternalVariables()) {
+			externalVariables.append(variable.typeName + " " + variable.name
+					+ ";\n");
+		}
+		externalVariables.append("\n");
+		return externalVariables.toString()
+				+ this.getIteratorFunctionSignature(iterator)
+				+ this.translateVariable(
+						iterator.getUserFunctionData().variableArgument,
+						this.cCodeTranslator.translate(code2Translate));
 	}
 
 	/**
@@ -286,10 +360,14 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 				this.translateType(variable.typeName));
 		ret = ret.replaceAll(variable.name + ".x", "x");
 		ret = ret.replaceAll(variable.name + ".y", "y");
-		ret = ret.replaceAll(variable.name + ".rgba.red", variable.name + ".s0");
-		ret = ret.replaceAll(variable.name + ".rgba.green", variable.name + ".s1");
-		ret = ret.replaceAll(variable.name + ".rgba.blue", variable.name + ".s2");
-		ret = ret.replaceAll(variable.name + ".rgba.alpha", variable.name + ".s3");
+		ret = ret
+				.replaceAll(variable.name + ".rgba.red", variable.name + ".s0");
+		ret = ret.replaceAll(variable.name + ".rgba.green", variable.name
+				+ ".s1");
+		ret = ret.replaceAll(variable.name + ".rgba.blue", variable.name
+				+ ".s2");
+		ret = ret.replaceAll(variable.name + ".rgba.alpha", variable.name
+				+ ".s3");
 		return ret;
 	}
 
