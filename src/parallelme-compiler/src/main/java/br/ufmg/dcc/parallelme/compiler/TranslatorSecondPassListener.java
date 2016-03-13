@@ -134,7 +134,7 @@ public class TranslatorSecondPassListener extends ScopeDrivenListener {
 	}
 
 	/**
-	 * Finalizes the iterator block statement detection.
+	 * Finalizes the iterator block detection.
 	 */
 	private void finalizeIteratorDetection() {
 		// If a user library iterator data was created, then we must fill the
@@ -249,7 +249,6 @@ public class TranslatorSecondPassListener extends ScopeDrivenListener {
 		// possible to find all those variables that are used in a user function
 		// implementation, but was in fact declared outside its scope.
 		if (this.statementType == StatementType.Iterator) {
-			System.out.println(expression);
 			Symbol variable = this.currentScope.getInnerSymbol(expression,
 					VariableSymbol.class);
 			if (variable == null) {
