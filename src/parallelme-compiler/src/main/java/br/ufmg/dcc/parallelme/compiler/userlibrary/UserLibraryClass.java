@@ -31,7 +31,8 @@ public interface UserLibraryClass {
 	public boolean isTyped();
 
 	/**
-	 * List all valid methodos for this class.
+	 * List all valid methods for this class, EXCEPT output bind and iterator
+	 * methods. These last methods names must be returned in specific methods.
 	 * 
 	 * @return A HashSet with valid method names.
 	 */

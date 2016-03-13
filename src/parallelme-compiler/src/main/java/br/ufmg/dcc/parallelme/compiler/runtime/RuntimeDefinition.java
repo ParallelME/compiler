@@ -14,6 +14,7 @@ import java.util.List;
 
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.InputBind;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.Iterator;
+import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.MethodCall;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.OutputBind;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.UserLibraryData;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.Variable;
@@ -137,6 +138,16 @@ public interface RuntimeDefinition {
 	 * @return A string with the new code with the variable replaced.
 	 */
 	public String translateVariable(Variable variable, String code);
+
+	/**
+	 * Translates a given method call to a runtime-variable equivalent
+	 * operation.
+	 * 
+	 * @param methodCall
+	 *            Method call that must be translated
+	 * @return A string with the new code for method call replacement.
+	 */
+	public String translateMethodCall(MethodCall methodCall);
 
 	/**
 	 * Create a unique name for a given function number.

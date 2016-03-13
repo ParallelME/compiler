@@ -19,14 +19,19 @@ import br.ufmg.dcc.parallelme.compiler.symboltable.TokenAddress;
  * @author Wilson de Carvalho
  */
 public class Iterator extends UserLibraryData {
+	public enum IteratorType {
+		Parallel, Sequential, None;
+	}
+
 	private UserFunction userFunctionData;
 	private ArrayList<Variable> externalVariables;
 	private TokenAddress statementAddress;
+	private IteratorType type;
 
-	public Iterator(Variable variableParameter, int sequentialNumber,
-			TokenAddress statementAddress) {
+	public Iterator(Variable variableParameter, int sequentialNumber, TokenAddress statementAddress) {
 		super(variableParameter, sequentialNumber);
 		this.externalVariables = new ArrayList<>();
+		this.setType(type);
 		this.setStatementAddress(statementAddress);
 	}
 
@@ -52,5 +57,13 @@ public class Iterator extends UserLibraryData {
 
 	public void setStatementAddress(TokenAddress statementAddress) {
 		this.statementAddress = statementAddress;
+	}
+
+	public IteratorType getType() {
+		return type;
+	}
+
+	public void setType(IteratorType type) {
+		this.type = type;
 	}
 }

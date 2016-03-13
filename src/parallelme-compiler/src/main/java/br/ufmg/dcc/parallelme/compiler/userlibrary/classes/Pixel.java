@@ -19,6 +19,16 @@ import br.ufmg.dcc.parallelme.compiler.userlibrary.UserLibraryClassImpl;
  * @author Wilson de Carvalho
  */
 public class Pixel extends UserLibraryClassImpl {
+	private static Pixel instance = new Pixel();
+
+	private Pixel() {
+		this.initValidMethodsSet();
+	}
+
+	public static Pixel getInstance() {
+		return instance;
+	}	
+	
 	/**
 	 * {@inheritDoc}
 	 */

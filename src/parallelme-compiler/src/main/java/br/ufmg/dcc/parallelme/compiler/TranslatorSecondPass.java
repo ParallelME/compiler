@@ -15,13 +15,16 @@ import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 
+import org.antlr.v4.runtime.TokenStream;
 import org.antlr.v4.runtime.TokenStreamRewriter;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 
 import br.ufmg.dcc.parallelme.compiler.runtime.*;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.*;
+import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.Iterator.IteratorType;
 import br.ufmg.dcc.parallelme.compiler.symboltable.*;
 import br.ufmg.dcc.parallelme.compiler.userlibrary.UserLibraryClassFactory;
 import br.ufmg.dcc.parallelme.compiler.userlibrary.UserLibraryCollectionClass;
@@ -69,6 +72,8 @@ public class TranslatorSecondPass {
 		walker.walk(listener, tree);
 		ArrayList<UserLibraryData> iteratorsAndBinds = listener
 				.getIteratorsAndBinds();
+		this.setIteratorsTypes(iteratorsAndBinds,
+				tokenStreamRewriter.getTokenStream());
 		String packageName = listener.getPackageName();
 		// 2. Perform input data binding
 		for (Pair<UserLibraryVariableSymbol, CreatorSymbol> pair : this
@@ -77,7 +82,9 @@ public class TranslatorSecondPass {
 					pair.right, iteratorsAndBinds, packageName,
 					iteratorsAndBinds.size());
 		}
-		// 3. Replace iterators and perform output data binding
+		// 3. Replace non-iterators and non-output bind method calls
+		this.replaceMethodCalls(listener.getMethodCalls(), tokenStreamRewriter);
+		// 4. Replace iterators and perform output data binding
 		ArrayList<Symbol> classSymbols = symbolTable
 				.getSymbols(ClassSymbol.class);
 		// Gets the class symbol table
@@ -101,6 +108,36 @@ public class TranslatorSecondPass {
 			// After code translation, stores the output code in a Java file
 			this.writeOutputFile(classSymbol.name + ".java",
 					tokenStreamRewriter.getText());
+		}
+	}
+
+	/**
+	 * Check each iterator and find out if they are parallel or sequential
+	 * iterators. Parallel iterators must have ALL external variables final,
+	 * whereas iterators that contains non-const variables will be compiled to
+	 * sequential versions in the target runtime.
+	 */
+	private void setIteratorsTypes(
+			ArrayList<UserLibraryData> iteratorsAndBinds,
+			TokenStream tokenStream) {
+		for (UserLibraryData userLibraryData : iteratorsAndBinds) {
+			if (userLibraryData instanceof Iterator) {
+				Iterator iterator = (Iterator) userLibraryData;
+				List<Variable> variables = iterator.getExternalVariables();
+				Iterator.IteratorType iteratorType = IteratorType.Parallel;
+				for (int i = 0; i < variables.size()
+						&& iteratorType == IteratorType.Parallel; i++) {
+					if (!variables.get(i).modifier.equals("final")) {
+						SimpleLogger
+								.info("Iterator with non-final external variable in line "
+										+ iterator.getStatementAddress().start
+												.getLine()
+										+ " will be translated to a sequential iterator in the target runtime.");
+						iteratorType = IteratorType.Sequential;
+					}
+				}
+				iterator.setType(iteratorType);
+			}
 		}
 	}
 
@@ -174,6 +211,18 @@ public class TranslatorSecondPass {
 	}
 
 	/**
+	 * Replace non-iterator and non-output bind method calls.
+	 */
+	private void replaceMethodCalls(Collection<MethodCall> methodCalls,
+			TokenStreamRewriter tokenStreamRewriter) {
+		for (MethodCall methodCall : methodCalls) {
+			tokenStreamRewriter.replace(methodCall.expressionAddress.start,
+					methodCall.expressionAddress.stop,
+					this.runtime.translateMethodCall(methodCall));
+		}
+	}
+
+	/**
 	 * Transforms a collection of arguments into an array of variable
 	 * descriptors' objects.
 	 * 
@@ -240,8 +289,8 @@ public class TranslatorSecondPass {
 		}
 		StringBuffer initialization = new StringBuffer();
 		initialization.append("\n"
-				+ this.runtime.getInitializationString(classSymbol.name, lastFunctionCount,
-						iteratorsAndBinds.size()));
+				+ this.runtime.getInitializationString(classSymbol.name,
+						lastFunctionCount, iteratorsAndBinds.size()));
 		tokenStreamRewriter.insertAfter(classSymbol.bodyAddress.start,
 				initialization.toString());
 	}

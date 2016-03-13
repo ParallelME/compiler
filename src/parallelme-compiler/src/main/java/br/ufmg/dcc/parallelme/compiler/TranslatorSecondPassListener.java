@@ -21,6 +21,7 @@ import br.ufmg.dcc.parallelme.compiler.antlr.JavaParser;
 import br.ufmg.dcc.parallelme.compiler.antlr.JavaParser.ExpressionContext;
 import br.ufmg.dcc.parallelme.compiler.antlr.JavaParser.StatementContext;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.Iterator;
+import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.MethodCall;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.OutputBind;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.UserFunction;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.UserLibraryData;
@@ -56,7 +57,10 @@ public class TranslatorSecondPassListener extends ScopeDrivenListener {
 	// Stores package name.
 	private String packageName;
 	// List of those tokens that must be removed from the output code.
-	private final ArrayList<TokenAddress> importTokens = new ArrayList<TokenAddress>();
+	private final ArrayList<TokenAddress> importTokens = new ArrayList<>();
+	// List of those method calls on user library objects (methods that are not
+	// output bind or iterators).
+	private final ArrayList<MethodCall> methodCalls = new ArrayList<>();
 
 	/**
 	 * Constructor.
@@ -103,6 +107,15 @@ public class TranslatorSecondPassListener extends ScopeDrivenListener {
 	 */
 	public Collection<TokenAddress> getImportTokens() {
 		return this.importTokens;
+	}
+
+	/**
+	 * List of method calls expressions.
+	 * 
+	 * @return A collection of non-iterator and non-output bind method calls.
+	 */
+	public Collection<MethodCall> getMethodCalls() {
+		return this.methodCalls;
 	}
 
 	/**
@@ -241,6 +254,9 @@ public class TranslatorSecondPassListener extends ScopeDrivenListener {
 						(UserLibraryCollectionClassImpl) userLibraryClass, ctx)) {
 					this.statementType = StatementType.OutputBind;
 					this.getOutputBindData(variable, this.currentStatement);
+				} else if (this.isValidMethod(
+						(UserLibraryCollectionClassImpl) userLibraryClass, ctx)) {
+					this.getMethodCallData(variable, ctx);
 				}
 			}
 		}
@@ -280,6 +296,8 @@ public class TranslatorSecondPassListener extends ScopeDrivenListener {
 		// Work on the following cases:
 		// - variableName.par().foreach(...)
 		if (etx.parent.getText().equals(variable.name + ".par")
+				&& stx.statementExpression() != null
+				&& stx.statementExpression().expression() != null
 				&& stx.statementExpression().expression().expressionList() != null
 				&& !stx.statementExpression().expression().expressionList()
 						.isEmpty()) {
@@ -312,9 +330,6 @@ public class TranslatorSecondPassListener extends ScopeDrivenListener {
 	 * Checks if the expression provided that contains a user library object
 	 * corresponds to an output bind that must be translated to the target
 	 * runtime.
-	 * 
-	 * @param ctx
-	 *            Statement containing a user library object.
 	 */
 	private boolean isOutputBind(UserLibraryVariableSymbol variable,
 			UserLibraryCollectionClass userLibraryClass,
@@ -324,6 +339,24 @@ public class TranslatorSecondPassListener extends ScopeDrivenListener {
 				variable.name + "."
 						+ userLibraryClass.getDataOutputMethodName())) {
 			ret = true;
+		}
+		return ret;
+	}
+
+	/**
+	 * Checks if the expression provided that contains a user library object
+	 * corresponds to a valid method call.
+	 */
+	private boolean isValidMethod(UserLibraryCollectionClass userLibraryClass,
+			JavaParser.ExpressionContext ctx) {
+		boolean ret = false;
+		if (ctx.parent.parent instanceof ExpressionContext) {
+			String expression = ctx.parent.getText();
+			String methodName = expression.substring(
+					expression.indexOf(".") + 1, expression.length());
+			if (userLibraryClass.isValidMethod(methodName)) {
+				ret = true;
+			}
 		}
 		return ret;
 	}
@@ -366,5 +399,24 @@ public class TranslatorSecondPassListener extends ScopeDrivenListener {
 								+ lastFunctionCount, statementAddress));
 			}
 		}
+	}
+
+	/**
+	 * Gets the method call data and stores in methodCalls array.
+	 * 
+	 * @param variable
+	 *            User library variable symbol that corresponds to the
+	 *            expression provided.
+	 */
+	private void getMethodCallData(UserLibraryVariableSymbol variable,
+			JavaParser.ExpressionContext ctx) {
+		ExpressionContext expressionCtx = (ExpressionContext) ctx.parent.parent;
+		String expression = ctx.parent.getText();
+		String methodName = expression.substring(expression.indexOf(".") + 1,
+				expression.length());
+		this.methodCalls.add(new MethodCall(methodName, new Variable(
+				variable.name, variable.typeName, variable.typeParameterName,
+				variable.modifier), new TokenAddress(expressionCtx.start,
+				expressionCtx.stop)));
 	}
 }

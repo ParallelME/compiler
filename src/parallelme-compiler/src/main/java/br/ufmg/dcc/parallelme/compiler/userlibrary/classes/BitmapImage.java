@@ -19,8 +19,18 @@ import br.ufmg.dcc.parallelme.compiler.userlibrary.UserLibraryCollectionClassImp
  * @author Wilson de Carvalho
  */
 public class BitmapImage extends UserLibraryCollectionClassImpl {
-	public BitmapImage() {
+	private static String iteratorMethodName = "foreach";
+	private static String dataOutputMethodName = "toBitmap";
+	private static String getHeightName = "getHeight";
+	private static String getWidthMethodName = "getWidth";
+	private static BitmapImage instance = new BitmapImage();
+
+	private BitmapImage() {
 		this.initValidMethodsSet();
+	}
+	
+	public static BitmapImage getInstance() {
+		return instance;
 	}
 
 	/**
@@ -29,8 +39,8 @@ public class BitmapImage extends UserLibraryCollectionClassImpl {
 	@Override
 	protected void initValidMethodsSet() {
 		this.validMethods = new HashSet<>();
-		this.validMethods.add("toBitmap");
-		this.validMethods.add("foreach");
+		this.validMethods.add(getHeightName);
+		this.validMethods.add(getWidthMethodName);
 	}
 
 	/**
@@ -46,7 +56,7 @@ public class BitmapImage extends UserLibraryCollectionClassImpl {
 	 */
 	@Override
 	public String getIteratorMethodName() {
-		return "foreach";
+		return iteratorMethodName;
 	}
 
 	/**
@@ -54,9 +64,17 @@ public class BitmapImage extends UserLibraryCollectionClassImpl {
 	 */
 	@Override
 	public String getDataOutputMethodName() {
-		return "toBitmap";
+		return dataOutputMethodName;
 	}
-
+	
+	public String getHeightMethodName() {
+		return getHeightName;
+	}
+	
+	public String getWidthMethodName() {
+		return getWidthMethodName;
+	}
+	
 	/**
 	 * {@inheritDoc}
 	 */

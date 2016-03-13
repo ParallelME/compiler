@@ -28,17 +28,17 @@ public class UserLibraryClassFactory {
 	 */
 	public static UserLibraryClass create(String className) {
 		if (className.equals(BitmapImage.getName()))
-			return new BitmapImage();
+			return BitmapImage.getInstance();
 		else if (className.equals(HDRImage.getName()))
-			return new HDRImage();
+			return HDRImage.getInstance();
 		else if (className.equals(UserFunction.getName()))
 			return new UserFunction();
 		else if (className.equals(RGB.getName()))
-			return new RGB();
+			return RGB.getInstance();
 		else if (className.equals(RGBA.getName()))
-			return new RGBA();
+			return RGBA.getInstance();
 		else if (className.equals(Pixel.getName()))
-			return new Pixel();
+			return Pixel.getInstance();
 		else
 			return null;
 	}

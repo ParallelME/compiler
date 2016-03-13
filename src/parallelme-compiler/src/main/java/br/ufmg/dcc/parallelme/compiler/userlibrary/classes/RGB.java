@@ -19,6 +19,16 @@ import br.ufmg.dcc.parallelme.compiler.userlibrary.UserLibraryClassImpl;
  * @author Wilson de Carvalho
  */
 public class RGB extends UserLibraryClassImpl {
+	private static RGB instance = new RGB();
+
+	private RGB() {
+		this.initValidMethodsSet();
+	}
+
+	public static RGB getInstance() {
+		return instance;
+	}	
+	
 	/**
 	 * {@inheritDoc}
 	 */

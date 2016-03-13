@@ -43,8 +43,8 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public String getInitializationString(String className, int firstFunctionNumber,
-			int functionCount) {
+	public String getInitializationString(String className,
+			int firstFunctionNumber, int functionCount) {
 		ST st = new ST(templateInitString);
 		return st.render();
 	}
@@ -165,7 +165,7 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	public String translateIteratorCode(Iterator iterator) {
 		return "";
 	}
-	
+
 	/**
 	 * {@inheritDoc}
 	 */
@@ -301,5 +301,12 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 				}
 			}
 		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public String translateMethodCall(MethodCall methodCall) {
+		return "";
 	}
 }

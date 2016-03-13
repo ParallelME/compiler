@@ -19,6 +19,16 @@ import br.ufmg.dcc.parallelme.compiler.userlibrary.UserLibraryClassImpl;
  * @author Wilson de Carvalho
  */
 public class RGBA extends UserLibraryClassImpl {
+	private static RGBA instance = new RGBA();
+
+	private RGBA() {
+		this.initValidMethodsSet();
+	}
+
+	public static RGBA getInstance() {
+		return instance;
+	}
+
 	/**
 	 * {@inheritDoc}
 	 */
@@ -34,7 +44,7 @@ public class RGBA extends UserLibraryClassImpl {
 	protected void initValidMethodsSet() {
 		this.validMethods = new HashSet<>();
 	}
-	
+
 	/**
 	 * {@inheritDoc}
 	 */
