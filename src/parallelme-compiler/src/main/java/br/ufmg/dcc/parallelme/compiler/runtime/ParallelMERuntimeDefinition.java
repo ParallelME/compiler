@@ -34,7 +34,6 @@ import br.ufmg.dcc.parallelme.compiler.userlibrary.classes.*;
  */
 public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	private final String templateInitString = "RenderScript mRS = RenderScript.create(<mainClassName>.getAppContext());\n";
-	private final String templateFunctionsString = "<functions:{function|ScriptC_<function> <function>_script = new ScriptC_<function>(mRS);\n}>";
 
 	public ParallelMERuntimeDefinition(CTranslator cCodeTranslator) {
 		super(cCodeTranslator);
@@ -44,25 +43,9 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public String getInitializationString() {
-		ST st = new ST(templateInitString);
-		st.add("mainClassName", "MainActivity"); // TODO: I'm cheating
-													// here, I can't
-													// know this class
-													// name yet.
-		return st.render();
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String getFunctionInitializationString(int firstFunctionNumber,
+	public String getInitializationString(String className, int firstFunctionNumber,
 			int functionCount) {
-		ST st = new ST(templateFunctionsString);
-		for (int i = firstFunctionNumber; i < functionCount; i++) {
-			st.add("functions", this.getFunctionName(i));
-		}
+		ST st = new ST(templateInitString);
 		return st.render();
 	}
 
@@ -175,6 +158,14 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 		return "";
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String translateIteratorCode(Iterator iterator) {
+		return "";
+	}
+	
 	/**
 	 * {@inheritDoc}
 	 */

@@ -6,7 +6,7 @@ import android.graphics.BitmapFactory;
 
 import br.ufmg.dcc.parallelme.userlibrary.function.*;
 import br.ufmg.dcc.parallelme.userlibrary.image.Image;
-import br.ufmg.dcc.parallelme.userlibrary.image.RGBA;
+import br.ufmg.dcc.parallelme.userlibrary.image.RGB;
 
 /**
  * @author Wilson de Carvalho.
@@ -20,34 +20,34 @@ public class BitmapLoaderTest {
 
         BitmapImage image = new BitmapImage(bitmap);
         // to Yxy
-        image.par().foreach(new UserFunction<RGBA>() {
+        image.par().foreach(new UserFunction<RGB>() {
             @Override
-            public void function(RGBA pixel) {
-                RGBA foo = new RGBA();
-                foo.red = foo.green = foo.blue = 0.0f;
-                foo.red += 0.5141364f * pixel.red;
-                foo.red += 0.3238786f * pixel.green;
-                foo.red += 0.16036376f * pixel.blue;
-                foo.green += 0.265068f * pixel.red;
-                foo.green += 0.67023428f * pixel.green;
-                foo.green += 0.06409157f * pixel.blue;
-                foo.blue += 0.0241188f * pixel.red;
-                foo.blue += 0.1228178f * pixel.green;
-                foo.blue += 0.84442666f * pixel.blue;
-                float w = foo.red + foo.green + foo.blue;
+            public void function(RGB pixel) {
+                float foo_r, foo_g, foo_b;
+                foo_r = foo_g = foo_b = 0.0f;
+                foo_r += 0.5141364f * pixel.red;
+                foo_r += 0.3238786f * pixel.green;
+                foo_r += 0.16036376f * pixel.blue;
+                foo_g += 0.265068f * pixel.red;
+                foo_g += 0.67023428f * pixel.green;
+                foo_g += 0.06409157f * pixel.blue;
+                foo_b += 0.0241188f * pixel.red;
+                foo_b += 0.1228178f * pixel.green;
+                foo_b += 0.84442666f * pixel.blue;
+                float w = foo_r + foo_g + foo_b;
                 if (w > 0.0f) {
-                    pixel.red = foo.green;
-                    pixel.green = foo.red / w;
-                    pixel.blue = foo.green / w;
+                    pixel.red = foo_g;
+                    pixel.green = foo_r / w;
+                    pixel.blue = foo_g / w;
                 } else {
                     pixel.red = pixel.green = pixel.blue = 0.0f;
                 }
             }
         });
-        // to RGBA
-        image.par().foreach(new UserFunction<RGBA>() {
+        // to RGB
+        image.par().foreach(new UserFunction<RGB>() {
             @Override
-            public void function(RGBA pixel) {
+            public void function(RGB pixel) {
                 float xVal, zVal;
                 float yVal = pixel.red;       // Y
 

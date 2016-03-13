@@ -28,8 +28,29 @@ import br.ufmg.dcc.parallelme.compiler.userlibrary.classes.*;
  * @author Wilson de Carvalho, Pedro Caldeira
  */
 public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
-	private final String templateInitString = "RenderScript mRS = RenderScript.create(<mainClassName>.getAppContext());\n";
-	private final String templateFunctionsString = "<functions:{function|ScriptC_<function> <function>_script = new ScriptC_<function>(mRS);\n}>";
+	private static final String templateFunctions = "\t<functions:{function|ScriptC_<function> <function>_script;\n}>";
+	private static final String templateConstructor = "\tpublic <ClassName>(RenderScript mRS) {\n\t\tthis.mRS = mRS;\n\t\t<functions:{function|this.<function>_script = new ScriptC_<function>(mRS);\n}>\t}\n";
+	private static final String templateCreateAllocationBitmapImage = "Type <dataTypeInputObject>;\n"
+			+ "<inputObject> = Allocation.createFromBitmap(mRS, <param>, Allocation.MipmapControl.MIPMAP_NONE, Allocation.USAGE_SCRIPT | Allocation.USAGE_SHARED);\n"
+			+ "<dataTypeInputObject> = new Type.Builder(mRS, Element.F32_3(mRS))\n"
+			+ "\t.setX(<inputObject>.getType().getX())\n"
+			+ "\t.setY(<inputObject>.getType().getY())\n"
+			+ "\t.create();\n"
+			+ "<outputObject> = Allocation.createTyped(mRS, <dataTypeInputObject>);\n"
+			+ "<functionName>_script.forEach_root(<inputObject>, <outputObject>);";
+	private static final String templateCreateAllocationHDRImage = "RGBE.ResourceData <resourceData> = RGBE.loadFromResource(<params>);\n"
+			+ "Type <dataTypeInputObject> = new Type.Builder(mRS, Element.RGBA_8888(mRS))\n"
+			+ "\t.setX(<resourceData>.width)\n"
+			+ "\t.setY(<resourceData>.height)\n"
+			+ "\tcreate();\n"
+			+ "Type <dataTypeOutputObject> = new Type.Builder(mRS, Element.F32_4(mRS))\n"
+			+ "\t.setX(<resourceData>.width)\n"
+			+ "\t.setY(<resourceData>.height)\n"
+			+ "\t.create();\n"
+			+ "<inputObject> = Allocation.createTyped(mRS, <dataTypeInputObject>, Allocation.MipmapControl.MIPMAP_NONE, Allocation.USAGE_SCRIPT);\n"
+			+ "<outputObject> = Allocation.createTyped(mRS, <dataTypeOutputObject>);\n"
+			+ "<inputObject>.copyFrom(<resourceData>.data);\n"
+			+ "<functionName>_script.forEach_root(<inputObject>, <outputObject>);";
 
 	public RenderScriptRuntimeDefinition(CTranslator cCodeTranslator) {
 		super(cCodeTranslator);
@@ -39,27 +60,21 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public String getInitializationString() {
-		ST st = new ST(templateInitString);
-		st.add("mainClassName", "MainActivity"); // TODO: I'm cheating
-													// here, I can't
-													// know this class
-													// name yet.
-		return st.render();
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String getFunctionInitializationString(int firstFunctionNumber,
-			int functionCount) {
-		ST st = new ST(templateFunctionsString);
+	public String getInitializationString(String className,
+			int firstFunctionNumber, int functionCount) {
+		StringBuilder init = new StringBuilder();
+		init.append("\tRenderScript mRS;\n");
+		ST st1 = new ST(templateFunctions);
+		ST st2 = new ST(templateConstructor);
+		st2.add("ClassName", className);
 		for (int i = firstFunctionNumber; i < firstFunctionNumber
 				+ functionCount; i++) {
-			st.add("functions", this.getFunctionName(i));
+			st1.add("functions", this.getFunctionName(i));
+			st2.add("functions", this.getFunctionName(i));
 		}
-		return st.render();
+		init.append(st1.render() + "\n ");
+		init.append(st2.render());
+		return init.toString();
 	}
 
 	/**
@@ -100,20 +115,14 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 		// constructor in which the parameter is a Bitmap. Thus we just get the
 		// first element of the arguments' array and work with it.
 		if (userLibraryClass instanceof BitmapImage) {
-			ret = "Type " + dataTypeInputObject + ";\n" + inputObject
-					+ " = Allocation.createFromBitmap(mRS, "
-					+ inputBind.getParameters()[0] + ", "
-					+ "Allocation.MipmapControl.MIPMAP_NONE, "
-					+ "Allocation.USAGE_SCRIPT | Allocation.USAGE_SHARED);\n"
-					+ dataTypeInputObject
-					+ " = new Type.Builder(mRS, Element.F32_3(mRS))" + ".setX("
-					+ inputObject + ".getType().getX())" + ".setY("
-					+ inputObject + ".getType().getY())" + ".create();\n"
-					+ outputObject + " = Allocation.createTyped(mRS, "
-					+ dataTypeInputObject + ");\n"
-					+ this.getFunctionName(inputBind.sequentialNumber)
-					+ "_script.forEach_root(" + inputObject + ", "
-					+ outputObject + ");";
+			ST st = new ST(templateCreateAllocationBitmapImage);
+			st.add("dataTypeInputObject", dataTypeInputObject);
+			st.add("inputObject", inputObject);
+			st.add("outputObject", outputObject);
+			st.add("param", inputBind.getParameters()[0]);
+			st.add("functionName",
+					this.getFunctionName(inputBind.sequentialNumber));
+			ret = st.render();
 		} else if (userLibraryClass instanceof HDRImage) {
 			String resourceData = this.getPrefix() + inputBind.getVariable()
 					+ "ResourceData";
@@ -123,27 +132,17 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 				if (i != (inputBind.getParameters().length - 1))
 					params.append(",");
 			}
-			String resourceDataCreation = "RGBE " + resourceData
-					+ " = RGBE.loadFromResource(" + params.toString() + ");\n";
-			String typeInput = "Type " + dataTypeInputObject
-					+ " = Type.Builder(mRS, Element.RGBA_8888(mRS))\n\t"
-					+ ".setX(" + resourceData + ".width)\n\t" + ".setY("
-					+ resourceData + ".height)" + "\n\t.create();\n";
-			String typeOutput = "Type " + dataTypeOutputObject
-					+ " = Type.Builder(mRS, Element.F32_4(mRS))\n\t" + ".setX("
-					+ resourceData + ".width)" + "\n\t.setY(" + resourceData
-					+ ".height)" + "\n\t.create();\n";
-			String allocations = inputObject
-					+ " = Allocation.createTyped(mRS, "
-					+ dataTypeInputObject
-					+ ", Allocation.MipmapControl.MIPMAP_NONE, Allocation.USAGE_SCRIPT);\n"
-					+ outputObject + " = Allocation.createTyped(mRS, "
-					+ dataTypeOutputObject + ");\n" + inputObject
-					+ ".copyFrom(" + resourceData + ");\n"
-					+ this.getFunctionName(inputBind.sequentialNumber)
-					+ "_script.forEach_root(" + inputObject + ", "
-					+ outputObject + ");";
-			ret = resourceDataCreation + typeInput + typeOutput + allocations;
+			ST st = new ST(templateCreateAllocationHDRImage);
+			st.add("resourceData", resourceData);
+			st.add("params", params.toString());
+			st.add("dataTypeInputObject", dataTypeInputObject);
+			st.add("dataTypeOutputObject", dataTypeOutputObject);
+			st.add("resourceData", resourceData);
+			st.add("inputObject", inputObject);
+			st.add("outputObject", outputObject);
+			st.add("functionName",
+					this.getFunctionName(inputBind.sequentialNumber));
+			ret = st.render();
 		}
 		return ret;
 	}
@@ -255,17 +254,29 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 			StringBuffer inputVariables = new StringBuffer();
 			StringBuffer outputVariables = new StringBuffer();
 			for (Variable variable : iterator.getExternalVariables()) {
-				inputVariables.append(functionObjectName + ".set_"
-						+ variable.name + "(" + variable.name + ");\n");
+				String gVariable = this.getGlobalVariableName(variable);
+				inputVariables.append(functionObjectName + ".set_" + gVariable
+						+ "(" + variable.name + ");\n");
 				// Only non-final variables can be returned to the Java code.
 				if (!variable.modifier.equals("final"))
 					outputVariables.append(variable.name + " = "
-							+ functionObjectName + ".get_" + variable.name
+							+ functionObjectName + ".get_" + gVariable
 							+ "();\n");
 			}
 			ret = inputVariables.toString() + ret + outputVariables.toString();
 		}
 		return ret;
+	}
+
+	/**
+	 * Create a global variable name for the given variable following
+	 * RenderScript standards. In RenderScript, global variables must be
+	 * prefixed with "g" followed by an upper case letter, so "max" becomes
+	 * "gMax"
+	 */
+	private String getGlobalVariableName(Variable variable) {
+		return "g" + variable.name.substring(0, 1).toUpperCase()
+				+ variable.name.substring(1, variable.name.length());
 	}
 
 	/**
@@ -283,8 +294,11 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 		// Insert external variables as global variables
 		StringBuffer externalVariables = new StringBuffer();
 		for (Variable variable : iterator.getExternalVariables()) {
-			externalVariables.append(variable.typeName + " " + variable.name
+			String gVariableName = this.getGlobalVariableName(variable);
+			externalVariables.append(variable.typeName + " " + gVariableName
 					+ ";\n");
+			code2Translate = code2Translate.replaceAll(variable.name,
+					gVariableName);
 		}
 		externalVariables.append("\n");
 		return externalVariables.toString()
@@ -395,7 +409,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	 */
 	@Override
 	public String getCFileExtension() {
-		return "rs";
+		return "fs";
 	}
 
 	/**

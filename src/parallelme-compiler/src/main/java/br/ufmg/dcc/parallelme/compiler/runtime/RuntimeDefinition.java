@@ -28,13 +28,8 @@ public interface RuntimeDefinition {
 	/**
 	 * Get the initialization string for this runtime.
 	 * 
-	 * @return Initialization string.
-	 */
-	public String getInitializationString();
-
-	/**
-	 * Get the initialization string for a given variable definition.
-	 * 
+	 * @param className
+	 *            Current class name.
 	 * @param firstFunctionNumber
 	 *            The number of the first function that will be initialized.
 	 * @param functionCount
@@ -42,8 +37,8 @@ public interface RuntimeDefinition {
 	 * 
 	 * @return Initialization string.
 	 */
-	public String getFunctionInitializationString(int firstFunctionNumber,
-			int functionCount);
+	public String getInitializationString(String className,
+			int firstFunctionNumber, int functionCount);
 
 	/**
 	 * Get the necessary imports for this runtime.

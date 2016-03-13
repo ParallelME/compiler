@@ -15,12 +15,11 @@ import br.ufmg.dcc.parallelme.userlibrary.image.Image;
  */
 public class ReinhardCollectionOperator implements ReinhardOperator {
     private HDRImage image;
-    private double sum = 0.0;
-    private final float max = 0.0f;
+    private float sum = 0.0f;
+    private float max = 0.0f;
 
     @Override
-    public Bitmap runOp(Resources res, final int resource, float key, float gamma) {
-
+    public Bitmap runOp(Resources res, int resource, float key, float gamma) {
         image = new HDRImage(res, resource);
 
         this.toYxy();
@@ -28,9 +27,9 @@ public class ReinhardCollectionOperator implements ReinhardOperator {
         this.tonemap();
         this.toRgb();
         this.clamp();
-		this.power(gamma);
-		Bitmap bitmap;
-		bitmap = image.toBitmap();
+        this.power(gamma);
+        Bitmap bitmap;
+        bitmap = image.toBitmap();
         return bitmap;
     }
 
@@ -39,24 +38,24 @@ public class ReinhardCollectionOperator implements ReinhardOperator {
         image.par().foreach(new UserFunction<Pixel>() {
             @Override
             public void function(Pixel pixel) {
-                float[] result = new float[3];
+                float result_0, result_1, result_2;
                 float w;
 
-                result[0] = result[1] = result[2] = 0.0f;
-                result[0] += 0.5141364f * pixel.rgba.red;
-                result[0] += 0.3238786f * pixel.rgba.green;
-                result[0] += 0.16036376f * pixel.rgba.blue;
-                result[1] += 0.265068f * pixel.rgba.red;
-                result[1] += 0.67023428f * pixel.rgba.green;
-                result[1] += 0.06409157f * pixel.rgba.blue;
-                result[2] += 0.0241188f * pixel.rgba.red;
-                result[2] += 0.1228178f * pixel.rgba.green;
-                result[2] += 0.84442666f * pixel.rgba.blue;
-                w = result[0] + result[1] + result[2];
-                if (w > 0.0) {
-                    pixel.rgba.red = result[1];
-                    pixel.rgba.green = result[0] / w;
-                    pixel.rgba.blue = result[1] / w;
+                result_0 = result_1 = result_2 = 0.0f;
+                result_0 += 0.5141364f * pixel.rgba.red;
+                result_0 += 0.3238786f * pixel.rgba.green;
+                result_0 += 0.16036376f * pixel.rgba.blue;
+                result_1 += 0.265068f * pixel.rgba.red;
+                result_1 += 0.67023428f * pixel.rgba.green;
+                result_1 += 0.06409157f * pixel.rgba.blue;
+                result_2 += 0.0241188f * pixel.rgba.red;
+                result_2 += 0.1228178f * pixel.rgba.green;
+                result_2 += 0.84442666f * pixel.rgba.blue;
+                w = result_0 + result_1 + result_2;
+                if (w > 0) {
+                    pixel.rgba.red = result_1;
+                    pixel.rgba.green = result_0 / w;
+                    pixel.rgba.blue = result_1 / w;
                 } else {
                     pixel.rgba.red = pixel.rgba.green = pixel.rgba.blue = 0.0f;
                 }
@@ -66,7 +65,7 @@ public class ReinhardCollectionOperator implements ReinhardOperator {
 
 
     //This is a good example. We lack a way to return a single value from all kernel instances.
-    private double logAverage() {
+    private float logAverage() {
         sum = 0;
 
         image.par().foreach(new UserFunction<Pixel>() {
@@ -76,11 +75,11 @@ public class ReinhardCollectionOperator implements ReinhardOperator {
             }
         });
 
-        return Math.exp(sum/(double) (image.getHeight()*image.getWidth()));
+        return (float)Math.exp(sum/(image.getHeight()*image.getWidth()));
     }
 
     private void scaleToMidtone(final float key) {
-        final double scaleFactor = 1.0f / this.logAverage();
+        final float scaleFactor = 1.0f / this.logAverage();
 
         image.par().foreach(new UserFunction<Pixel>() {
             @Override
@@ -95,7 +94,7 @@ public class ReinhardCollectionOperator implements ReinhardOperator {
         image.par().foreach(new UserFunction<Pixel>() {
             @Override
             public void function(Pixel pixel) {
-                if(pixel.rgba.red > max) max = pixel.rgba.red;
+                if (pixel.rgba.red > max) max = pixel.rgba.red;
             }
         });
 
@@ -103,7 +102,7 @@ public class ReinhardCollectionOperator implements ReinhardOperator {
     }
 
     private void tonemap() {
-        final double max2 = Math.pow(getMaxValue(), 2);
+        final float max2 = (float)Math.pow(getMaxValue(), 2);
         image.par().foreach(new UserFunction<Pixel>() {
             @Override
             public void function(Pixel pixel) {
@@ -116,67 +115,67 @@ public class ReinhardCollectionOperator implements ReinhardOperator {
         image.par().foreach(new UserFunction<Pixel>() {
             @Override
             public void function(Pixel pixel) {
-                RGB val = new RGB();
-                RGB result = new RGB();
-                RGB out = new RGB();
+				float val_r, val_g, val_b;
+				float result_r, result_g, result_b;
+				float out_r, out_g, out_b;
 
-                val.green = pixel.rgba.red;     // Y
-                result.green = pixel.rgba.green; // x
-                result.blue = pixel.rgba.blue; // y
+                val_g = pixel.rgba.red;     // Y
+                result_g = pixel.rgba.green; // x
+                result_b = pixel.rgba.blue; // y
 
-                if(val.green > 0.0f && result.green > 0.0f && result.blue > 0.0f) {
-                    val.red = result.green * val.green / result.blue;
-                    val.blue = val.red / result.green - val.red - val.green;
-                }
-                else {
-                    val.red = val.blue = 0.0f;
+                if (val_g > 0.0f && result_g > 0.0f && result_b > 0.0f) {
+                    val_r = result_g * val_g / result_b;
+                    val_b = val_r / result_g - val_r - val_g;
+                } else {
+                    val_r = val_b = 0.0f;
                 }
 
                 // These constants are the conversion coefficients.
-                out.red = out.green = out.blue = 0.0f;
-                out.red += 2.5651f * val.red;
-                out.red += -1.1665f * val.green;
-                out.red += -0.3986f * val.blue;
-                out.green += -1.0217f * val.red;
-                out.green += 1.9777f * val.green;
-                out.green += 0.0439f * val.blue;
-                out.blue += 0.0753f * val.red;
-                out.blue += -0.2543f * val.green;
-                out.blue += 1.1892f * val.blue;
+                out_r = out_g = out_b = 0.0f;
+                out_r += 2.5651f * val_r;
+                out_r += -1.1665f * val_g;
+                out_r += -0.3986f * val_b;
+                out_g += -1.0217f * val_r;
+                out_g += 1.9777f * val_g;
+                out_g += 0.0439f * val_b;
+                out_b += 0.0753f * val_r;
+                out_b += -0.2543f * val_g;
+                out_b += 1.1892f * val_b;
 
-                pixel.rgba.red = out.red;
-                pixel.rgba.green = out.green;
-                pixel.rgba.blue = out.blue;
+                pixel.rgba.red = out_r;
+                pixel.rgba.green = out_g;
+                pixel.rgba.blue = out_b;
             }
         });
     }
 
-	private void power(float gamma) {
+    private void power(final float gamma) {
+        final float power = 1.0f / gamma;
         image.par().foreach(new UserFunction<Pixel>() {
             @Override
             public void function(Pixel pixel) {
-				// Clamp.
-				if(pixel.rgba.red > 1.0f) pixel.rgba.red = 1.0f;
-				if(pixel.rgba.red < 0.0f) pixel.rgba.red = 0.0f;
-				if(pixel.rgba.green > 1.0f) pixel.rgba.green = 1.0f;
-				if(pixel.rgba.green < 0.0f) pixel.rgba.green = 0.0f;
-				if(pixel.rgba.blue > 1.0f) pixel.rgba.blue = 1.0f;
-				if(pixel.rgba.blue < 0.0f) pixel.rgba.blue = 0.0f;
-				pixel.rgba.red = Math.pow(pixel.rgba.red, gamma);
-				pixel.rgba.green = Math.pow(pixel.rgba.green, gamma);
-				pixel.rgba.blue = Math.pow(pixel.rgba.blue, gamma);
-				pixel.rgba.alpha = 255;
-			}
-		});
-	}
-    
+                // Clamp.
+                if (pixel.rgba.red > 1.0f) pixel.rgba.red = 1.0f;
+                if (pixel.rgba.red < 0.0f) pixel.rgba.red = 0.0f;
+                if (pixel.rgba.green > 1.0f) pixel.rgba.green = 1.0f;
+                if (pixel.rgba.green < 0.0f) pixel.rgba.green = 0.0f;
+                if (pixel.rgba.blue > 1.0f) pixel.rgba.blue = 1.0f;
+                if (pixel.rgba.blue < 0.0f) pixel.rgba.blue = 0.0f;
+                pixel.rgba.red = (float) Math.pow(pixel.rgba.red, power);
+                pixel.rgba.green = (float) Math.pow(pixel.rgba.green, power);
+                pixel.rgba.blue = (float) Math.pow(pixel.rgba.blue, power);
+                pixel.rgba.alpha = 255;
+            }
+        });
+    }
+
     private void clamp() {
         image.par().foreach(new UserFunction<Pixel>() {
             @Override
             public void function(Pixel pixel) {
-                if(pixel.rgba.red > 1.0f) pixel.rgba.red = 1.0f;
-                if(pixel.rgba.green > 1.0f) pixel.rgba.green = 1.0f;
-                if(pixel.rgba.blue > 1.0f) pixel.rgba.blue = 1.0f;
+                if (pixel.rgba.red > 1.0f) pixel.rgba.red = 1.0f;
+                if (pixel.rgba.green > 1.0f) pixel.rgba.green = 1.0f;
+                if (pixel.rgba.blue > 1.0f) pixel.rgba.blue = 1.0f;
             }
         });
     }

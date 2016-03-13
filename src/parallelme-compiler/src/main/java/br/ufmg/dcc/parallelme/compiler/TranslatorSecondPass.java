@@ -239,10 +239,9 @@ public class TranslatorSecondPass {
 			}
 		}
 		StringBuffer initialization = new StringBuffer();
-		initialization.append("\n" + this.runtime.getInitializationString());
 		initialization.append("\n"
-				+ this.runtime.getFunctionInitializationString(
-						lastFunctionCount, iteratorsAndBinds.size()));
+				+ this.runtime.getInitializationString(classSymbol.name, lastFunctionCount,
+						iteratorsAndBinds.size()));
 		tokenStreamRewriter.insertAfter(classSymbol.bodyAddress.start,
 				initialization.toString());
 	}
