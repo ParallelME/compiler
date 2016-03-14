@@ -16,7 +16,7 @@ import br.ufmg.dcc.parallelme.compiler.symboltable.*;
  * 
  * @author Wilson de Carvalho, Pedro Caldeira
  */
-public class TranslatorFirstPassListener extends ScopeDrivenListener {
+public class CompilerFirstPassListener extends ScopeDrivenListener {
 	/**
 	 * Constructor.
 	 * 
@@ -24,7 +24,7 @@ public class TranslatorFirstPassListener extends ScopeDrivenListener {
 	 *            Scope that must be used as the root for scopes created during
 	 *            the creation of this symbol table.
 	 */
-	public TranslatorFirstPassListener(Symbol rootScope) {
+	public CompilerFirstPassListener(Symbol rootScope) {
 		super(rootScope);
 	}
 }

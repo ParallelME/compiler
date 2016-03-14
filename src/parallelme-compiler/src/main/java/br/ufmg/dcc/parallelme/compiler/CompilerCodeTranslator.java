@@ -36,7 +36,7 @@ import br.ufmg.dcc.parallelme.compiler.util.Pair;
  * 
  * @author Wilson de Carvalho
  */
-public class TranslatorSecondPass {
+public class CompilerCodeTranslator {
 	private int functionsCount = 0;
 	private final RuntimeDefinition runtime;
 	private final String outputDestinationFolder;
@@ -48,7 +48,7 @@ public class TranslatorSecondPass {
 	 * @param outputDestinationFolder
 	 *            Output destination folder for compiled files.
 	 */
-	public TranslatorSecondPass(RuntimeDefinition runtime,
+	public CompilerCodeTranslator(RuntimeDefinition runtime,
 			String outputDestinationFolder) {
 		this.runtime = runtime;
 		this.outputDestinationFolder = outputDestinationFolder;
@@ -63,13 +63,9 @@ public class TranslatorSecondPass {
 	 * compatible code.
 	 */
 	public void run(TokenStreamRewriter tokenStreamRewriter,
-			Symbol symbolTable, ParseTree tree, int lastIteratorCount) {
+			Symbol symbolTable, CompilerSecondPassListener listener,
+			int lastIteratorCount) {
 		// 1. Walk on the parse tree again
-		ParseTreeWalker walker = new ParseTreeWalker();
-		TranslatorSecondPassListener listener = new TranslatorSecondPassListener(
-				tokenStreamRewriter.getTokenStream(), lastIteratorCount
-						+ functionsCount);
-		walker.walk(listener, tree);
 		ArrayList<UserLibraryData> iteratorsAndBinds = listener
 				.getIteratorsAndBinds();
 		this.setIteratorsTypes(iteratorsAndBinds,
@@ -129,7 +125,7 @@ public class TranslatorSecondPass {
 						&& iteratorType == IteratorType.Parallel; i++) {
 					if (!variables.get(i).modifier.equals("final")) {
 						SimpleLogger
-								.info("Iterator with non-final external variable in line "
+								.warn("Iterator with non-final external variable in line "
 										+ iterator.getStatementAddress().start
 												.getLine()
 										+ " will be translated to a sequential iterator in the target runtime.");

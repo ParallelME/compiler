@@ -34,7 +34,7 @@ import br.ufmg.dcc.parallelme.compiler.userlibrary.*;
  * 
  * @author Wilson de Carvalho
  */
-public class TranslatorSecondPassListener extends ScopeDrivenListener {
+public class CompilerSecondPassListener extends ScopeDrivenListener {
 	private enum StatementType {
 		Iterator, OutputBind, None;
 	}
@@ -73,7 +73,7 @@ public class TranslatorSecondPassListener extends ScopeDrivenListener {
 	 *            during creation.
 	 * 
 	 */
-	public TranslatorSecondPassListener(TokenStream tokenStream,
+	public CompilerSecondPassListener(TokenStream tokenStream,
 			int lastFunctionCount) {
 		super(new RootSymbol());
 		this.iteratorsAndBinds = new ArrayList<>();

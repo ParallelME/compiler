@@ -23,6 +23,7 @@ public class SimpleLogger {
 			"yyyy-MM-dd HH:mm:ss.SSS");
 	public static boolean logInfo = false;
 	public static boolean logError = false;
+	public static boolean logWarn = false;
 
 	public static void info(String msg) {
 		if (logInfo)
@@ -32,6 +33,12 @@ public class SimpleLogger {
 	public static void error(String msg) {
 		if (logError)
 			System.out.println("[ERROR] " + sdf.format(new Date()) + " - "
+					+ msg);
+	}
+	
+	public static void warn(String msg) {
+		if (logWarn)
+			System.out.println("[WARN] " + sdf.format(new Date()) + " - "
 					+ msg);
 	}
 }
