@@ -19,8 +19,6 @@ import java.util.List;
 
 import org.antlr.v4.runtime.TokenStream;
 import org.antlr.v4.runtime.TokenStreamRewriter;
-import org.antlr.v4.runtime.tree.ParseTree;
-import org.antlr.v4.runtime.tree.ParseTreeWalker;
 
 import br.ufmg.dcc.parallelme.compiler.runtime.*;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.*;
@@ -65,7 +63,8 @@ public class CompilerCodeTranslator {
 	public void run(TokenStreamRewriter tokenStreamRewriter,
 			Symbol symbolTable, CompilerSecondPassListener listener,
 			int lastIteratorCount) {
-		// 1. Walk on the parse tree again
+		// 1. Get iterators and set proper types (parallel or sequential)
+		// depending on its code structure.
 		ArrayList<UserLibraryData> iteratorsAndBinds = listener
 				.getIteratorsAndBinds();
 		this.setIteratorsTypes(iteratorsAndBinds,
@@ -80,24 +79,24 @@ public class CompilerCodeTranslator {
 		}
 		// 3. Replace non-iterators and non-output bind method calls
 		this.replaceMethodCalls(listener.getMethodCalls(), tokenStreamRewriter);
-		// 4. Replace iterators and perform output data binding
 		ArrayList<Symbol> classSymbols = symbolTable
 				.getSymbols(ClassSymbol.class);
 		// Gets the class symbol table
 		if (!classSymbols.isEmpty()) {
 			ClassSymbol classSymbol = (ClassSymbol) classSymbols.get(0);
 			// Translation step by step:
+			// 4. Replace iterators
 			this.replaceIterators(tokenStreamRewriter, iteratorsAndBinds,
 					packageName, lastIteratorCount, classSymbol);
+			// 5. Perform output data binding
 			this.bindRuntimeOutputData(tokenStreamRewriter, iteratorsAndBinds,
 					packageName);
 			if (listener.getUserLibraryDetected()) {
-				// Remove user library imports (if any)
+				// 6. Remove user library imports (if any)
 				this.removeUserLibraryImports(tokenStreamRewriter,
 						listener.getImportTokens());
-				// If user library classes were detected, we must insert the
-				// runtime
-				// imports
+				// 7. If user library classes were detected, we must insert
+				// runtime imports
 				this.insertRuntimeImports(tokenStreamRewriter, classSymbol,
 						iteratorsAndBinds);
 			}
@@ -300,8 +299,8 @@ public class CompilerCodeTranslator {
 			if (userLibraryData instanceof OutputBind) {
 				OutputBind outputBind = (OutputBind) userLibraryData;
 				tokenStreamRewriter.replace(
-						outputBind.getStatementAddress().start,
-						outputBind.getStatementAddress().stop,
+						outputBind.getExpressionAddress().start,
+						outputBind.getExpressionAddress().stop,
 						this.runtime.getAllocationData(outputBind));
 				String outputBindFunction = this.runtime
 						.getAllocationDataFunction(outputBind);

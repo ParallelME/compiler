@@ -91,7 +91,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 			+ "<externalVariables:{var|<var.allName>.copyTo(<var.arrName>);\n"
 			+ "<var.name> = <var.arrName>[0];\n}>";
 
-	private static final String templateAllocationOutputDataHDRImage = "Bitmap <destinationObjectName> = Bitmap.createBitmap(<inputAllocation>.getType().getX(), <inputAllocation>.getType().getY(), Bitmap.Config.ARGB_8888);\n";
+	private static final String templateAllocationOutputDataHDRImage = "Bitmap.createBitmap(<inputAllocation>.getType().getX(), <inputAllocation>.getType().getY(), Bitmap.Config.ARGB_8888);\n";
 	private static final String createAllocationFunctionBitmapImage = "float3 __attribute__((kernel)) root(uchar4 in, uint32_t x, uint32_t y) {"
 			+ "\n\tfloat3 out;"
 			+ "\n\tout.s0 = ((float) in.r) / 255.0f;"
@@ -250,9 +250,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 		String outputObject = this.getVariableOutName(outputBind.getVariable());
 		StringBuilder ret = new StringBuilder();
 		if (outputBind.getVariable().typeName.equals(HDRImage.getName())) {
-			Variable destination = outputBind.getDestinationObject();
 			ST st = new ST(templateAllocationOutputDataHDRImage);
-			st.add("destinationObjectName", destination.name);
 			st.add("inputAllocation", inputObject);
 			ret.append(st.render());
 		}
@@ -515,14 +513,12 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	}
 
 	/**
-	 * Not necessary for RenderScript runtime.
+	 * {@inheritDoc}
 	 */
 	@Override
 	public void exportInternalLibrary(String packageName,
 			String destinationFolder) throws IOException {
-		// Copy all files and directories under ParallelME resource folder to
-		// the destination folder.
-		// String resourceName = "RenderScript";
+		this.exportResource("Common", destinationFolder);
 	}
 
 	/**

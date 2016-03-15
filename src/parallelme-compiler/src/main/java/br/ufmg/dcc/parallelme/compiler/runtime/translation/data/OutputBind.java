@@ -19,13 +19,13 @@ import br.ufmg.dcc.parallelme.compiler.symboltable.TokenAddress;
  */
 public class OutputBind extends UserLibraryData {
 	private Variable destinationObject;
-	private TokenAddress statementAddress;
+	private TokenAddress expressionAddress;
 
 	public OutputBind(Variable variable, Variable destinationObject,
-			int sequentialNumber, TokenAddress statementAddress) {
+			int sequentialNumber, TokenAddress expressionAddress) {
 		super(variable, sequentialNumber);
 		this.setDestinationObject(destinationObject);
-		this.setStatementAddress(statementAddress);
+		this.setExpressionAddress(expressionAddress);
 	}
 
 	public Variable getDestinationObject() {
@@ -36,11 +36,11 @@ public class OutputBind extends UserLibraryData {
 		this.destinationObject = destinationObject;
 	}
 
-	public TokenAddress getStatementAddress() {
-		return statementAddress;
+	public TokenAddress getExpressionAddress() {
+		return expressionAddress;
 	}
 
-	public void setStatementAddress(TokenAddress statementAddress) {
-		this.statementAddress = statementAddress;
+	public void setExpressionAddress(TokenAddress expressionAddress) {
+		this.expressionAddress = expressionAddress;
 	}
 }

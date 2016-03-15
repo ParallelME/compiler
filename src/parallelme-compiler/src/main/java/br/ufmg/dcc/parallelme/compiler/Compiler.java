@@ -83,7 +83,7 @@ public class Compiler {
 			}
 		}
 		int iteratorCount = 0;
-		// ####### Second pass #######
+		// ####### Second pass and code translation #######
 		CompilerCodeTranslator codeTranslator = new CompilerCodeTranslator(
 				this.targetRuntime, destinationFolder);
 		for (int i = 0; i < files.length; i++) {

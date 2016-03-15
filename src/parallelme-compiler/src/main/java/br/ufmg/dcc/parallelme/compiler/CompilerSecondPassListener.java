@@ -9,17 +9,14 @@
 
 package br.ufmg.dcc.parallelme.compiler;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import org.antlr.v4.runtime.TokenStream;
 
 import br.ufmg.dcc.parallelme.compiler.antlr.JavaParser;
 import br.ufmg.dcc.parallelme.compiler.antlr.JavaParser.ExpressionContext;
-import br.ufmg.dcc.parallelme.compiler.antlr.JavaParser.StatementContext;
+import br.ufmg.dcc.parallelme.compiler.antlr.JavaParser.VariableDeclaratorContext;
+import br.ufmg.dcc.parallelme.compiler.antlr.JavaParser.VariableInitializerContext;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.Iterator;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.MethodCall;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.OutputBind;
@@ -253,7 +250,7 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 				} else if (this.isOutputBind(variable,
 						(UserLibraryCollectionClassImpl) userLibraryClass, ctx)) {
 					this.statementType = StatementType.OutputBind;
-					this.getOutputBindData(variable, this.currentStatement);
+					this.getOutputBindData(variable, ctx);
 				} else if (this.isValidMethod(
 						(UserLibraryCollectionClassImpl) userLibraryClass, ctx)) {
 					this.getMethodCallData(variable, ctx);
@@ -374,12 +371,32 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 	 */
 	private void getOutputBindData(
 			UserLibraryVariableSymbol userLibraryVariableSymbol,
-			StatementContext stx) {
-		List<ExpressionContext> expression = stx.statementExpression()
-				.expression().expression();
-		if (expression.size() == 2) {
+			JavaParser.ExpressionContext ctx) {
+		String destinationVariableName = null;
+		TokenAddress expressionAddress = null;
+		// Bitmap bitmap = image.toBitmap();
+		if (ctx.parent.parent.parent instanceof VariableInitializerContext) {
+			VariableDeclaratorContext foo = (VariableDeclaratorContext) ctx.parent.parent.parent.parent;
+			VariableInitializerContext bar = (VariableInitializerContext) ctx.parent.parent.parent;
+			destinationVariableName = foo.variableDeclaratorId().getText();
+			expressionAddress = new TokenAddress(bar.start, bar.stop);
+		} else if (ctx.parent.parent.parent instanceof ExpressionContext) {
+			// bitmap = image.toBitmap();
+			ExpressionContext foo = (ExpressionContext) ctx.parent.parent.parent;
+			ExpressionContext bar = (ExpressionContext) ctx.parent.parent;
+			destinationVariableName = foo.expression(0).primary().getText();
+			expressionAddress = new TokenAddress(bar.start, bar.stop);
+		} else {
+			String errorMsg = "Invalid output bind statement at line "
+					+ ctx.start.getLine()
+					+ ". Output bind statements must be of form "
+					+ "'variable = object.outputBindMethod();'";
+			SimpleLogger.error(errorMsg);
+			throw new RuntimeException(errorMsg);
+		}
+		if (destinationVariableName != null) {
 			Symbol destinationSymbol = this.currentScope
-					.getInnerSymbol(expression.get(0).getText());
+					.getInnerSymbol(destinationVariableName);
 			if (destinationSymbol instanceof VariableSymbol) {
 				VariableSymbol destinationVariableSymbol = (VariableSymbol) destinationSymbol;
 				Variable destinationVariable = new Variable(
@@ -392,11 +409,9 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 						userLibraryVariableSymbol.typeName,
 						userLibraryVariableSymbol.typeParameterName,
 						userLibraryVariableSymbol.modifier);
-				TokenAddress statementAddress = this
-						.getCurrentStatementAddress();
 				this.iteratorsAndBinds.add(new OutputBind(userLibraryVariable,
 						destinationVariable, this.iteratorsAndBinds.size()
-								+ lastFunctionCount, statementAddress));
+								+ lastFunctionCount, expressionAddress));
 			}
 		}
 	}
