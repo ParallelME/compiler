@@ -18,8 +18,7 @@ import org.apache.commons.io.FileUtils;
 
 import br.ufmg.dcc.parallelme.compiler.SimpleLogger;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.CTranslator;
-import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.Iterator;
-import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.Variable;
+import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.*;
 
 /**
  * Code useful for specfic runtime definition implementation.
@@ -29,12 +28,17 @@ import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.Variable;
 public abstract class RuntimeDefinitionImpl implements RuntimeDefinition {
 	private final String inSuffix = "In";
 	private final String outSuffix = "Out";
-	private final String functionName = "function";
+	private final String iteratorName = "iterator";
+	private final String inputBindName = "inputBind";
+	private final String outputBindName = "outputBind";
 	private final String prefix = "$";
 	protected final CTranslator cCodeTranslator;
+	protected final String outputDestinationFolder;
 
-	public RuntimeDefinitionImpl(CTranslator cCodeTranslator) {
+	public RuntimeDefinitionImpl(CTranslator cCodeTranslator,
+			String outputDestinationFolder) {
 		this.cCodeTranslator = cCodeTranslator;
+		this.outputDestinationFolder = outputDestinationFolder;
 	}
 
 	protected String getVariableInName(Variable variable) {
@@ -50,11 +54,31 @@ public abstract class RuntimeDefinitionImpl implements RuntimeDefinition {
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * Return an unique iterator name base on its sequential number.
 	 */
-	@Override
-	public String getFunctionName(int functionNumber) {
-		return functionName + functionNumber;
+	protected String getIteratorName(Iterator iterator) {
+		return iteratorName + iterator.sequentialNumber;
+	}
+
+	/**
+	 * Return an unique input bind name base on its sequential number.
+	 */
+	protected String getInputBindName(InputBind inputBind) {
+		return inputBindName + inputBind.sequentialNumber;
+	}
+
+	/**
+	 * Return an unique output bind name base on its sequential number.
+	 */
+	protected String getOutputBindName(OutputBind outputBind) {
+		return outputBindName + outputBind.sequentialNumber;
+	}
+
+	/**
+	 * Return kernel that must be used in kernel object declarations.
+	 */
+	protected String getKernelName(String className) {
+		return this.prefix + "kernel_" + className;
 	}
 
 	/**
@@ -99,15 +123,4 @@ public abstract class RuntimeDefinitionImpl implements RuntimeDefinition {
 			}
 		}
 	}
-
-	/**
-	 * Create the function signature for a given iterator.
-	 * 
-	 * @param iterator
-	 *            Iterator that must be analyzed in order to create a function
-	 *            signature.
-	 * 
-	 * @return Function signature.
-	 */
-	abstract protected String getIteratorFunctionSignature(Iterator iterator);
 }

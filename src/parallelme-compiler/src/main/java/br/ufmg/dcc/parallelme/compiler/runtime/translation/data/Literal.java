@@ -9,7 +9,6 @@
 
 package br.ufmg.dcc.parallelme.compiler.runtime.translation.data;
 
-
 /**
  * Basic information for runtime literal parameters.
  * 
@@ -38,5 +37,10 @@ public class Literal implements Parameter {
 	@Override
 	public String toString() {
 		return this.value;
+	}
+
+	@Override
+	public int hashCode() {
+		return this.value.hashCode() * 3 + this.typeName.hashCode() * 7;
 	}
 }

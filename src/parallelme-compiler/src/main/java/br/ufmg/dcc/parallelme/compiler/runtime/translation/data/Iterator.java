@@ -28,7 +28,8 @@ public class Iterator extends UserLibraryData {
 	private TokenAddress statementAddress;
 	private IteratorType type;
 
-	public Iterator(Variable variableParameter, int sequentialNumber, TokenAddress statementAddress) {
+	public Iterator(Variable variableParameter, int sequentialNumber,
+			TokenAddress statementAddress) {
 		super(variableParameter, sequentialNumber);
 		this.externalVariables = new ArrayList<>();
 		this.setType(type);
@@ -65,5 +66,12 @@ public class Iterator extends UserLibraryData {
 
 	public void setType(IteratorType type) {
 		this.type = type;
+	}
+
+	@Override
+	public int hashCode() {
+		return this.userFunctionData.hashCode() * 3
+				+ this.externalVariables.hashCode() * 7
+				+ this.statementAddress.hashCode() * 11 + type.hashCode() * 13;
 	}
 }

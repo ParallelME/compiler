@@ -42,8 +42,9 @@ public class Main {
 					SimpleLogger.logError = true;
 					SimpleLogger.logInfo = true;
 					SimpleLogger.logWarn = true;
-					(new Compiler(new RenderScriptRuntimeDefinition(new SimpleTranslator())))
-							.compile(inputInfo, outputInfo);
+					(new Compiler(new RenderScriptRuntimeDefinition(
+							new SimpleTranslator(), outputInfo))).compile(
+							inputInfo, outputInfo);
 				} else {
 					printHelpMsg();
 				}

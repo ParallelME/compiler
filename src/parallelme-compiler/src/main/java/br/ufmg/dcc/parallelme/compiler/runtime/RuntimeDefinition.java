@@ -29,17 +29,17 @@ public interface RuntimeDefinition {
 	/**
 	 * Get the initialization string for this runtime.
 	 * 
+	 * @param packageName
+	 *            Current package name.
 	 * @param className
 	 *            Current class name.
-	 * @param firstFunctionNumber
-	 *            The number of the first function that will be initialized.
-	 * @param functionCount
-	 *            Number of functions that will be created.
+	 * @param iterators
+	 *            List of all existing iterators on the given class name.
 	 * 
 	 * @return Initialization string.
 	 */
-	public String getInitializationString(String className,
-			int firstFunctionNumber, int functionCount);
+	public String getInitializationString(String packageName, String className,
+			List<Iterator> iterators);
 
 	/**
 	 * Get the necessary imports for this runtime.
@@ -54,13 +54,15 @@ public interface RuntimeDefinition {
 	/**
 	 * Create an allocation for the informed input bind.
 	 * 
+	 * @param className
+	 *            Current class name.
 	 * @param inputBind
 	 *            Object containing the necessary information to build an
 	 *            allocation.
 	 * 
 	 * @return A string with the creation for the new allocation.
 	 */
-	public String createAllocation(InputBind inputBind);
+	public String createAllocation(String className, InputBind inputBind);
 
 	/**
 	 * Declare an allocation based on the informed expression context.
@@ -74,48 +76,30 @@ public interface RuntimeDefinition {
 	public String declareAllocation(InputBind inputBind);
 
 	/**
-	 * Creates the code that is necessary to perform input binding.
-	 * 
-	 * @param inputBind
-	 *            Object containing the necessary information to build an
-	 *            allocation.
-	 * 
-	 * @return A string with the declaration for the new allocation.
-	 */
-	public String createAllocationFunction(InputBind inputBind);
-
-	/**
 	 * Gets the data back from the allocation.
 	 * 
+	 * @param className
+	 *            Current class name.
 	 * @param outputBind
 	 *            Object containing the necessary information to perform the
 	 *            binding from an allocation to a destination object.
 	 * 
 	 * @return A string with the code to get the data from the allocation.
 	 */
-	public String getAllocationData(OutputBind outputBind);
-
-	/**
-	 * Creates the code that is necessary to perform ouput binding.
-	 * 
-	 * @param outputBind
-	 *            Object containing the necessary information to perform the
-	 *            binding from an allocation to a destination object.
-	 * 
-	 * @return A string with the code to get the data from the allocation.
-	 */
-	public String getAllocationDataFunction(OutputBind outputBind);
+	public String getAllocationData(String className, OutputBind outputBind);
 
 	/**
 	 * Returns the code that will be placed in the translated Java code to run a
 	 * given iterator.
 	 * 
+	 * @param className
+	 *            Current class name.
 	 * @param iterator
 	 *            The iterator that must be called from the Java code.
 	 *
 	 * @return A string with the code to call the iterator.
 	 */
-	public String getIterator(Iterator iterator);
+	public String getIteratorCall(String className, Iterator iterator);
 
 	/**
 	 * Translates a given type to an equivalent runtime type. Example: translate
@@ -150,36 +134,26 @@ public interface RuntimeDefinition {
 	public String translateMethodCall(MethodCall methodCall);
 
 	/**
-	 * Create a unique name for a given function number.
-	 * 
-	 * @param functionNumber
-	 *            Function number.
-	 */
-	public String getFunctionName(int functionNumber);
-
-	/**
-	 * Translates a given iterator code.
-	 * 
-	 * @param iterator
-	 *            Iterator that must be translated.
-	 * 
-	 * @return A string with the translated code that can be stored in a file.
-	 */
-	public String translateIteratorCode(Iterator iterator);
-
-	/**
-	 * Returns the file extension that will be used to create the output files
-	 * for each C file.
-	 */
-	public String getCFileExtension();
-
-	/**
-	 * Returns a string with a common C file header.
+	 * Translates a list of iterators.
 	 * 
 	 * @param packageName
-	 *            Name of the function package.
+	 *            Name of the package of which current data (class, iterators
+	 *            and binds) belong.
+	 * @param className
+	 *            Name of the class of which current data (iterators and binds)
+	 *            belong.
+	 * @param iterators
+	 *            Iterator that must be translated.
+	 * @param inputBinds
+	 *            Input binds that must be translated.
+	 * @param outputBinds
+	 *            Output binds that must be translated.
+	 * 
+	 * @return True if the translation was successful. False otherwise.
 	 */
-	public String getCFunctionHeader(String packageName);
+	public boolean translateIteratorsAndBinds(String packageName,
+			String className, List<Iterator> iterators,
+			List<InputBind> inputBinds, List<OutputBind> outputBinds);
 
 	/**
 	 * Exports the internal library files needed for this runtime.

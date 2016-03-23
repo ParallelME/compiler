@@ -9,9 +9,6 @@
 
 package br.ufmg.dcc.parallelme.compiler;
 
-import java.io.FileNotFoundException;
-import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -26,6 +23,7 @@ import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.Iterator.Iterato
 import br.ufmg.dcc.parallelme.compiler.symboltable.*;
 import br.ufmg.dcc.parallelme.compiler.userlibrary.UserLibraryClassFactory;
 import br.ufmg.dcc.parallelme.compiler.userlibrary.UserLibraryCollectionClass;
+import br.ufmg.dcc.parallelme.compiler.util.FileWriter;
 import br.ufmg.dcc.parallelme.compiler.util.Pair;
 
 /**
@@ -63,34 +61,41 @@ public class CompilerCodeTranslator {
 	public void run(TokenStreamRewriter tokenStreamRewriter,
 			Symbol symbolTable, CompilerSecondPassListener listener,
 			int lastIteratorCount) {
-		// 1. Get iterators and set proper types (parallel or sequential)
-		// depending on its code structure.
-		ArrayList<UserLibraryData> iteratorsAndBinds = listener
-				.getIteratorsAndBinds();
-		this.setIteratorsTypes(iteratorsAndBinds,
-				tokenStreamRewriter.getTokenStream());
-		String packageName = listener.getPackageName();
-		// 2. Perform input data binding
-		for (Pair<UserLibraryVariableSymbol, CreatorSymbol> pair : this
-				.getVariablesWithCreators(symbolTable)) {
-			this.bindRuntimeInputData(tokenStreamRewriter, pair.left,
-					pair.right, iteratorsAndBinds, packageName,
-					iteratorsAndBinds.size());
-		}
-		// 3. Replace non-iterators and non-output bind method calls
-		this.replaceMethodCalls(listener.getMethodCalls(), tokenStreamRewriter);
 		ArrayList<Symbol> classSymbols = symbolTable
 				.getSymbols(ClassSymbol.class);
 		// Gets the class symbol table
 		if (!classSymbols.isEmpty()) {
 			ClassSymbol classSymbol = (ClassSymbol) classSymbols.get(0);
+			// 1. Get iterators and set proper types (parallel or sequential)
+			// depending on its code structure.
+			ArrayList<UserLibraryData> iteratorsAndBinds = listener
+					.getIteratorsAndBinds();
+			this.setIteratorsTypes(iteratorsAndBinds,
+					tokenStreamRewriter.getTokenStream());
+			String packageName = listener.getPackageName();
+			// 2. Perform input data binding
+			ArrayList<InputBind> inputBinds = new ArrayList<>();
+			for (Pair<UserLibraryVariableSymbol, CreatorSymbol> pair : this
+					.getVariablesWithCreators(symbolTable)) {
+				InputBind inputBind = this.replaceInputBind(
+						tokenStreamRewriter, pair.left, pair.right,
+						iteratorsAndBinds, classSymbol.name,
+						iteratorsAndBinds.size());
+				inputBinds.add(inputBind);
+			}
+			// 3. Replace non-iterators and non-output bind method calls
+			this.replaceMethodCalls(listener.getMethodCalls(),
+					tokenStreamRewriter);
 			// Translation step by step:
 			// 4. Replace iterators
-			this.replaceIterators(tokenStreamRewriter, iteratorsAndBinds,
-					packageName, lastIteratorCount, classSymbol);
+			List<Iterator> iterators = this.replaceIterators(
+					tokenStreamRewriter, iteratorsAndBinds, packageName,
+					lastIteratorCount, classSymbol);
 			// 5. Perform output data binding
-			this.bindRuntimeOutputData(tokenStreamRewriter, iteratorsAndBinds,
-					packageName);
+			List<OutputBind> outputBinds = this.replaceOutputBinds(
+					tokenStreamRewriter, iteratorsAndBinds, classSymbol.name);
+			this.runtime.translateIteratorsAndBinds(packageName,
+					classSymbol.name, iterators, inputBinds, outputBinds);
 			if (listener.getUserLibraryDetected()) {
 				// 6. Remove user library imports (if any)
 				this.removeUserLibraryImports(tokenStreamRewriter,
@@ -101,8 +106,10 @@ public class CompilerCodeTranslator {
 						iteratorsAndBinds);
 			}
 			// After code translation, stores the output code in a Java file
-			this.writeOutputFile(classSymbol.name + ".java",
-					tokenStreamRewriter.getText());
+			FileWriter
+					.writeFile(classSymbol.name + ".java",
+							this.outputDestinationFolder,
+							tokenStreamRewriter.getText());
 		}
 	}
 
@@ -165,9 +172,9 @@ public class CompilerCodeTranslator {
 	/**
 	 * Perform memory binding for data input on the provided runtime.
 	 */
-	private void bindRuntimeInputData(TokenStreamRewriter tokenStreamRewriter,
+	private InputBind replaceInputBind(TokenStreamRewriter tokenStreamRewriter,
 			VariableSymbol variableSymbol, CreatorSymbol creatorSymbol,
-			ArrayList<UserLibraryData> iteratorsAndBinds, String packageName,
+			ArrayList<UserLibraryData> iteratorsAndBinds, String className,
 			int functionNumber) {
 		// Creates a variable description to avoid unnecessary
 		// coupling between the runtime definition and compiler
@@ -179,7 +186,8 @@ public class CompilerCodeTranslator {
 				.argumentsToVariableParameter(creatorSymbol.arguments);
 		InputBind inputBind = new InputBind(variable, functionNumber, arguments);
 		String inputBindDeclaration = this.runtime.declareAllocation(inputBind);
-		String inputBindCreation = this.runtime.createAllocation(inputBind);
+		String inputBindCreation = this.runtime.createAllocation(className,
+				inputBind);
 		tokenStreamRewriter.insertBefore(variableSymbol.statementAddress.start,
 				inputBindDeclaration);
 		tokenStreamRewriter.insertAfter(creatorSymbol.statementAddress.stop,
@@ -191,18 +199,7 @@ public class CompilerCodeTranslator {
 			tokenStreamRewriter.delete(creatorSymbol.statementAddress.start,
 					creatorSymbol.statementAddress.stop);
 		}
-		String inputBindFunction = this.runtime
-				.createAllocationFunction(inputBind);
-		if (!inputBindFunction.isEmpty()) {
-			String functionCode = this.runtime.getCFunctionHeader(packageName)
-					+ "\n" + inputBindFunction;
-			String fileName = this.runtime
-					.getFunctionName(inputBind.sequentialNumber)
-					+ "."
-					+ this.runtime.getCFileExtension();
-			this.writeOutputFile(fileName, functionCode);
-			iteratorsAndBinds.add(inputBind);
-		}
+		return inputBind;
 	}
 
 	/**
@@ -260,21 +257,25 @@ public class CompilerCodeTranslator {
 	/**
 	 * Replace iterators and initialize its runtime-equivalent functions.
 	 */
-	private void replaceIterators(TokenStreamRewriter tokenStreamRewriter,
+	private List<Iterator> replaceIterators(
+			TokenStreamRewriter tokenStreamRewriter,
 			Collection<UserLibraryData> iteratorsAndBinds, String packageName,
 			int lastFunctionCount, ClassSymbol classSymbol) {
 		this.functionsCount += iteratorsAndBinds.size();
 		HashSet<Variable> variables = new HashSet<>();
+		ArrayList<Iterator> iterators = new ArrayList<>();
 		for (UserLibraryData userLibraryData : iteratorsAndBinds) {
 			if (userLibraryData instanceof Iterator) {
 				Iterator iterator = (Iterator) userLibraryData;
-				// 1. Replace iterator code
-				String iteratorCall = this.runtime.getIterator(iterator);
+				// 1. Iterators are translated on a single runtime call,
+				// so they must be grouped on a single list.
+				iterators.add(iterator);
+				// 2. Replace iterator code
+				String iteratorCall = this.runtime.getIteratorCall(
+						classSymbol.name, iterator);
 				tokenStreamRewriter.replace(
 						iterator.getStatementAddress().start,
 						iterator.getStatementAddress().stop, iteratorCall);
-				// 2. Call Java2C to translate C code
-				this.translateCCode(packageName, (Iterator) iterator);
 				// 3. Control user library variables in order to initialize
 				// allocation and type variables for each of them.
 				if (!variables.contains(iterator.getVariable())) {
@@ -284,39 +285,31 @@ public class CompilerCodeTranslator {
 		}
 		StringBuffer initialization = new StringBuffer();
 		initialization.append("\n"
-				+ this.runtime.getInitializationString(classSymbol.name,
-						lastFunctionCount, iteratorsAndBinds.size()));
+				+ this.runtime.getInitializationString(packageName,
+						classSymbol.name, iterators));
 		tokenStreamRewriter.insertAfter(classSymbol.bodyAddress.start,
 				initialization.toString());
+		return iterators;
 	}
 
 	/**
 	 * Perform memory binding for data output on the provided runtime.
 	 */
-	private void bindRuntimeOutputData(TokenStreamRewriter tokenStreamRewriter,
-			Collection<UserLibraryData> outputBinds, String packageName) {
-		for (UserLibraryData userLibraryData : outputBinds) {
+	private List<OutputBind> replaceOutputBinds(
+			TokenStreamRewriter tokenStreamRewriter,
+			Collection<UserLibraryData> iteratorsAndBinds, String className) {
+		ArrayList<OutputBind> outputBinds = new ArrayList<>();
+		for (UserLibraryData userLibraryData : iteratorsAndBinds) {
 			if (userLibraryData instanceof OutputBind) {
 				OutputBind outputBind = (OutputBind) userLibraryData;
 				tokenStreamRewriter.replace(
 						outputBind.getExpressionAddress().start,
 						outputBind.getExpressionAddress().stop,
-						this.runtime.getAllocationData(outputBind));
-				String outputBindFunction = this.runtime
-						.getAllocationDataFunction(outputBind);
-				if (!outputBindFunction.isEmpty()) {
-					String functionCode = this.runtime
-							.getCFunctionHeader(packageName)
-							+ "\n"
-							+ outputBindFunction;
-					String fileName = this.runtime
-							.getFunctionName(outputBind.sequentialNumber)
-							+ "."
-							+ this.runtime.getCFileExtension();
-					this.writeOutputFile(fileName, functionCode);
-				}
+						this.runtime.getAllocationData(className, outputBind));
+				outputBinds.add(outputBind);
 			}
 		}
+		return outputBinds;
 	}
 
 	/**
@@ -337,35 +330,5 @@ public class CompilerCodeTranslator {
 			Symbol classTable, ArrayList<UserLibraryData> iteratorsAndBinds) {
 		tokenStreamRewriter.insertBefore(classTable.tokenAddress.start,
 				this.runtime.getImports(iteratorsAndBinds));
-	}
-
-	/**
-	 * Create a C files for the iterators provided.
-	 */
-	private void translateCCode(String packageName, Iterator iterator) {
-		String fileName = this.runtime
-				.getFunctionName(iterator.sequentialNumber);
-		this.writeOutputFile(fileName + "." + this.runtime.getCFileExtension(),
-				this.runtime.getCFunctionHeader(packageName) + "\n"
-						+ this.runtime.translateIteratorCode(iterator));
-	}
-
-	/**
-	 * Writes files on the output folder.
-	 */
-	private void writeOutputFile(String fileName, String fileContent) {
-		PrintWriter writer = null;
-		try {
-			try {
-				writer = new PrintWriter(this.outputDestinationFolder + "\\"
-						+ fileName, "UTF-8");
-				writer.print(fileContent);
-			} catch (FileNotFoundException | UnsupportedEncodingException e) {
-				e.printStackTrace();
-			}
-		} finally {
-			if (writer != null)
-				writer.close();
-		}
 	}
 }

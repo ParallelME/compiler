@@ -21,7 +21,8 @@ public class Variable implements Parameter {
 	public final String typeParameterName;
 	public final String modifier;
 
-	public Variable(String name, String typeName, String typeParameter, String modifier) {
+	public Variable(String name, String typeName, String typeParameter,
+			String modifier) {
 		this.name = name;
 		this.typeName = typeName;
 		this.typeParameterName = typeParameter;
@@ -42,5 +43,12 @@ public class Variable implements Parameter {
 	@Override
 	public String toString() {
 		return this.name;
+	}
+
+	@Override
+	public int hashCode() {
+		return this.name.hashCode() * 3 + this.typeName.hashCode() * 7
+				+ this.typeParameterName.hashCode() * 11
+				+ this.modifier.hashCode() * 13;
 	}
 }

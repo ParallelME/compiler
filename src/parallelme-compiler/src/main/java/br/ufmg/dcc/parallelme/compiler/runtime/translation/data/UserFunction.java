@@ -9,7 +9,6 @@
 
 package br.ufmg.dcc.parallelme.compiler.runtime.translation.data;
 
-
 /**
  * Stores user function data that must be translated to the target runtime.
  * 
@@ -22,5 +21,10 @@ public class UserFunction {
 	public UserFunction(String Code, Variable variableArgument) {
 		this.Code = Code;
 		this.variableArgument = variableArgument;
+	}
+
+	@Override
+	public int hashCode() {
+		return this.Code.hashCode() * 3 + this.variableArgument.hashCode() * 7;
 	}
 }

@@ -43,4 +43,10 @@ public class OutputBind extends UserLibraryData {
 	public void setExpressionAddress(TokenAddress expressionAddress) {
 		this.expressionAddress = expressionAddress;
 	}
+
+	@Override
+	public int hashCode() {
+		return this.destinationObject.hashCode() * 3
+				+ this.expressionAddress.hashCode() * 7;
+	}
 }

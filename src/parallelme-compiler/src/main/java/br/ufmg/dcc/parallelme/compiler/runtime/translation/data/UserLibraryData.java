@@ -32,4 +32,9 @@ public class UserLibraryData {
 	public void setVariable(Variable variable) {
 		this.variable = variable;
 	}
+
+	@Override
+	public int hashCode() {
+		return this.variable.hashCode() * 3 + this.sequentialNumber * 7;
+	}
 }

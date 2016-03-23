@@ -28,4 +28,10 @@ public class MethodCall {
 		this.variable = variable;
 		this.expressionAddress = statementAddress;
 	}
+
+	@Override
+	public int hashCode() {
+		return this.methodName.hashCode() * 3 + this.variable.hashCode() * 7
+				+ this.expressionAddress.hashCode() * 11;
+	}
 }

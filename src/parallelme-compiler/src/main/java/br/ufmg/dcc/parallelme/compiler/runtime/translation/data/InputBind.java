@@ -32,4 +32,8 @@ public class InputBind extends UserLibraryData {
 		this.parameters = parameters;
 	}
 
+	@Override
+	public int hashCode() {
+		return this.parameters.hashCode();
+	}
 }
