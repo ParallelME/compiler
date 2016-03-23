@@ -85,7 +85,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	private static final String templateIteratorSequentialCall = "<externalVariables:{var|<var.type>[] <var.arrName> = new <var.type>[1];\n"
 			+ "Allocation <var.allName> = Allocation.createSized(mRS, Element.F32(mRS), 1);\n"
 			+ "<kernelName>.set_<var.gName>(<var.name>);\n"
-			+ "<kernelName>.set_<outputData>(<var.allName>);\n}>"
+			+ "<kernelName>.set_<var.outputData>(<var.allName>);\n}>"
 			+ "<kernelName>.set_<inputData>(<inputDataVar>);\n"
 			+ "<kernelName>.set_gInputXSize<iteratorName>(<inputDataVar>.getType().getX());\n"
 			+ "<kernelName>.set_gInputYSize<iteratorName>(<inputDataVar>.getType().getY());\n"
@@ -291,13 +291,12 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 				String outputData = this.getGlobalVariableName(
 						"output" + this.upperCaseFirstLetter(variable.name),
 						iterator);
-				st.add("outputData", outputData);
 				st.addAggr(
-						"externalVariables.{type, arrName, name, gName, allName}",
+						"externalVariables.{type, arrName, name, gName, allName, outputData}",
 						variable.typeName, this.getPrefix() + variable.name,
 						variable.name,
 						this.getGlobalVariableName(variable.name, iterator),
-						allocationName);
+						allocationName, outputData);
 			}
 			ret = st.render();
 		}
