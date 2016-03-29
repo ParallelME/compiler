@@ -105,6 +105,15 @@ public class CompilerCodeTranslator {
 				this.insertRuntimeImports(tokenStreamRewriter, classSymbol,
 						iteratorsAndBinds);
 			}
+			// 8. Initialize the runtime using all input binds, iterators and
+			// output bind information found.
+			StringBuffer initialization = new StringBuffer();
+			initialization.append("\n"
+					+ this.runtime.getInitializationString(packageName,
+							classSymbol.name, inputBinds, iterators,
+							outputBinds));
+			tokenStreamRewriter.insertAfter(classSymbol.bodyAddress.start,
+					initialization.toString());
 			// After code translation, stores the output code in a Java file
 			FileWriter
 					.writeFile(classSymbol.name + ".java",
@@ -283,12 +292,6 @@ public class CompilerCodeTranslator {
 				}
 			}
 		}
-		StringBuffer initialization = new StringBuffer();
-		initialization.append("\n"
-				+ this.runtime.getInitializationString(packageName,
-						classSymbol.name, iterators));
-		tokenStreamRewriter.insertAfter(classSymbol.bodyAddress.start,
-				initialization.toString());
 		return iterators;
 	}
 

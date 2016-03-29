@@ -33,13 +33,18 @@ public interface RuntimeDefinition {
 	 *            Current package name.
 	 * @param className
 	 *            Current class name.
+	 * @param inputBinds
+	 *            List of all existing input binds on the given class name.
 	 * @param iterators
 	 *            List of all existing iterators on the given class name.
+	 * @param outputBinds
+	 *            List of all existing output binds on the given class name.
 	 * 
 	 * @return Initialization string.
 	 */
 	public String getInitializationString(String packageName, String className,
-			List<Iterator> iterators);
+			List<InputBind> inputBinds, List<Iterator> iterators,
+			List<OutputBind> outputBinds);
 
 	/**
 	 * Get the necessary imports for this runtime.

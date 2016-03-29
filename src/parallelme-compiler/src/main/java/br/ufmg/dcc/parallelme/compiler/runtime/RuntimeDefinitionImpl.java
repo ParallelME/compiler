@@ -13,12 +13,14 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.List;
 
 import org.apache.commons.io.FileUtils;
 
 import br.ufmg.dcc.parallelme.compiler.SimpleLogger;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.CTranslator;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.*;
+import br.ufmg.dcc.parallelme.compiler.userlibrary.classes.HDRImage;
 
 /**
  * Code useful for specfic runtime definition implementation.
@@ -32,6 +34,17 @@ public abstract class RuntimeDefinitionImpl implements RuntimeDefinition {
 	private final String inputBindName = "inputBind";
 	private final String outputBindName = "outputBind";
 	private final String prefix = "$";
+	private final String headerComment = "/**                                               _    __ ____\n"
+			+ " *   _ __  ___ _____   ___   __  __   ___ __     / |  / /  __/\n"
+			+ " *  |  _ \\/ _ |  _  | / _ | / / / /  / _ / /    /  | / / /__\n"
+			+ " *  |  __/ __ |  ___|/ __ |/ /_/ /__/ __/ /__  / / v  / /__\n"
+			+ " *  |_| /_/ |_|_|\\_\\/_/ |_/____/___/___/____/ /_/  /_/____/\n"
+			+ " *\n"
+			+ " *  DCC-UFMG\n"
+			+ " *\n"
+			+ " * Code created automatically by ParallelME compiler.\n"
+			+ " */\n";
+
 	protected final CTranslator cCodeTranslator;
 	protected final String outputDestinationFolder;
 
@@ -53,6 +66,17 @@ public abstract class RuntimeDefinitionImpl implements RuntimeDefinition {
 		return prefix;
 	}
 
+	protected String getHeaderComment() {
+		return this.headerComment;
+	}
+
+	/**
+	 * Return an unique prefixed iterator name base on its sequential number.
+	 */
+	protected String getPrefixedIteratorName(Iterator iterator) {
+		return this.prefix + this.getIteratorName(iterator);
+	}
+
 	/**
 	 * Return an unique iterator name base on its sequential number.
 	 */
@@ -63,8 +87,22 @@ public abstract class RuntimeDefinitionImpl implements RuntimeDefinition {
 	/**
 	 * Return an unique input bind name base on its sequential number.
 	 */
+	protected String getPrefixedInputBindName(InputBind inputBind) {
+		return this.prefix + this.getInputBindName(inputBind);
+	}
+
+	/**
+	 * Return an unique input bind name base on its sequential number.
+	 */
 	protected String getInputBindName(InputBind inputBind) {
 		return inputBindName + inputBind.sequentialNumber;
+	}
+
+	/**
+	 * Return an unique prefixed output bind name base on its sequential number.
+	 */
+	protected String getPrefixedOutputBindName(OutputBind outputBind) {
+		return this.prefix + this.getOutputBindName(outputBind);
 	}
 
 	/**
@@ -122,5 +160,45 @@ public abstract class RuntimeDefinitionImpl implements RuntimeDefinition {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Transforms an array of parameters in a comma separated string.
+	 * 
+	 * @param parameters
+	 *            Array of parameters.
+	 * @return Comma separated string with parameters.
+	 */
+	protected String toCommaSeparatedString(Parameter[] parameters) {
+		StringBuilder params = new StringBuilder();
+		for (int i = 0; i < parameters.length; i++) {
+			params.append(parameters[i]);
+			if (i != (parameters.length - 1))
+				params.append(", ");
+		}
+		return params.toString();
+	}
+
+	/**
+	 * Return the list of necessary imports for user library classes.
+	 * 
+	 * @param iteratorsAndBinds
+	 *            List of all iterators and binds found in a given class.
+	 * 
+	 * @return String with the necessary imports.
+	 */
+	protected String getUserLibraryImports(
+			List<UserLibraryData> iteratorsAndBinds) {
+		StringBuffer imports = new StringBuffer();
+		boolean exportedHDR = false;
+		for (UserLibraryData userLibraryData : iteratorsAndBinds) {
+			if (!exportedHDR
+					&& userLibraryData.getVariable().typeName.equals(HDRImage
+							.getName())) {
+				imports.append("import br.ufmg.dcc.parallelme.userlibrary.RGBE;\n");
+				exportedHDR = true;
+			}
+		}
+		return imports.toString();
 	}
 }

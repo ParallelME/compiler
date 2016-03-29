@@ -31,7 +31,7 @@ import br.ufmg.dcc.parallelme.compiler.util.FileWriter;
  * @author Wilson de Carvalho, Pedro Caldeira
  */
 public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
-	private static final String templateRSFile = "<header>\n<functions:{functionName|\n\n<functionName>}>";
+	private static final String templateRSFile = "<introductoryMsg>\n<header>\n<functions:{functionName|\n\n<functionName>}>";
 	private static final String templateKernels = "\t<kernels:{kernelName|ScriptC_<className> <kernelName>;\n}>";
 	private static final String templateConstructor = "\tpublic <className>(RenderScript mRS) {\n\t\tthis.mRS = mRS;\n\t\t<kernels:{kernelName|this.<kernelName> = new ScriptC_<className>(mRS);\n}>\t}\n";
 	private static final String templateCreateAllocationBitmapImage = "Type <dataTypeInputObject>;\n"
@@ -124,7 +124,8 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	 */
 	@Override
 	public String getInitializationString(String packageName, String className,
-			List<Iterator> iterators) {
+			List<InputBind> inputBinds, List<Iterator> iterators,
+			List<OutputBind> outputBinds) {
 		StringBuilder init = new StringBuilder();
 		init.append("\tRenderScript mRS;\n");
 		ST st1 = new ST(templateKernels);
@@ -144,19 +145,11 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	 */
 	@Override
 	public String getImports(List<UserLibraryData> iteratorsAndBinds) {
-		StringBuffer imports = new StringBuffer();
-		imports.append("import android.support.v8.renderscript.*;\n");
-		boolean exportedHDR = false;
-		for (UserLibraryData userLibraryData : iteratorsAndBinds) {
-			if (!exportedHDR
-					&& userLibraryData.getVariable().typeName.equals(HDRImage
-							.getName())) {
-				imports.append("import br.ufmg.dcc.parallelme.userlibrary.RGBE;\n");
-				exportedHDR = true;
-			}
-		}
-		imports.append("\n");
-		return imports.toString();
+		StringBuffer ret = new StringBuffer();
+		ret.append("import android.support.v8.renderscript.*;\n");
+		ret.append(this.getUserLibraryImports(iteratorsAndBinds));
+		ret.append("\n");
+		return ret.toString();
 	}
 
 	/**
@@ -187,15 +180,10 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 		} else if (userLibraryClass instanceof HDRImage) {
 			String resourceData = this.getPrefix() + inputBind.getVariable()
 					+ "ResourceData";
-			StringBuilder params = new StringBuilder();
-			for (int i = 0; i < inputBind.getParameters().length; i++) {
-				params.append(inputBind.getParameters()[i]);
-				if (i != (inputBind.getParameters().length - 1))
-					params.append(",");
-			}
 			ST st = new ST(templateCreateAllocationHDRImage);
 			st.add("resourceData", resourceData);
-			st.add("params", params.toString());
+			st.add("params",
+					this.toCommaSeparatedString(inputBind.getParameters()));
 			st.add("dataTypeInputObject", dataTypeInputObject);
 			st.add("dataTypeOutputObject", dataTypeOutputObject);
 			st.add("inputObject", inputObject);
@@ -250,7 +238,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	 * {@inheritDoc}
 	 */
 	public String getIteratorCall(String className, Iterator iterator) {
-		String functionName = this.getIteratorName(iterator);
+		String functionName = this.getPrefixedIteratorName(iterator);
 		String kernelName = this.getKernelName(className);
 		String ret;
 		if (iterator.getType() == IteratorType.Parallel) {
@@ -275,8 +263,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 							"input"
 									+ this.upperCaseFirstLetter(iterator
 											.getVariable().name), iterator);
-			String iteratorName = this.upperCaseFirstLetter(this
-					.getIteratorName(iterator));
+			String iteratorName = this.getPrefixedIteratorName(iterator);
 			ST st = new ST(templateIteratorSequentialCall);
 			st.add("kernelName", kernelName);
 			st.add("functionName", functionName);
@@ -310,8 +297,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	 * iterator 2 becomes "gMax_Iterator2"
 	 */
 	private String getGlobalVariableName(String variable, Iterator iterator) {
-		String iteratorName = this.upperCaseFirstLetter(this
-				.getIteratorName(iterator));
+		String iteratorName = this.getPrefixedIteratorName(iterator);
 		String variableName = this.upperCaseFirstLetter(variable);
 		return "g" + variableName + iteratorName;
 	}
@@ -325,6 +311,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 			List<InputBind> inputBinds, List<OutputBind> outputBinds) {
 		// 1. Add file header
 		ST st = new ST(templateRSFile);
+		st.add("introductoryMsg", this.getHeaderComment());
 		st.add("header", "#pragma version(1)\n#pragma rs java_package_name("
 				+ packageName + ")");
 		// 2. Translate input binds
@@ -368,8 +355,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 						variable.name, iterator);
 				externalVariables.append(variable.typeName + " "
 						+ gVariableName + ";\n");
-				code2Translate = code2Translate.replaceAll(variable.name,
-						gVariableName);
+				code2Translate = this.replaceAndEscapePrefix(code2Translate, gVariableName, variable.name);
 			}
 			externalVariables.append("\n");
 			ret = externalVariables.toString()
@@ -386,7 +372,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 			String gNameIn = this.getGlobalVariableName("input" + variableName,
 					iterator);
 			String iteratorName = this.upperCaseFirstLetter(this
-					.getIteratorName(iterator));
+					.getPrefixedIteratorName(iterator));
 			st.add("less", "<");
 			st.add("inputData", gNameIn);
 			st.add("functionSignature",
@@ -407,7 +393,8 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 				st.addAggr(
 						"externalVariables.{ variableType, outVariableName, variableName }",
 						variable.typeName, gNameOut, gNameVar);
-				cCode = cCode.replaceAll(variable.name, gNameVar);
+				cCode = this.replaceAndEscapePrefix(cCode, gNameVar,
+						variable.name);
 			}
 			st.add("userCode", cCode);
 			ret = st.render();
@@ -421,6 +408,23 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	private String upperCaseFirstLetter(String string) {
 		return string.substring(0, 1).toUpperCase()
 				+ string.substring(1, string.length());
+	}
+
+	/**
+	 * Replace all instances of a given oldName by a newName, checking if this
+	 * newName contains a $ sign, which is reserved in regex. In case a $
+	 * exists, it will be escaped during replacement.
+	 */
+	private String replaceAndEscapePrefix(String string, String newName,
+			String oldName) {
+		if (newName.contains("$")) {
+			int idx = newName.indexOf("$");
+			newName = newName.substring(0, idx) + "\\$"
+					+ newName.substring(idx + 1, newName.length());
+			return string.replaceAll(oldName, newName);
+		} else {
+			return string.replaceAll(oldName, newName);
+		}
 	}
 
 	/**
@@ -566,11 +570,12 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 				st.add("parameterTypeTranslated", parameterTypeTranslated);
 				st.add("parameterName",
 						iterator.getUserFunctionData().variableArgument.name);
-				st.add("userFunctionName", this.getIteratorName(iterator));
+				st.add("userFunctionName",
+						this.getPrefixedIteratorName(iterator));
 				functionSignature = st.render();
 			} else {
 				ST st = new ST(templateIteratorSequentialFunctionSignature);
-				st.add("functionName", this.getIteratorName(iterator));
+				st.add("functionName", this.getPrefixedIteratorName(iterator));
 				functionSignature = st.render();
 			}
 		}
