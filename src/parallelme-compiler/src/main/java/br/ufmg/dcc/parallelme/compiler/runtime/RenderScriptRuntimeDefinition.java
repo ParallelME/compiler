@@ -132,7 +132,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 		ST st2 = new ST(templateConstructor);
 		st1.add("className", className);
 		st2.add("className", className);
-		String kernelName = this.getKernelName(className);
+		String kernelName = this.commonDefinitions.getKernelName(className);
 		st1.add("kernels", kernelName);
 		st2.add("kernels", kernelName);
 		init.append(st1.render() + "\n ");
@@ -158,11 +158,13 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	@Override
 	public String createAllocation(String className, InputBind inputBind) {
 		String ret = "";
-		String inputObject = this.getVariableInName(inputBind.getVariable());
-		String outputObject = this.getVariableOutName(inputBind.getVariable());
-		String dataTypeInputObject = this.getPrefix() + inputBind.getVariable()
-				+ "InDataType";
-		String dataTypeOutputObject = this.getPrefix()
+		String inputObject = this.commonDefinitions.getVariableInName(inputBind
+				.getVariable());
+		String outputObject = this.commonDefinitions
+				.getVariableOutName(inputBind.getVariable());
+		String dataTypeInputObject = this.commonDefinitions.getPrefix()
+				+ inputBind.getVariable() + "InDataType";
+		String dataTypeOutputObject = this.commonDefinitions.getPrefix()
 				+ inputBind.getVariable() + "OutDataType";
 		UserLibraryClass userLibraryClass = UserLibraryClassFactory
 				.create(inputBind.getVariable().typeName);
@@ -175,20 +177,22 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 			st.add("inputObject", inputObject);
 			st.add("outputObject", outputObject);
 			st.add("param", inputBind.getParameters()[0]);
-			st.add("kernelName", this.getKernelName(className));
+			st.add("kernelName",
+					this.commonDefinitions.getKernelName(className));
 			ret = st.render();
 		} else if (userLibraryClass instanceof HDRImage) {
-			String resourceData = this.getPrefix() + inputBind.getVariable()
-					+ "ResourceData";
+			String resourceData = this.commonDefinitions.getPrefix()
+					+ inputBind.getVariable() + "ResourceData";
 			ST st = new ST(templateCreateAllocationHDRImage);
 			st.add("resourceData", resourceData);
-			st.add("params",
-					this.toCommaSeparatedString(inputBind.getParameters()));
+			st.add("params", this.commonDefinitions
+					.toCommaSeparatedString(inputBind.getParameters()));
 			st.add("dataTypeInputObject", dataTypeInputObject);
 			st.add("dataTypeOutputObject", dataTypeOutputObject);
 			st.add("inputObject", inputObject);
 			st.add("outputObject", outputObject);
-			st.add("kernelName", this.getKernelName(className));
+			st.add("kernelName",
+					this.commonDefinitions.getKernelName(className));
 			ret = st.render();
 		}
 		return ret;
@@ -200,8 +204,10 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	@Override
 	public String declareAllocation(InputBind inputBind) {
 		String ret = "";
-		String inputObject = this.getVariableInName(inputBind.getVariable());
-		String outputObject = this.getVariableOutName(inputBind.getVariable());
+		String inputObject = this.commonDefinitions.getVariableInName(inputBind
+				.getVariable());
+		String outputObject = this.commonDefinitions
+				.getVariableOutName(inputBind.getVariable());
 		UserLibraryClass userLibraryClass = UserLibraryClassFactory
 				.create(inputBind.getVariable().typeName);
 		// If the user library class is a BitmapImage, there is only a single
@@ -220,17 +226,20 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	 */
 	@Override
 	public String getAllocationData(String className, OutputBind outputBind) {
-		String inputObject = this.getVariableInName(outputBind.getVariable());
-		String outputObject = this.getVariableOutName(outputBind.getVariable());
+		String inputObject = this.commonDefinitions
+				.getVariableInName(outputBind.getVariable());
+		String outputObject = this.commonDefinitions
+				.getVariableOutName(outputBind.getVariable());
 		StringBuilder ret = new StringBuilder();
 		if (outputBind.getVariable().typeName.equals(HDRImage.getName())) {
 			ST st = new ST(templateAllocationOutputDataHDRImage);
 			st.add("inputAllocation", inputObject);
 			ret.append(st.render());
 		}
-		ret.append(this.getKernelName(className) + ".forEach_toBitmap("
-				+ outputObject + ", " + inputObject + ");\n" + inputObject
-				+ ".copyTo(" + outputBind.getDestinationObject().name + ");\n");
+		ret.append(this.commonDefinitions.getKernelName(className)
+				+ ".forEach_toBitmap(" + outputObject + ", " + inputObject
+				+ ");\n" + inputObject + ".copyTo("
+				+ outputBind.getDestinationObject().name + ");\n");
 		return ret.toString();
 	}
 
@@ -238,14 +247,16 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	 * {@inheritDoc}
 	 */
 	public String getIteratorCall(String className, Iterator iterator) {
-		String functionName = this.getPrefixedIteratorName(iterator);
-		String kernelName = this.getKernelName(className);
+		String functionName = this.commonDefinitions
+				.getPrefixedIteratorName(iterator);
+		String kernelName = this.commonDefinitions.getKernelName(className);
 		String ret;
 		if (iterator.getType() == IteratorType.Parallel) {
 			ST st = new ST(templateIteratorParallelCall);
 			st.add("kernelName", kernelName);
 			st.add("functionName", functionName);
-			st.add("variable", this.getVariableOutName(iterator.getVariable()));
+			st.add("variable", this.commonDefinitions
+					.getVariableOutName(iterator.getVariable()));
 			st.add("externalVariables", null);
 			if (!iterator.getExternalVariables().isEmpty()) {
 				for (Variable variable : iterator.getExternalVariables()) {
@@ -263,13 +274,14 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 							"input"
 									+ this.upperCaseFirstLetter(iterator
 											.getVariable().name), iterator);
-			String iteratorName = this.getPrefixedIteratorName(iterator);
+			String iteratorName = this.commonDefinitions
+					.getPrefixedIteratorName(iterator);
 			ST st = new ST(templateIteratorSequentialCall);
 			st.add("kernelName", kernelName);
 			st.add("functionName", functionName);
 			st.add("inputData", inputData);
-			st.add("inputDataVar",
-					this.getVariableOutName(iterator.getVariable()));
+			st.add("inputDataVar", this.commonDefinitions
+					.getVariableOutName(iterator.getVariable()));
 			st.add("iteratorName", iteratorName);
 			for (Variable variable : iterator.getExternalVariables()) {
 				String gName = this.getGlobalVariableName(variable.name,
@@ -280,8 +292,8 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 						iterator);
 				st.addAggr(
 						"externalVariables.{type, arrName, name, gName, allName, outputData}",
-						variable.typeName, this.getPrefix() + variable.name,
-						variable.name,
+						variable.typeName, this.commonDefinitions.getPrefix()
+								+ variable.name, variable.name,
 						this.getGlobalVariableName(variable.name, iterator),
 						allocationName, outputData);
 			}
@@ -297,7 +309,8 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	 * iterator 2 becomes "gMax_Iterator2"
 	 */
 	private String getGlobalVariableName(String variable, Iterator iterator) {
-		String iteratorName = this.getPrefixedIteratorName(iterator);
+		String iteratorName = this.commonDefinitions
+				.getPrefixedIteratorName(iterator);
 		String variableName = this.upperCaseFirstLetter(variable);
 		return "g" + variableName + iteratorName;
 	}
@@ -311,7 +324,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 			List<InputBind> inputBinds, List<OutputBind> outputBinds) {
 		// 1. Add file header
 		ST st = new ST(templateRSFile);
-		st.add("introductoryMsg", this.getHeaderComment());
+		st.add("introductoryMsg", this.commonDefinitions.getHeaderComment());
 		st.add("header", "#pragma version(1)\n#pragma rs java_package_name("
 				+ packageName + ")");
 		// 2. Translate input binds
@@ -355,7 +368,8 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 						variable.name, iterator);
 				externalVariables.append(variable.typeName + " "
 						+ gVariableName + ";\n");
-				code2Translate = this.replaceAndEscapePrefix(code2Translate, gVariableName, variable.name);
+				code2Translate = this.replaceAndEscapePrefix(code2Translate,
+						gVariableName, variable.name);
 			}
 			externalVariables.append("\n");
 			ret = externalVariables.toString()
@@ -371,8 +385,9 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 					.getVariable().name);
 			String gNameIn = this.getGlobalVariableName("input" + variableName,
 					iterator);
-			String iteratorName = this.upperCaseFirstLetter(this
-					.getPrefixedIteratorName(iterator));
+			String iteratorName = this
+					.upperCaseFirstLetter(this.commonDefinitions
+							.getPrefixedIteratorName(iterator));
 			st.add("less", "<");
 			st.add("inputData", gNameIn);
 			st.add("functionSignature",
@@ -570,12 +585,13 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 				st.add("parameterTypeTranslated", parameterTypeTranslated);
 				st.add("parameterName",
 						iterator.getUserFunctionData().variableArgument.name);
-				st.add("userFunctionName",
-						this.getPrefixedIteratorName(iterator));
+				st.add("userFunctionName", this.commonDefinitions
+						.getPrefixedIteratorName(iterator));
 				functionSignature = st.render();
 			} else {
 				ST st = new ST(templateIteratorSequentialFunctionSignature);
-				st.add("functionName", this.getPrefixedIteratorName(iterator));
+				st.add("functionName", this.commonDefinitions
+						.getPrefixedIteratorName(iterator));
 				functionSignature = st.render();
 			}
 		}
@@ -600,11 +616,13 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 				|| methodCall.variable.typeName.equals(HDRImage.getName())) {
 			if (methodCall.methodName.equals(BitmapImage.getInstance()
 					.getWidthMethodName())) {
-				ret = this.getVariableInName(methodCall.variable)
+				ret = this.commonDefinitions
+						.getVariableInName(methodCall.variable)
 						+ ".getType().getX()";
 			} else if (methodCall.methodName.equals(BitmapImage.getInstance()
 					.getHeightMethodName())) {
-				ret = this.getVariableInName(methodCall.variable)
+				ret = this.commonDefinitions
+						.getVariableInName(methodCall.variable)
 						+ ".getType().getY()";
 			}
 		} else {

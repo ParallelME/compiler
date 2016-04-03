@@ -28,95 +28,14 @@ import br.ufmg.dcc.parallelme.compiler.userlibrary.classes.HDRImage;
  * @author Wilson de Carvalho
  */
 public abstract class RuntimeDefinitionImpl implements RuntimeDefinition {
-	private final String inSuffix = "In";
-	private final String outSuffix = "Out";
-	private final String iteratorName = "iterator";
-	private final String inputBindName = "inputBind";
-	private final String outputBindName = "outputBind";
-	private final String prefix = "$";
-	private final String headerComment = "/**                                               _    __ ____\n"
-			+ " *   _ __  ___ _____   ___   __  __   ___ __     / |  / /  __/\n"
-			+ " *  |  _ \\/ _ |  _  | / _ | / / / /  / _ / /    /  | / / /__\n"
-			+ " *  |  __/ __ |  ___|/ __ |/ /_/ /__/ __/ /__  / / v  / /__\n"
-			+ " *  |_| /_/ |_|_|\\_\\/_/ |_/____/___/___/____/ /_/  /_/____/\n"
-			+ " *\n"
-			+ " *  DCC-UFMG\n"
-			+ " *\n"
-			+ " * Code created automatically by ParallelME compiler.\n"
-			+ " */\n";
-
 	protected final CTranslator cCodeTranslator;
 	protected final String outputDestinationFolder;
+	protected final CommonDefinitions commonDefinitions = new CommonDefinitions();
 
 	public RuntimeDefinitionImpl(CTranslator cCodeTranslator,
 			String outputDestinationFolder) {
 		this.cCodeTranslator = cCodeTranslator;
 		this.outputDestinationFolder = outputDestinationFolder;
-	}
-
-	protected String getVariableInName(Variable variable) {
-		return prefix + variable.name + inSuffix;
-	}
-
-	protected String getVariableOutName(Variable variable) {
-		return prefix + variable.name + outSuffix;
-	}
-
-	protected String getPrefix() {
-		return prefix;
-	}
-
-	protected String getHeaderComment() {
-		return this.headerComment;
-	}
-
-	/**
-	 * Return an unique prefixed iterator name base on its sequential number.
-	 */
-	protected String getPrefixedIteratorName(Iterator iterator) {
-		return this.prefix + this.getIteratorName(iterator);
-	}
-
-	/**
-	 * Return an unique iterator name base on its sequential number.
-	 */
-	protected String getIteratorName(Iterator iterator) {
-		return iteratorName + iterator.sequentialNumber;
-	}
-
-	/**
-	 * Return an unique input bind name base on its sequential number.
-	 */
-	protected String getPrefixedInputBindName(InputBind inputBind) {
-		return this.prefix + this.getInputBindName(inputBind);
-	}
-
-	/**
-	 * Return an unique input bind name base on its sequential number.
-	 */
-	protected String getInputBindName(InputBind inputBind) {
-		return inputBindName + inputBind.sequentialNumber;
-	}
-
-	/**
-	 * Return an unique prefixed output bind name base on its sequential number.
-	 */
-	protected String getPrefixedOutputBindName(OutputBind outputBind) {
-		return this.prefix + this.getOutputBindName(outputBind);
-	}
-
-	/**
-	 * Return an unique output bind name base on its sequential number.
-	 */
-	protected String getOutputBindName(OutputBind outputBind) {
-		return outputBindName + outputBind.sequentialNumber;
-	}
-
-	/**
-	 * Return kernel that must be used in kernel object declarations.
-	 */
-	protected String getKernelName(String className) {
-		return this.prefix + "kernel_" + className;
 	}
 
 	/**
@@ -160,23 +79,6 @@ public abstract class RuntimeDefinitionImpl implements RuntimeDefinition {
 				}
 			}
 		}
-	}
-
-	/**
-	 * Transforms an array of parameters in a comma separated string.
-	 * 
-	 * @param parameters
-	 *            Array of parameters.
-	 * @return Comma separated string with parameters.
-	 */
-	protected String toCommaSeparatedString(Parameter[] parameters) {
-		StringBuilder params = new StringBuilder();
-		for (int i = 0; i < parameters.length; i++) {
-			params.append(parameters[i]);
-			if (i != (parameters.length - 1))
-				params.append(", ");
-		}
-		return params.toString();
 	}
 
 	/**

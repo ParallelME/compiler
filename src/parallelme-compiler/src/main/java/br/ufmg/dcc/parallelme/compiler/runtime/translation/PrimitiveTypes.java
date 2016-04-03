@@ -10,6 +10,7 @@
 package br.ufmg.dcc.parallelme.compiler.runtime.translation;
 
 import java.util.HashMap;
+import java.util.HashSet;
 
 import br.ufmg.dcc.parallelme.compiler.util.Pair;
 
@@ -20,31 +21,39 @@ import br.ufmg.dcc.parallelme.compiler.util.Pair;
  * @author Wilson de Carvalho
  */
 public class PrimitiveTypes {
-	// Key: java primitive type. Value: Pair(CType, JNIType)
-	static private HashMap<String, Pair<String, String>> types = null;
-	static private HashMap<String, Pair<String, String>> numericTypes = null;
+	static private HashMap<String, String> cTypes = null;
+	static private HashMap<String, String> jniTypes = null;
+	static private HashMap<String, Pair<String, String>> runtimeTypes = null;
+	static private HashSet<String> numericTypes = null;
 
 	private static void initTypes() {
-		PrimitiveTypes.types = new HashMap<>();
-		PrimitiveTypes.numericTypes = new HashMap<>();
-		PrimitiveTypes.numericTypes.put("int", new Pair<String, String>("int",
-				"jint"));
-		PrimitiveTypes.numericTypes.put("long", new Pair<String, String>(
-				"long", "jlong"));
-		PrimitiveTypes.numericTypes.put("float", new Pair<String, String>(
-				"float", "jfloat"));
-		PrimitiveTypes.numericTypes.put("double", new Pair<String, String>(
-				"double", "jdouble"));
-		PrimitiveTypes.numericTypes.put("short", new Pair<String, String>(
-				"short", "jshort"));
-		PrimitiveTypes.types.putAll(numericTypes);
-		PrimitiveTypes.types.put("char", new Pair<String, String>("char",
-				"jchar"));
-		PrimitiveTypes.types.put("boolean", new Pair<String, String>("bool",
-				"jboolean"));
-		PrimitiveTypes.types.put("byte", new Pair<String, String>("byte",
-				"jbyte"));
+		cTypes = new HashMap<>();
+		jniTypes = new HashMap<>();
+		runtimeTypes = new HashMap<>();
+		numericTypes = new HashSet<>();
 
+		numericTypes.add("int");
+		numericTypes.add("float");
+		numericTypes.add("short");
+
+		cTypes.put("int", "int");
+		cTypes.put("float", "float");
+		cTypes.put("short", "short");
+		cTypes.put("char", "char");
+		cTypes.put("boolean", "bool");
+		cTypes.put("byte", "byte");
+
+		jniTypes.put("int", "jint");
+		jniTypes.put("float", "jfloat");
+		jniTypes.put("short", "jshort");
+		jniTypes.put("char", "jchar");
+		jniTypes.put("boolean", "jboolean");
+		jniTypes.put("byte", "jbyte");
+
+		runtimeTypes.put("int", new Pair<String, String>("INT", "i"));
+		runtimeTypes.put("float", new Pair<String, String>("FLOAT", "f"));
+		runtimeTypes.put("short", new Pair<String, String>("SHORT", "s"));
+		runtimeTypes.put("char", new Pair<String, String>("CHAR", "c"));
 	}
 
 	/**
@@ -55,9 +64,9 @@ public class PrimitiveTypes {
 	 * @return True if type is primitive. False otherwise.
 	 */
 	public static boolean isPrimitive(String type) {
-		if (PrimitiveTypes.types == null)
-			PrimitiveTypes.initTypes();
-		return PrimitiveTypes.types.containsKey(type);
+		if (cTypes == null)
+			initTypes();
+		return cTypes.containsKey(type);
 	}
 
 	/**
@@ -68,9 +77,9 @@ public class PrimitiveTypes {
 	 * @return True if type is numeric and primitive. False otherwise.
 	 */
 	public static boolean isNumericPrimitive(String type) {
-		if (PrimitiveTypes.numericTypes == null)
-			PrimitiveTypes.initTypes();
-		return PrimitiveTypes.numericTypes.containsKey(type);
+		if (numericTypes == null)
+			initTypes();
+		return numericTypes.contains(type);
 	}
 
 	/**
@@ -83,12 +92,12 @@ public class PrimitiveTypes {
 	 *         class.
 	 */
 	public static String getCType(String type) {
-		if (PrimitiveTypes.types == null)
-			PrimitiveTypes.initTypes();
-		if (!PrimitiveTypes.isPrimitive(type))
+		if (cTypes == null)
+			initTypes();
+		if (!isPrimitive(type))
 			return "";
 		else
-			return PrimitiveTypes.types.get(type).left;
+			return cTypes.get(type);
 	}
 
 	/**
@@ -101,11 +110,48 @@ public class PrimitiveTypes {
 	 *         class.
 	 */
 	public static String getJNIType(String type) {
-		if (PrimitiveTypes.types == null)
-			PrimitiveTypes.initTypes();
-		if (!PrimitiveTypes.isPrimitive(type))
+		if (jniTypes == null)
+			initTypes();
+		if (!isPrimitive(type))
 			return "";
 		else
-			return PrimitiveTypes.types.get(type).right;
+			return jniTypes.get(type);
+	}
+
+	/**
+	 * Gets the equivalent runtime argument type for a given Java primitive
+	 * type.
+	 * 
+	 * @param type
+	 *            Java type name.
+	 * @return Runtime argument equivalent type. Empty if type informed is not
+	 *         Java primitive or is not recognized among the primitives
+	 *         available in this class.
+	 */
+	public static String getRuntimeArgType(String type) {
+		if (runtimeTypes == null)
+			initTypes();
+		if (!isPrimitive(type))
+			return "";
+		else
+			return runtimeTypes.get(type).left;
+	}
+
+	/**
+	 * Gets the runtime alias for a given Java primitive type.
+	 * 
+	 * @param type
+	 *            Java type name.
+	 * @return Alias for the informed type. Empty if type informed is not Java
+	 *         primitive or is not recognized among the primitives available in
+	 *         this class.
+	 */
+	public static String getRuntimeAlias(String type) {
+		if (runtimeTypes == null)
+			initTypes();
+		if (!isPrimitive(type))
+			return "";
+		else
+			return runtimeTypes.get(type).right;
 	}
 }
