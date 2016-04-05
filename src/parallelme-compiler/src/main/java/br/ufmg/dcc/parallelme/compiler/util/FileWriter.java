@@ -10,9 +10,10 @@
 package br.ufmg.dcc.parallelme.compiler.util;
 
 import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
+
+import org.apache.commons.io.FileUtils;
 
 import br.ufmg.dcc.parallelme.compiler.SimpleLogger;
 
@@ -37,10 +38,13 @@ public class FileWriter {
 		PrintWriter writer = null;
 		try {
 			try {
+				File destinationFolderStructure = new File(destinationFolder);
+				if (!destinationFolderStructure.exists())
+					FileUtils.forceMkdir(destinationFolderStructure);
 				writer = new PrintWriter(destinationFolder + File.separator
 						+ fileName, "UTF-8");
 				writer.print(fileContents);
-			} catch (FileNotFoundException | UnsupportedEncodingException e) {
+			} catch (IOException e) {
 				SimpleLogger
 						.error("Error while saving file: " + e.getMessage());
 			}

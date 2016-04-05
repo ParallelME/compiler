@@ -13,6 +13,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 
+import br.ufmg.dcc.parallelme.compiler.runtime.ParallelMERuntimeDefinition;
 import br.ufmg.dcc.parallelme.compiler.runtime.RenderScriptRuntimeDefinition;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.SimpleTranslator;
 
@@ -42,7 +43,7 @@ public class Main {
 					SimpleLogger.logError = true;
 					SimpleLogger.logInfo = true;
 					SimpleLogger.logWarn = true;
-					(new Compiler(new RenderScriptRuntimeDefinition(
+					(new Compiler(new ParallelMERuntimeDefinition(
 							new SimpleTranslator(), outputInfo))).compile(
 							inputInfo, outputInfo);
 				} else {

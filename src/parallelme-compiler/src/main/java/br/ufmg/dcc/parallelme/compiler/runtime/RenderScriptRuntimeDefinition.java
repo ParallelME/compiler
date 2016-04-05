@@ -10,14 +10,14 @@
 package br.ufmg.dcc.parallelme.compiler.runtime;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.stringtemplate.v4.ST;
 
 import br.ufmg.dcc.parallelme.compiler.SimpleLogger;
-import br.ufmg.dcc.parallelme.compiler.runtime.translation.BoxedTypes;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.CTranslator;
-import br.ufmg.dcc.parallelme.compiler.runtime.translation.PrimitiveTypes;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.*;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.Iterator.IteratorType;
 import br.ufmg.dcc.parallelme.compiler.userlibrary.UserLibraryClass;
@@ -33,26 +33,26 @@ import br.ufmg.dcc.parallelme.compiler.util.FileWriter;
 public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	private static final String templateRSFile = "<introductoryMsg>\n<header>\n<functions:{functionName|\n\n<functionName>}>";
 	private static final String templateKernels = "\t<kernels:{kernelName|ScriptC_<className> <kernelName>;\n}>";
-	private static final String templateConstructor = "\tpublic <className>(RenderScript mRS) {\n\t\tthis.mRS = mRS;\n\t\t<kernels:{kernelName|this.<kernelName> = new ScriptC_<className>(mRS);\n}>\t}\n";
+	private static final String templateConstructor = "\tpublic <className>(RenderScript $mRS) {\n\t\tthis.$mRS = $mRS;\n\t\t<kernels:{kernelName|this.<kernelName> = new ScriptC_<className>($mRS);\n}>\t}\n";
 	private static final String templateCreateAllocationBitmapImage = "Type <dataTypeInputObject>;\n"
-			+ "<inputObject> = Allocation.createFromBitmap(mRS, <param>, Allocation.MipmapControl.MIPMAP_NONE, Allocation.USAGE_SCRIPT | Allocation.USAGE_SHARED);\n"
-			+ "<dataTypeInputObject> = new Type.Builder(mRS, Element.F32_3(mRS))\n"
+			+ "<inputObject> = Allocation.createFromBitmap($mRS, <param>, Allocation.MipmapControl.MIPMAP_NONE, Allocation.USAGE_SCRIPT | Allocation.USAGE_SHARED);\n"
+			+ "<dataTypeInputObject> = new Type.Builder($mRS, Element.F32_3($mRS))\n"
 			+ "\t.setX(<inputObject>.getType().getX())\n"
 			+ "\t.setY(<inputObject>.getType().getY())\n"
 			+ "\t.create();\n"
-			+ "<outputObject> = Allocation.createTyped(mRS, <dataTypeInputObject>);\n"
+			+ "<outputObject> = Allocation.createTyped($mRS, <dataTypeInputObject>);\n"
 			+ "<kernelName>.forEach_toFloat(<inputObject>, <outputObject>);";
 	private static final String templateCreateAllocationHDRImage = "RGBE.ResourceData <resourceData> = RGBE.loadFromResource(<params>);\n"
-			+ "Type <dataTypeInputObject> = new Type.Builder(mRS, Element.RGBA_8888(mRS))\n"
+			+ "Type <dataTypeInputObject> = new Type.Builder($mRS, Element.RGBA_8888($mRS))\n"
 			+ "\t.setX(<resourceData>.width)\n"
 			+ "\t.setY(<resourceData>.height)\n"
 			+ "\t.create();\n"
-			+ "Type <dataTypeOutputObject> = new Type.Builder(mRS, Element.F32_4(mRS))\n"
+			+ "Type <dataTypeOutputObject> = new Type.Builder($mRS, Element.F32_4($mRS))\n"
 			+ "\t.setX(<resourceData>.width)\n"
 			+ "\t.setY(<resourceData>.height)\n"
 			+ "\t.create();\n"
-			+ "<inputObject> = Allocation.createTyped(mRS, <dataTypeInputObject>, Allocation.MipmapControl.MIPMAP_NONE, Allocation.USAGE_SCRIPT);\n"
-			+ "<outputObject> = Allocation.createTyped(mRS, <dataTypeOutputObject>);\n"
+			+ "<inputObject> = Allocation.createTyped($mRS, <dataTypeInputObject>, Allocation.MipmapControl.MIPMAP_NONE, Allocation.USAGE_SCRIPT);\n"
+			+ "<outputObject> = Allocation.createTyped($mRS, <dataTypeOutputObject>);\n"
 			+ "<inputObject>.copyFrom(<resourceData>.data);\n"
 			+ "<kernelName>.forEach_toFloat(<inputObject>, <outputObject>);";
 	private static final String templateAllocationDataFunctionBitmapHDRImage = "\nuchar4 __attribute__((kernel)) toBitmap(<varType>"
@@ -83,7 +83,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	private static final String templateIteratorParallelCall = "<externalVariables:{var|<var.kernelName>.set_<var.gVariableName>(<var.variableName>);\n}>"
 			+ "<kernelName>.forEach_<functionName>(<variable>, <variable>);\n";
 	private static final String templateIteratorSequentialCall = "<externalVariables:{var|<var.type>[] <var.arrName> = new <var.type>[1];\n"
-			+ "Allocation <var.allName> = Allocation.createSized(mRS, Element.F32(mRS), 1);\n"
+			+ "Allocation <var.allName> = Allocation.createSized($mRS, Element.F32($mRS), 1);\n"
 			+ "<kernelName>.set_<var.gName>(<var.name>);\n"
 			+ "<kernelName>.set_<var.outputData>(<var.allName>);\n}>"
 			+ "<kernelName>.set_<inputData>(<inputDataVar>);\n"
@@ -127,7 +127,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 			List<InputBind> inputBinds, List<Iterator> iterators,
 			List<OutputBind> outputBinds) {
 		StringBuilder init = new StringBuilder();
-		init.append("\tRenderScript mRS;\n");
+		init.append("\tRenderScript $mRS;\n");
 		ST st1 = new ST(templateKernels);
 		ST st2 = new ST(templateConstructor);
 		st1.add("className", className);
@@ -226,20 +226,24 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	 */
 	@Override
 	public String getAllocationData(String className, OutputBind outputBind) {
-		String inputObject = this.commonDefinitions
-				.getVariableInName(outputBind.getVariable());
-		String outputObject = this.commonDefinitions
-				.getVariableOutName(outputBind.getVariable());
 		StringBuilder ret = new StringBuilder();
-		if (outputBind.getVariable().typeName.equals(HDRImage.getName())) {
-			ST st = new ST(templateAllocationOutputDataHDRImage);
-			st.add("inputAllocation", inputObject);
-			ret.append(st.render());
+		Variable variable = outputBind.getVariable();
+		if (variable.typeName.equals(BitmapImage.getName())
+				|| variable.typeName.equals(HDRImage.getName())) {
+			String inputObject = this.commonDefinitions
+					.getVariableInName(variable);
+			String outputObject = this.commonDefinitions
+					.getVariableOutName(variable);
+			if (variable.typeName.equals(HDRImage.getName())) {
+				ST st = new ST(templateAllocationOutputDataHDRImage);
+				st.add("inputAllocation", inputObject);
+				ret.append(st.render());
+			}
+			ret.append(this.commonDefinitions.getKernelName(className)
+					+ ".forEach_toBitmap(" + outputObject + ", " + inputObject
+					+ ");\n" + inputObject + ".copyTo("
+					+ outputBind.getDestinationObject().name + ");\n");
 		}
-		ret.append(this.commonDefinitions.getKernelName(className)
-				+ ".forEach_toBitmap(" + outputObject + ", " + inputObject
-				+ ");\n" + inputObject + ".copyTo("
-				+ outputBind.getDestinationObject().name + ");\n");
 		return ret.toString();
 	}
 
@@ -328,18 +332,28 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 		st.add("header", "#pragma version(1)\n#pragma rs java_package_name("
 				+ packageName + ")");
 		// 2. Translate input binds
-		for (InputBind inputBind : inputBinds)
-			st.add("functions", this.translateInputBind(inputBind));
+		Set<String> inputBindTypes = new HashSet<String>();
+		for (InputBind inputBind : inputBinds) {
+			if (!inputBindTypes.contains(inputBind.getVariable().typeName)) {
+				inputBindTypes.add(inputBind.getVariable().typeName);
+				st.add("functions", this.translateInputBind(inputBind));
+			}
+		}
 		// 3. Translate iterators
 		for (Iterator iterator : iterators)
 			st.add("functions", this.translateIterator(iterator));
 		// 4. Translate outputbinds
-		for (OutputBind outputBind : outputBinds)
-			st.add("functions", this.translateOutputBind(outputBind));
+		Set<String> outputBindTypes = new HashSet<String>();
+		for (OutputBind outputBind : outputBinds) {
+			if (!outputBindTypes.contains(outputBind.getVariable().typeName)) {
+				outputBindTypes.add(outputBind.getVariable().typeName);
+				st.add("functions", this.translateOutputBind(outputBind));
+			}
+		}
 		// 5. Write translated file
 		FileWriter.writeFile(className + ".rs", this.outputDestinationFolder,
 				st.render());
-		return false;
+		return true;
 	}
 
 	/**
@@ -489,83 +503,6 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	}
 
 	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String translateVariable(Variable variable, String code) {
-		String translatedCode = "";
-		if (variable.typeName.equals(RGB.getName())) {
-			translatedCode = this.translateRGBVariable(variable, code);
-		} else if (variable.typeName.equals(RGBA.getName())) {
-			translatedCode = this.translateRGBAVariable(variable, code);
-		} else if (variable.typeName.equals(Pixel.getName())) {
-			translatedCode = this.translatePixelVariable(variable, code);
-		} else if (PrimitiveTypes.isPrimitive(variable.typeName)) {
-			translatedCode = code.replaceAll(variable.typeName,
-					PrimitiveTypes.getCType(variable.typeName));
-		} else if (BoxedTypes.isBoxed(variable.typeName)) {
-			translatedCode = code.replaceAll(variable.typeName,
-					BoxedTypes.getCType(variable.typeName));
-		}
-		return translatedCode;
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String translateType(String typeName) {
-		String translatedType = "";
-		if (typeName.equals(RGB.getName())) {
-			translatedType = "float3";
-		} else if (typeName.equals(RGBA.getName())) {
-			translatedType = "float4";
-		} else if (typeName.equals(Pixel.getName())) {
-			translatedType = "float4";
-		} else if (PrimitiveTypes.isPrimitive(typeName)) {
-			translatedType = PrimitiveTypes.getCType(typeName);
-		} else if (BoxedTypes.isBoxed(typeName)) {
-			translatedType = BoxedTypes.getCType(typeName);
-		}
-		return translatedType;
-	}
-
-	private String translateRGBVariable(Variable variable, String code) {
-		String ret = code.replaceAll(variable.typeName,
-				this.translateType(variable.typeName));
-		ret = ret.replaceAll(variable.name + ".red", variable.name + ".s0");
-		ret = ret.replaceAll(variable.name + ".green", variable.name + ".s1");
-		ret = ret.replaceAll(variable.name + ".blue", variable.name + ".s2");
-		return ret;
-	}
-
-	private String translateRGBAVariable(Variable variable, String code) {
-		String ret = code.replaceAll(variable.typeName,
-				this.translateType(variable.typeName));
-		ret = ret.replaceAll(variable.name + ".red", variable.name + ".s0");
-		ret = ret.replaceAll(variable.name + ".green", variable.name + ".s1");
-		ret = ret.replaceAll(variable.name + ".blue", variable.name + ".s2");
-		ret = ret.replaceAll(variable.name + ".alpha", variable.name + ".s3");
-		return ret;
-	}
-
-	private String translatePixelVariable(Variable variable, String code) {
-		String ret = code.replaceAll(variable.typeName,
-				this.translateType(variable.typeName));
-		ret = ret.replaceAll(variable.name + ".x", "x");
-		ret = ret.replaceAll(variable.name + ".y", "y");
-		ret = ret
-				.replaceAll(variable.name + ".rgba.red", variable.name + ".s0");
-		ret = ret.replaceAll(variable.name + ".rgba.green", variable.name
-				+ ".s1");
-		ret = ret.replaceAll(variable.name + ".rgba.blue", variable.name
-				+ ".s2");
-		ret = ret.replaceAll(variable.name + ".rgba.alpha", variable.name
-				+ ".s3");
-		return ret;
-	}
-
-	/**
 	 * Create the function signature for a given iterator.
 	 * 
 	 * @param iterator
@@ -610,6 +547,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	/**
 	 * {@inheritDoc}
 	 */
+	@Override
 	public String translateMethodCall(MethodCall methodCall) {
 		String ret = "";
 		if (methodCall.variable.typeName.equals(BitmapImage.getName())

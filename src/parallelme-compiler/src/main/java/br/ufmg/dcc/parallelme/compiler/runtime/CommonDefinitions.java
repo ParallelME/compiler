@@ -9,6 +9,8 @@
 
 package br.ufmg.dcc.parallelme.compiler.runtime;
 
+import java.io.File;
+
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.*;
 
 /**
@@ -125,7 +127,6 @@ public class CommonDefinitions {
 	public String getPointerName(Variable variable) {
 		return this.getPrefix() + variable.name + "Ptr";
 	}
-	
 
 	/**
 	 * Return a standard C class name based on original Java package and class
@@ -133,5 +134,31 @@ public class CommonDefinitions {
 	 */
 	public String getCClassName(String packageName, String className) {
 		return packageName.replaceAll("\\.", "_") + "_" + className;
+	}
+
+	/**
+	 * Return a destination folder for output files in Java.
+	 */
+	public String getJavaDestinationFolder(String baseDestinationFolder,
+			String packageName) {
+		return baseDestinationFolder + File.separator + "java" + File.separator
+				+ packageName.replaceAll("\\.", "/") + File.separator;
+	}
+
+	/**
+	 * Return a destination folder for output JNI files.
+	 */
+	public String getJNIDestinationFolder(String baseDestinationFolder) {
+		return baseDestinationFolder + File.separator + "jni" + File.separator;
+	}
+
+	/**
+	 * Return a destination folder for output RenderScript files.
+	 */
+	public String getRSDestinationFolder(String baseDestinationFolder,
+			String packageName) {
+		return baseDestinationFolder + File.separator
+				+ packageName.replaceAll("\\.", "/") + File.separator + "rs"
+				+ File.separator;
 	}
 }

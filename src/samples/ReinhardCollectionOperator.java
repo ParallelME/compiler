@@ -26,10 +26,8 @@ public class ReinhardCollectionOperator implements ReinhardOperator {
         this.scaleToMidtone(key);
         this.tonemap();
         this.toRgb();
-        this.clamp();
         this.power(gamma);
-        Bitmap bitmap;
-        bitmap = image.toBitmap();
+        Bitmap bitmap = image.toBitmap();
         return bitmap;
     }
 
@@ -40,7 +38,6 @@ public class ReinhardCollectionOperator implements ReinhardOperator {
             public void function(Pixel pixel) {
                 float result_0, result_1, result_2;
                 float w;
-
                 result_0 = result_1 = result_2 = 0.0f;
                 result_0 += 0.5141364f * pixel.rgba.red;
                 result_0 += 0.3238786f * pixel.rgba.green;
@@ -118,18 +115,15 @@ public class ReinhardCollectionOperator implements ReinhardOperator {
 				float val_r, val_g, val_b;
 				float result_r, result_g, result_b;
 				float out_r, out_g, out_b;
-
                 val_g = pixel.rgba.red;     // Y
                 result_g = pixel.rgba.green; // x
                 result_b = pixel.rgba.blue; // y
-
                 if (val_g > 0.0f && result_g > 0.0f && result_b > 0.0f) {
                     val_r = result_g * val_g / result_b;
                     val_b = val_r / result_g - val_r - val_g;
                 } else {
                     val_r = val_b = 0.0f;
                 }
-
                 // These constants are the conversion coefficients.
                 out_r = out_g = out_b = 0.0f;
                 out_r += 2.5651f * val_r;
@@ -141,7 +135,6 @@ public class ReinhardCollectionOperator implements ReinhardOperator {
                 out_b += 0.0753f * val_r;
                 out_b += -0.2543f * val_g;
                 out_b += 1.1892f * val_b;
-
                 pixel.rgba.red = out_r;
                 pixel.rgba.green = out_g;
                 pixel.rgba.blue = out_b;
@@ -165,17 +158,6 @@ public class ReinhardCollectionOperator implements ReinhardOperator {
                 pixel.rgba.green = (float) Math.pow(pixel.rgba.green, power);
                 pixel.rgba.blue = (float) Math.pow(pixel.rgba.blue, power);
                 pixel.rgba.alpha = 255;
-            }
-        });
-    }
-
-    private void clamp() {
-        image.par().foreach(new UserFunction<Pixel>() {
-            @Override
-            public void function(Pixel pixel) {
-                if (pixel.rgba.red > 1.0f) pixel.rgba.red = 1.0f;
-                if (pixel.rgba.green > 1.0f) pixel.rgba.green = 1.0f;
-                if (pixel.rgba.blue > 1.0f) pixel.rgba.blue = 1.0f;
             }
         });
     }

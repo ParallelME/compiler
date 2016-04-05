@@ -36,6 +36,7 @@ public class CompilerCodeTranslator {
 	private int functionsCount = 0;
 	private final RuntimeDefinition runtime;
 	private final String outputDestinationFolder;
+	private final CommonDefinitions commondDefinitions;
 
 	/**
 	 * 
@@ -48,6 +49,7 @@ public class CompilerCodeTranslator {
 			String outputDestinationFolder) {
 		this.runtime = runtime;
 		this.outputDestinationFolder = outputDestinationFolder;
+		this.commondDefinitions = new CommonDefinitions();
 	}
 
 	public int getFunctionsCount() {
@@ -115,10 +117,10 @@ public class CompilerCodeTranslator {
 			tokenStreamRewriter.insertAfter(classSymbol.bodyAddress.start,
 					initialization.toString());
 			// After code translation, stores the output code in a Java file
-			FileWriter
-					.writeFile(classSymbol.name + ".java",
-							this.outputDestinationFolder,
-							tokenStreamRewriter.getText());
+			FileWriter.writeFile(classSymbol.name + ".java",
+					this.commondDefinitions.getJavaDestinationFolder(
+							this.outputDestinationFolder, packageName),
+					tokenStreamRewriter.getText());
 		}
 	}
 

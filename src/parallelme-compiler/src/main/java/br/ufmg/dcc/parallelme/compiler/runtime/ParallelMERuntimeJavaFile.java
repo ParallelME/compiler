@@ -33,16 +33,14 @@ public class ParallelMERuntimeJavaFile {
 			+ "package <packageName>;\n"
 			+ "\n<imports:{var|import <var.libraryName>;\n}>"
 			+ "\npublic final class <className> {\n"
-			+ "\tprivate static final <className> instance = new <className>();\n"
-			+ "\tprivate <runtimePointer> = init();\n\n"
+			+ "\tprivate static final <className> instance = new <className>();\n\n"
 			+ "\tpublic static <className> getInstance() {\n"
 			+ "\t\treturn this.instance;\n" + "\t}\n\n"
 			+ "\t<\tfunctionsDecl:{var|<var.decl>;\n}>"
-			+ "\n\t<functionsImpl:{var|<var.impl>\n}>" + "\tstatic {\n"
-			+ "\t\tSystem.loadLibrary(\"<libraryName>\");\n" + "\t}\n" + "}\n";
-	private static final String templateNativeFunctionDecl = "private native <return> <functionName>(long <runtimePointer><params:{var|<var.type> <var.name>}>)";
+			+ "\n\t<functionsImpl:{var|\n\n<var.impl>}>}\n";
+	private static final String templateNativeFunctionDecl = "private native <return> <functionName>(long runtimePointer<params:{var|<var.type> <var.name>}>)";
 	private static final String templateFunctionImpl = "public void <functionName>(<paramsDecl:{var|<var.type> <var.name>}>) {\n"
-			+ "\t<functionName>(<runtimePointer><paramsBody:{var|, <var.name>}>);\n"
+			+ "\t<functionName>(ParallelMERuntimeJNIWrapper.getInstance().runtimePointer<paramsBody:{var|, <var.name>}>);\n"
 			+ "}\n";
 
 	/**
@@ -64,7 +62,6 @@ public class ParallelMERuntimeJavaFile {
 		stClass.add("functionsImpl", null);
 		stClass.add("introductoryMsg",
 				this.commonDefinitions.getHeaderComment());
-		stClass.add("runtimePointer", this.getRuntimePointer());
 		Set<String> iteratorVariableTypes = this
 				.getIteratorVariableTypes(iterators);
 		// 1. Add all libraries
@@ -74,15 +71,11 @@ public class ParallelMERuntimeJavaFile {
 			}
 		}
 		// 2. Add native functions' declaration
-		stClass.addAggr("functionsDecl.{decl}", this.getInitFunctionDecl());
-		stClass.addAggr("functionsDecl.{decl}", this.getCleanUpFunctionDecl());
 		for (Iterator iterator : iterators) {
 			stClass.addAggr("functionsDecl.{decl}",
 					this.getNativeFunctionDecl(iterator));
 		}
 		// 3. Add functions implementation
-		stClass.addAggr("functionsImpl.{impl}", this.getInitFunctionImpl());
-		stClass.addAggr("functionsImpl.{impl}", this.getCleanUpFunctionImpl());
 		for (Iterator iterator : iterators) {
 			stClass.addAggr("functionsImpl.{impl}",
 					this.getFunctionImpl(iterator));
@@ -95,10 +88,6 @@ public class ParallelMERuntimeJavaFile {
 		}
 		stClass.add("libraryName", "Name_yet_to_be_defined");
 		return stClass.render();
-	}
-
-	private String getRuntimePointer() {
-		return commonDefinitions.getPrefix() + "runtimePointer";
 	}
 
 	private List<Pair<String, String>> getFunctionDeclImplByType(
@@ -118,13 +107,11 @@ public class ParallelMERuntimeJavaFile {
 	 */
 	private Pair<String, String> getToFloatDeclImpl() {
 		ST stDecl = new ST(templateNativeFunctionDecl);
-		stDecl.add("runtimePointer", this.getRuntimePointer());
 		stDecl.add("return", "void");
 		stDecl.add("functionName", "toFloat");
 		stDecl.addAggr("params.{type, name}", ", int", "input_array_id");
 		stDecl.addAggr("params.{type, name}", ", int", "worksize");
 		ST stImpl = new ST(templateFunctionImpl);
-		stImpl.add("runtimePointer", this.getRuntimePointer());
 		stImpl.add("functionName", "toFloat");
 		stImpl.addAggr("paramsDecl.{type, name}", "int", "input_array_id, ");
 		stImpl.addAggr("paramsDecl.{type, name}", "int", "worksize");
@@ -139,7 +126,6 @@ public class ParallelMERuntimeJavaFile {
 	 */
 	private Pair<String, String> getToBitmapDeclImpl() {
 		ST stDecl = new ST(templateNativeFunctionDecl);
-		stDecl.add("runtimePointer", this.getRuntimePointer());
 		stDecl.add("return", "void");
 		stDecl.add("functionName", "toBitmap");
 		stDecl.addAggr("params.{type, name}", ", int", "input_array_id");
@@ -149,20 +135,19 @@ public class ParallelMERuntimeJavaFile {
 		stDecl.addAggr("params.{type, name}", ", Bitmap", "output_bitmap");
 		stDecl.addAggr("params.{type, name}", ", int", "output_buffer_size");
 		ST stImpl = new ST(templateFunctionImpl);
-		stImpl.add("runtimePointer", this.getRuntimePointer());
 		stImpl.add("functionName", "toBitmap");
 		stImpl.addAggr("paramsDecl.{type, name}", "int", "input_array_id, ");
-		stImpl.addAggr("paramsDecl.{type, name}", "int", "worksize");
-		stImpl.addAggr("paramsDecl.{type, name}", "byte[]", "input_array");
-		stImpl.addAggr("paramsDecl.{type, name}", "int", "input_buffer_size");
-		stImpl.addAggr("paramsDecl.{type, name}", "Bitmap", "output_bitmap");
-		stImpl.addAggr("paramsDecl.{type, name}", "int", "output_buffer_size");
+		stImpl.addAggr("paramsDecl.{type, name}", "int", "worksize, ");
+		stImpl.addAggr("paramsDecl.{type, name}", "byte[]", "input_array, ");
+		stImpl.addAggr("paramsDecl.{type, name}", "int", "input_buffer_size, ");
+		stImpl.addAggr("paramsDecl.{type, name}", "Bitmap", "bitmap, ");
+		stImpl.addAggr("paramsDecl.{type, name}", "int", "bitmap_buffer_size");
 		stImpl.addAggr("paramsBody.{name}", "input_array_id");
 		stImpl.addAggr("paramsBody.{name}", "worksize");
 		stImpl.addAggr("paramsBody.{name}", "input_array");
 		stImpl.addAggr("paramsBody.{name}", "input_buffer_size");
-		stImpl.addAggr("paramsBody.{name}", "output_bitmap");
-		stImpl.addAggr("paramsBody.{name}", "output_buffer_size");
+		stImpl.addAggr("paramsBody.{name}", "bitmap");
+		stImpl.addAggr("paramsBody.{name}", "bitmap_buffer_size");
 		return new Pair<String, String>(stDecl.render(), stImpl.render());
 	}
 
@@ -179,6 +164,7 @@ public class ParallelMERuntimeJavaFile {
 
 	private List<String> getImportLibrary(String userLibraryClassName) {
 		List<String> ret = new ArrayList<>();
+		ret.add("br.ufmg.dcc.parallelme.runtime.ParallelMERuntimeJNIWrapper");
 		if (userLibraryClassName.equals(HDRImage.getName())
 				|| userLibraryClassName.equals(BitmapImage.getName())) {
 			ret.add("android.graphics.Bitmap");
@@ -191,10 +177,8 @@ public class ParallelMERuntimeJavaFile {
 	 */
 	private String getNativeFunctionDecl(Iterator iterator) {
 		ST st = new ST(templateNativeFunctionDecl);
-		st.add("runtimePointer", this.getRuntimePointer());
 		st.add("return", "void");
-		st.add("functionName",
-				this.commonDefinitions.getPrefixedIteratorName(iterator));
+		st.add("functionName", this.commonDefinitions.getIteratorName(iterator));
 		st.addAggr("params.{type, name}", ", int", "input_array_id");
 		st.addAggr("params.{type, name}", ", int", "worksize");
 		for (Variable variable : iterator.getExternalVariables()) {
@@ -209,9 +193,7 @@ public class ParallelMERuntimeJavaFile {
 	 */
 	private String getFunctionImpl(Iterator iterator) {
 		ST st = new ST(templateFunctionImpl);
-		st.add("runtimePointer", this.getRuntimePointer());
-		st.add("functionName",
-				this.commonDefinitions.getPrefixedIteratorName(iterator));
+		st.add("functionName", this.commonDefinitions.getIteratorName(iterator));
 		st.addAggr("paramsDecl.{type, name}", "int", "input_array_id, ");
 		st.addAggr("paramsDecl.{type, name}", "int", "worksize");
 		st.addAggr("paramsBody.{name}", "input_array_id");
@@ -221,55 +203,6 @@ public class ParallelMERuntimeJavaFile {
 			st.addAggr("paramsDecl.{type, name}", varType, variable.name);
 			st.addAggr("paramsBody.{name}", variable.name);
 		}
-		return st.render();
-	}
-
-	/**
-	 * Returns a string with init function declaration.
-	 */
-	private String getInitFunctionDecl() {
-		ST st = new ST(templateNativeFunctionDecl);
-		st.add("runtimePointer", this.getRuntimePointer());
-		st.add("return", "long");
-		st.add("functionName", "init");
-		st.add("params", null);
-		return st.render();
-	}
-
-	/**
-	 * Returns a string with int function implementation.
-	 */
-	private String getInitFunctionImpl() {
-		ST st = new ST(templateFunctionImpl);
-		st.add("runtimePointer", this.getRuntimePointer());
-		st.add("functionName", "init");
-		st.add("paramsDecl", null);
-		st.add("paramsBody", null);
-		return st.render();
-	}
-
-	/**
-	 * Returns a string with the cleanup function declaration.
-	 */
-	private String getCleanUpFunctionDecl() {
-		ST st = new ST(templateNativeFunctionDecl);
-		st.add("runtimePointer", this.getRuntimePointer());
-		st.add("return", "void");
-		st.add("functionName", "cleanUp");
-		st.add("params", null);
-		return st.render();
-	}
-
-	/**
-	 * Returns a string with the cleanup function declaration.
-	 */
-	private String getCleanUpFunctionImpl() {
-		ST st = new ST(templateFunctionImpl);
-		st.add("runtimePointer", this.getRuntimePointer());
-		st.add("functionName", "cleanUp");
-		st.add("paramsDecl", null);
-		st.add("paramsBody", null);
-		st.addAggr("params.{type, name}", "long", this.getRuntimePointer());
 		return st.render();
 	}
 }

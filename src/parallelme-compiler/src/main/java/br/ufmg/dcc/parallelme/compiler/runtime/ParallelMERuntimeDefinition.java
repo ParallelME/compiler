@@ -25,12 +25,14 @@ import br.ufmg.dcc.parallelme.compiler.util.FileWriter;
 /**
  * Definitions for ParallelME runtime.
  * 
- * @author Wilson de Carvalho, Pedro Caldeira
+ * @author Wilson de Carvalho
  */
 public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
-	private static final String templatePointer = "long <pointerName>;\n";
 	private static final String templateCreateAllocationJavaHDRImage = "RGBE.ResourceData <resourceData> = RGBE.loadFromResource(<params>);\n"
-			+ "\t<pointerName> = <initializeFunction>(<resourceData>.data, <resourceData>.width, <resourceData>.height);";
+			+ "\t<varName>Worksize = <resourceData>.width * <resourceData>.height;\n"
+			+ "\t<varName>ResourceDataId = <jniJavaClassName>.getInstance().getNewResourceId();";
+	private static final String templateCallJNIFunction = "<jniJavaClassName>.getInstance().<functionName>(<resourceDataId><params:{var|, <var.name>}>)";
+	private static final String templateCreateAllocation = "int <varName>Worksize, <varName>ResourceDataId;\n";
 
 	private ParallelMERuntimeJavaFile javaContentCreation = new ParallelMERuntimeJavaFile();
 	private ParallelMERuntimeCppHppFile cppHppContentCreation = new ParallelMERuntimeCppHppFile();
@@ -47,7 +49,6 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	public String getInitializationString(String packageName, String className,
 			List<InputBind> inputBinds, List<Iterator> iterators,
 			List<OutputBind> outputBinds) {
-
 		return "";
 	}
 
@@ -79,10 +80,10 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 			st.add("resourceData", resourceData);
 			st.add("params", this.commonDefinitions
 					.toCommaSeparatedString(inputBind.getParameters()));
-			st.add("pointerName", this.commonDefinitions
-					.getPointerName(inputBind.getVariable()));
-			st.add("initializeFunction",
-					this.commonDefinitions.getPrefixedInputBindName(inputBind));
+			st.add("varName",
+					this.commonDefinitions.getPrefix()
+							+ inputBind.getVariable().name);
+			st.add("jniJavaClassName", this.getJNIWrapperClassName(className));
 			ret = st.render();
 		}
 		return ret;
@@ -94,9 +95,10 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	@Override
 	public String declareAllocation(InputBind inputBind) {
 		StringBuilder ret = new StringBuilder();
-		ST st = new ST(templatePointer);
-		st.add("pointerName",
-				this.commonDefinitions.getPointerName(inputBind.getVariable()));
+		ST st = new ST(templateCreateAllocation);
+		st.add("varName",
+				this.commonDefinitions.getPrefix()
+						+ inputBind.getVariable().name);
 		ret.append(st.render());
 		return ret.toString();
 	}
@@ -106,16 +108,58 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	 */
 	@Override
 	public String getAllocationData(String className, OutputBind outputBind) {
-		String ret = "teste";
-		return ret;
+		StringBuilder ret = new StringBuilder();
+		Variable variable = outputBind.getVariable();
+		String jniJavaClassName = this.getJNIWrapperClassName(className);
+		if (variable.typeName.equals(BitmapImage.getName())
+				|| variable.typeName.equals(HDRImage.getName())) {
+			ST st = new ST(templateCallJNIFunction);
+			st.add("jniJavaClassName", jniJavaClassName);
+			st.add("functionName", "toBitmap");
+			st.add("resourceDataId", this.getResourceDataName(variable.name));
+			String workSize = this.getWorksizeName(variable.name);
+			st.addAggr("params.{name}", workSize);
+			st.addAggr("params.{name}", this.getResourceDataName(variable.name));
+			// 4 slots. [Red][Green][Blue][Alpha]
+			st.addAggr("params.{name}", workSize + " * 4");
+			st.addAggr("params.{name}", outputBind.getDestinationObject().name);
+			// sizeof(float) = 4 * (4 slots)
+			st.addAggr("params.{name}", workSize + " * 16");
+			ret.append(st.render());
+		}
+		return ret.toString();
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
 	public String getIteratorCall(String className, Iterator iterator) {
-		String ret = "";
-		return ret;
+		String jniJavaClassName = this.getJNIWrapperClassName(className);
+		ST st = new ST(templateCallJNIFunction);
+		st.add("jniJavaClassName", jniJavaClassName);
+		st.add("functionName", this.commonDefinitions.getIteratorName(iterator));
+		st.add("resourceDataId",
+				this.getResourceDataIdName(iterator.getVariable().name));
+		st.addAggr("params.{name}",
+				this.getWorksizeName(iterator.getVariable().name));
+		for (Variable variable : iterator.getExternalVariables()) {
+			st.addAggr("params.{name}", variable.name);
+		}
+		return st.render() + ";";
+	}
+
+	private String getResourceDataIdName(String variableName) {
+		return this.commonDefinitions.getPrefix() + variableName
+				+ "ResourceDataId";
+	}
+
+	private String getResourceDataName(String variableName) {
+		return this.commonDefinitions.getPrefix() + variableName
+				+ "ResourceData";
+	}
+
+	private String getWorksizeName(String variableName) {
+		return this.commonDefinitions.getPrefix() + variableName + "Worksize";
 	}
 
 	/**
@@ -129,7 +173,7 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 				outputBinds);
 		this.createKernelFiles(packageName, className, inputBinds, iterators,
 				outputBinds);
-		return false;
+		return true;
 	}
 
 	/**
@@ -145,20 +189,21 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 			List<InputBind> inputBinds, List<Iterator> iterators,
 			List<OutputBind> outputBinds) {
 		String jniJavaClassName = this.getJNIWrapperClassName(className);
-		FileWriter.writeFile(jniJavaClassName + ".java",
-				this.outputDestinationFolder, this.javaContentCreation
-						.getJavaJNIWrapperClass(packageName, jniJavaClassName,
-								iterators));
+		FileWriter.writeFile(jniJavaClassName + ".java", this.commonDefinitions
+				.getJavaDestinationFolder(this.outputDestinationFolder,
+						packageName), this.javaContentCreation
+				.getJavaJNIWrapperClass(packageName, jniJavaClassName,
+						iterators));
 		String jniCClassName = commonDefinitions.getCClassName(packageName,
 				jniJavaClassName);
-		FileWriter.writeFile(jniCClassName + ".cpp",
-				this.outputDestinationFolder, this.cppHppContentCreation
-						.getCppJNIWrapperClass(packageName, jniJavaClassName,
-								iterators));
-		FileWriter.writeFile(jniCClassName + ".hpp",
-				this.outputDestinationFolder, this.cppHppContentCreation
-						.getHppJNIWrapperClass(packageName, jniJavaClassName,
-								iterators));
+		FileWriter.writeFile(jniCClassName + ".cpp", this.commonDefinitions
+				.getJNIDestinationFolder(this.outputDestinationFolder),
+				this.cppHppContentCreation.getCppJNIWrapperClass(packageName,
+						jniJavaClassName, iterators));
+		FileWriter.writeFile(jniCClassName + ".hpp", this.commonDefinitions
+				.getJNIDestinationFolder(this.outputDestinationFolder),
+				this.cppHppContentCreation.getHppJNIWrapperClass(packageName,
+						jniJavaClassName, iterators));
 	}
 
 	private String getJNIWrapperClassName(String className) {
@@ -177,27 +222,10 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	private void createKernelFiles(String packageName, String className,
 			List<InputBind> inputBinds, List<Iterator> iterators,
 			List<OutputBind> outputBinds) {
-		FileWriter.writeFile("kernel.h", this.outputDestinationFolder,
+		FileWriter.writeFile("kernel.h", this.commonDefinitions
+				.getJNIDestinationFolder(this.outputDestinationFolder),
 				this.cppHppContentCreation.getHKernelFile(packageName,
-						className, iterators));
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String translateVariable(Variable variable, String code) {
-		String translatedCode = "";
-		return translatedCode;
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String translateType(String typeName) {
-		String translatedType = "";
-		return translatedType;
+						className, inputBinds, iterators, outputBinds));
 	}
 
 	/**

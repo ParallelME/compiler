@@ -18,9 +18,14 @@ import java.util.List;
 import org.apache.commons.io.FileUtils;
 
 import br.ufmg.dcc.parallelme.compiler.SimpleLogger;
+import br.ufmg.dcc.parallelme.compiler.runtime.translation.BoxedTypes;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.CTranslator;
+import br.ufmg.dcc.parallelme.compiler.runtime.translation.PrimitiveTypes;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.*;
 import br.ufmg.dcc.parallelme.compiler.userlibrary.classes.HDRImage;
+import br.ufmg.dcc.parallelme.compiler.userlibrary.classes.Pixel;
+import br.ufmg.dcc.parallelme.compiler.userlibrary.classes.RGB;
+import br.ufmg.dcc.parallelme.compiler.userlibrary.classes.RGBA;
 
 /**
  * Code useful for specfic runtime definition implementation.
@@ -102,5 +107,82 @@ public abstract class RuntimeDefinitionImpl implements RuntimeDefinition {
 			}
 		}
 		return imports.toString();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String translateVariable(Variable variable, String code) {
+		String translatedCode = "";
+		if (variable.typeName.equals(RGB.getName())) {
+			translatedCode = this.translateRGBVariable(variable, code);
+		} else if (variable.typeName.equals(RGBA.getName())) {
+			translatedCode = this.translateRGBAVariable(variable, code);
+		} else if (variable.typeName.equals(Pixel.getName())) {
+			translatedCode = this.translatePixelVariable(variable, code);
+		} else if (PrimitiveTypes.isPrimitive(variable.typeName)) {
+			translatedCode = code.replaceAll(variable.typeName,
+					PrimitiveTypes.getCType(variable.typeName));
+		} else if (BoxedTypes.isBoxed(variable.typeName)) {
+			translatedCode = code.replaceAll(variable.typeName,
+					BoxedTypes.getCType(variable.typeName));
+		}
+		return translatedCode;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String translateType(String typeName) {
+		String translatedType = "";
+		if (typeName.equals(RGB.getName())) {
+			translatedType = "float3";
+		} else if (typeName.equals(RGBA.getName())) {
+			translatedType = "float4";
+		} else if (typeName.equals(Pixel.getName())) {
+			translatedType = "float4";
+		} else if (PrimitiveTypes.isPrimitive(typeName)) {
+			translatedType = PrimitiveTypes.getCType(typeName);
+		} else if (BoxedTypes.isBoxed(typeName)) {
+			translatedType = BoxedTypes.getCType(typeName);
+		}
+		return translatedType;
+	}
+
+	protected String translateRGBVariable(Variable variable, String code) {
+		String ret = code.replaceAll(variable.typeName,
+				this.translateType(variable.typeName));
+		ret = ret.replaceAll(variable.name + ".red", variable.name + ".s0");
+		ret = ret.replaceAll(variable.name + ".green", variable.name + ".s1");
+		ret = ret.replaceAll(variable.name + ".blue", variable.name + ".s2");
+		return ret;
+	}
+
+	protected String translateRGBAVariable(Variable variable, String code) {
+		String ret = code.replaceAll(variable.typeName,
+				this.translateType(variable.typeName));
+		ret = ret.replaceAll(variable.name + ".red", variable.name + ".s0");
+		ret = ret.replaceAll(variable.name + ".green", variable.name + ".s1");
+		ret = ret.replaceAll(variable.name + ".blue", variable.name + ".s2");
+		ret = ret.replaceAll(variable.name + ".alpha", variable.name + ".s3");
+		return ret;
+	}
+
+	protected String translatePixelVariable(Variable variable, String code) {
+		String ret = code.replaceAll(variable.typeName,
+				this.translateType(variable.typeName));
+		ret = ret.replaceAll(variable.name + ".x", "x");
+		ret = ret.replaceAll(variable.name + ".y", "y");
+		ret = ret
+				.replaceAll(variable.name + ".rgba.red", variable.name + ".s0");
+		ret = ret.replaceAll(variable.name + ".rgba.green", variable.name
+				+ ".s1");
+		ret = ret.replaceAll(variable.name + ".rgba.blue", variable.name
+				+ ".s2");
+		ret = ret.replaceAll(variable.name + ".rgba.alpha", variable.name
+				+ ".s3");
+		return ret;
 	}
 }
