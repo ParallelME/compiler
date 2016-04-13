@@ -59,8 +59,6 @@ public class ScopeDrivenListener extends JavaBaseListener {
 	/**
 	 * Indicates if a user library class was found during the walk on this
 	 * listener.
-	 * 
-	 * @return
 	 */
 	public boolean getUserLibraryDetected() {
 		return this.userLibraryDetected;
@@ -231,6 +229,9 @@ public class ScopeDrivenListener extends JavaBaseListener {
 	 * User Library is modified to accept more than one parameter type, this
 	 * code and the symbol table must be revised.
 	 * 
+	 * @param ctx
+	 *            Rule context.
+	 * 
 	 * @return A two element array with type name and parametrized type.
 	 */
 	protected String[] getTypeData(RuleContext ctx) {
@@ -267,6 +268,9 @@ public class ScopeDrivenListener extends JavaBaseListener {
 	/**
 	 * Manages object creation statements (those that succeed a <b>new</b>
 	 * operator).
+	 * 
+	 * @param ctx
+	 *            Creator context.
 	 */
 	@Override
 	public void enterCreator(JavaParser.CreatorContext ctx) {
@@ -465,6 +469,8 @@ public class ScopeDrivenListener extends JavaBaseListener {
 	 *            Variable declarator context.
 	 * @param typeCtx
 	 *            Type context.
+	 * @param variableModifiers
+	 *            List of variable modifiers for current variable.
 	 * @param statementAddress
 	 *            Token address for the variable's statement.
 	 */

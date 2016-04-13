@@ -13,7 +13,6 @@ package br.ufmg.dcc.parallelme.compiler.symboltable;
  * A symbol for root definition on the symbol table.
  * 
  * @author Wilson de Carvalho
- * @see Symbol
  */
 public class RootSymbol extends Symbol {
 	public RootSymbol() {

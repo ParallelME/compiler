@@ -13,7 +13,6 @@ package br.ufmg.dcc.parallelme.compiler.runtime.translation.data;
  * Basic information for runtime variable parameters.
  * 
  * @author Wilson de Carvalho
- * @see ParameterDescriptor
  */
 public class Variable implements Parameter {
 	public final String name;

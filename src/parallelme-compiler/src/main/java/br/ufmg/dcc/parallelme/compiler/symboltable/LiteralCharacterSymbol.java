@@ -13,7 +13,6 @@ package br.ufmg.dcc.parallelme.compiler.symboltable;
  * A symbol for string character definition on the symbol table.
  * 
  * @author Wilson de Carvalho
- * @see LiteralSymbol, Symbol
  */
 public class LiteralCharacterSymbol extends LiteralSymbol<Character> {
 	public LiteralCharacterSymbol(String name, Symbol enclosingScope, Character value) {

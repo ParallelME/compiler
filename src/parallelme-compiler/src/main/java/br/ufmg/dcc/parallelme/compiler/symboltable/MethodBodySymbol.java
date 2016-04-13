@@ -14,7 +14,6 @@ package br.ufmg.dcc.parallelme.compiler.symboltable;
  * for user library methods only.
  * 
  * @author Wilson de Carvalho
- * @see Symbol
  */
 public class MethodBodySymbol extends Symbol {
 	public final String content;

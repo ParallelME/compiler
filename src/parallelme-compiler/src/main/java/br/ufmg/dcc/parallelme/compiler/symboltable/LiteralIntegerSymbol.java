@@ -13,7 +13,6 @@ package br.ufmg.dcc.parallelme.compiler.symboltable;
  * A symbol for integer literal definition on the symbol table.
  * 
  * @author Wilson de Carvalho
- * @see LiteralSymbol, Symbol
  */
 public class LiteralIntegerSymbol extends LiteralSymbol<Integer> {
 	public LiteralIntegerSymbol(String name, Symbol enclosingScope, Integer value) {

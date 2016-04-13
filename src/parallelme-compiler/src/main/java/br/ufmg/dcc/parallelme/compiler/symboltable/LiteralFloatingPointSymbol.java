@@ -13,7 +13,6 @@ package br.ufmg.dcc.parallelme.compiler.symboltable;
  * A symbol for float literal definition on the symbol table.
  * 
  * @author Wilson de Carvalho
- * @see LiteralSymbol, Symbol
  */
 public class LiteralFloatingPointSymbol extends LiteralSymbol<Float> {
 	public LiteralFloatingPointSymbol(String name, Symbol enclosingScope, Float value) {

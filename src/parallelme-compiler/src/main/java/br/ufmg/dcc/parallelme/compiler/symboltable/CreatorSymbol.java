@@ -15,7 +15,6 @@ import java.util.Collection;
  * A symbol for variable creation definition on the symbol table.
  * 
  * @author Wilson de Carvalho
- * @see Symbol
  */
 public class CreatorSymbol extends Symbol {
 	public final Collection<Symbol> arguments;

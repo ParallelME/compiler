@@ -13,7 +13,6 @@ package br.ufmg.dcc.parallelme.compiler.symboltable;
  * A symbol for literal definition on the symbol table.
  * 
  * @author Wilson de Carvalho
- * @see Symbol
  */
 public abstract class LiteralSymbol<T> extends Symbol {
 	public final T value;

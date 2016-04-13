@@ -13,7 +13,6 @@ package br.ufmg.dcc.parallelme.compiler.runtime.translation.data;
  * Basic information for runtime literal parameters.
  * 
  * @author Wilson de Carvalho
- * @see Parameter
  */
 public class Literal implements Parameter {
 	public final String value;

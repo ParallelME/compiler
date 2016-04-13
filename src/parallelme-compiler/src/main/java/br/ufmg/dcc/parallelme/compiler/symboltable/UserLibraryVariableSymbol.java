@@ -13,7 +13,6 @@ package br.ufmg.dcc.parallelme.compiler.symboltable;
  * A symbol for user library variables definition on the symbol table.
  * 
  * @author Wilson de Carvalho
- * @see Symbol
  */
 public class UserLibraryVariableSymbol extends VariableSymbol {
 	public UserLibraryVariableSymbol(String name, String typeName,

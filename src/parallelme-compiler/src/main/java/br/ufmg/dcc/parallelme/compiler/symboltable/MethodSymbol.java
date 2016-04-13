@@ -15,7 +15,6 @@ import java.util.Collection;
  * A symbol for methods' definition on the symbol table.
  * 
  * @author Wilson de Carvalho
- * @see Symbol
  */
 public class MethodSymbol extends Symbol {
 	public final String returnType;

@@ -13,7 +13,6 @@ package br.ufmg.dcc.parallelme.compiler.symboltable;
  * A symbol for classes' definition on the symbol table.
  * 
  * @author Wilson de Carvalho
- * @see Symbol
  */
 public class ClassSymbol extends Symbol {
 	public final String typeParameterName;
