@@ -22,7 +22,10 @@ import br.ufmg.dcc.parallelme.compiler.runtime.translation.BoxedTypes;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.CTranslator;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.PrimitiveTypes;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.*;
+import br.ufmg.dcc.parallelme.compiler.userlibrary.classes.Float32;
 import br.ufmg.dcc.parallelme.compiler.userlibrary.classes.HDRImage;
+import br.ufmg.dcc.parallelme.compiler.userlibrary.classes.Int16;
+import br.ufmg.dcc.parallelme.compiler.userlibrary.classes.Int32;
 import br.ufmg.dcc.parallelme.compiler.userlibrary.classes.Pixel;
 import br.ufmg.dcc.parallelme.compiler.userlibrary.classes.RGB;
 import br.ufmg.dcc.parallelme.compiler.userlibrary.classes.RGBA;
@@ -121,6 +124,10 @@ public abstract class RuntimeDefinitionImpl implements RuntimeDefinition {
 			translatedCode = this.translateRGBAVariable(variable, code);
 		} else if (variable.typeName.equals(Pixel.getName())) {
 			translatedCode = this.translatePixelVariable(variable, code);
+		} else if (variable.typeName.equals(Int16.getName())
+				|| variable.typeName.equals(Int32.getName())
+				|| variable.typeName.equals(Float32.getName())) {
+			translatedCode = this.translateNumericVariable(variable, code);
 		} else if (PrimitiveTypes.isPrimitive(variable.typeName)) {
 			translatedCode = code.replaceAll(variable.typeName,
 					PrimitiveTypes.getCType(variable.typeName));
@@ -143,6 +150,12 @@ public abstract class RuntimeDefinitionImpl implements RuntimeDefinition {
 			translatedType = "float4";
 		} else if (typeName.equals(Pixel.getName())) {
 			translatedType = "float4";
+		} else if (typeName.equals(Int16.getName())) {
+			translatedType = "short";
+		} else if (typeName.equals(Int32.getName())) {
+			translatedType = "int";
+		} else if (typeName.equals(Float32.getName())) {
+			translatedType = "float";
 		} else if (PrimitiveTypes.isPrimitive(typeName)) {
 			translatedType = PrimitiveTypes.getCType(typeName);
 		} else if (BoxedTypes.isBoxed(typeName)) {
@@ -183,6 +196,13 @@ public abstract class RuntimeDefinitionImpl implements RuntimeDefinition {
 				+ ".s2");
 		ret = ret.replaceAll(variable.name + ".rgba.alpha", variable.name
 				+ ".s3");
+		return ret;
+	}
+
+	protected String translateNumericVariable(Variable variable, String code) {
+		String ret = code.replaceAll(variable.typeName,
+				this.translateType(variable.typeName));
+		ret = ret.replaceAll(variable.name + ".value", variable.name);
 		return ret;
 	}
 }

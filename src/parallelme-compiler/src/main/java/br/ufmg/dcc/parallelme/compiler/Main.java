@@ -13,6 +13,7 @@ import java.io.IOException;
 
 import br.ufmg.dcc.parallelme.compiler.CompilerArgsVerification.CompilerParameters;
 import br.ufmg.dcc.parallelme.compiler.CompilerArgsVerification.TargetRuntime;
+import br.ufmg.dcc.parallelme.compiler.exception.CompilationException;
 import br.ufmg.dcc.parallelme.compiler.runtime.ParallelMERuntimeDefinition;
 import br.ufmg.dcc.parallelme.compiler.runtime.RenderScriptRuntimeDefinition;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.SimpleTranslator;
@@ -46,6 +47,8 @@ public class Main {
 			} else {
 				printHelpMsg();
 			}
+		} catch (CompilationException ex) {
+			SimpleLogger.error(ex.getMessage());
 		} catch (IOException ex) {
 			ex.printStackTrace();
 		} catch (Exception e) {

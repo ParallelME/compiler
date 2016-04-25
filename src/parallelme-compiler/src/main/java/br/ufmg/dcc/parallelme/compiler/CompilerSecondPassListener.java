@@ -373,19 +373,31 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 			UserLibraryVariableSymbol userLibraryVariableSymbol,
 			JavaParser.ExpressionContext ctx) {
 		String destinationVariableName = null;
-		TokenAddress expressionAddress = null;
-		// Bitmap bitmap = image.toBitmap();
+		// Will indicate if the output bind statement is also an object
+		// declaration
+		boolean isObjectDeclaration = false;
+		// Type varName = var.method();
 		if (ctx.parent.parent.parent instanceof VariableInitializerContext) {
 			VariableDeclaratorContext foo = (VariableDeclaratorContext) ctx.parent.parent.parent.parent;
-			VariableInitializerContext bar = (VariableInitializerContext) ctx.parent.parent.parent;
 			destinationVariableName = foo.variableDeclaratorId().getText();
-			expressionAddress = new TokenAddress(bar.start, bar.stop);
+			isObjectDeclaration = true;
 		} else if (ctx.parent.parent.parent instanceof ExpressionContext) {
-			// bitmap = image.toBitmap();
 			ExpressionContext foo = (ExpressionContext) ctx.parent.parent.parent;
-			ExpressionContext bar = (ExpressionContext) ctx.parent.parent;
-			destinationVariableName = foo.expression(0).primary().getText();
-			expressionAddress = new TokenAddress(bar.start, bar.stop);
+			// varName = var.method();
+			if (!foo.expression().isEmpty()
+					&& foo.expression(0).primary() != null) {
+				destinationVariableName = foo.expression(0).primary().getText();
+			} else if (foo.type() != null
+					&& foo.parent.parent instanceof VariableDeclaratorContext) {
+				// Type varName = (castType) var.method();
+				destinationVariableName = ((VariableDeclaratorContext) foo.parent.parent)
+						.variableDeclaratorId().getText();
+				isObjectDeclaration = true;
+			} else {
+				// varName = (castType) var.method();
+				destinationVariableName = ((ExpressionContext) foo.parent)
+						.expression(0).primary().getText();
+			}
 		} else {
 			String errorMsg = "Invalid output bind statement at line "
 					+ ctx.start.getLine()
@@ -409,9 +421,19 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 						userLibraryVariableSymbol.typeName,
 						userLibraryVariableSymbol.typeParameterName,
 						userLibraryVariableSymbol.modifier);
+				TokenAddress tokenAddress;
+				if (this.currentStatement != null)
+					tokenAddress = new TokenAddress(
+							this.currentStatement.start,
+							this.currentStatement.stop);
+				else
+					tokenAddress = new TokenAddress(
+							this.currentVariableStatement.start,
+							this.currentVariableStatement.stop);
 				this.iteratorsAndBinds.add(new OutputBind(userLibraryVariable,
 						destinationVariable, this.iteratorsAndBinds.size()
-								+ lastFunctionCount, expressionAddress));
+								+ lastFunctionCount, tokenAddress,
+						isObjectDeclaration));
 			}
 		}
 	}

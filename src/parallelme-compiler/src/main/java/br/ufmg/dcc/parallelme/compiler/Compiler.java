@@ -18,6 +18,7 @@ import org.antlr.v4.runtime.tree.ParseTreeWalker;
 
 import br.ufmg.dcc.parallelme.compiler.antlr.JavaLexer;
 import br.ufmg.dcc.parallelme.compiler.antlr.JavaParser;
+import br.ufmg.dcc.parallelme.compiler.exception.CompilationException;
 import br.ufmg.dcc.parallelme.compiler.runtime.RuntimeDefinition;
 import br.ufmg.dcc.parallelme.compiler.symboltable.*;
 
@@ -48,7 +49,7 @@ public class Compiler {
 	 *             files.
 	 */
 	public void compile(String[] files, String destinationFolder)
-			throws IOException {
+			throws IOException, CompilationException {
 		RootSymbol[] symbolTables = new RootSymbol[files.length];
 		ParseTree[] parseTrees = new ParseTree[files.length];
 		JavaParser[] javaParser = new JavaParser[files.length];
@@ -95,7 +96,7 @@ public class Compiler {
 					tokenStreamRewriter.getTokenStream(), iteratorCount);
 			walker.walk(listener, parseTrees[i]);
 			codeTranslator.run(tokenStreamRewriter, symbolTables[i], listener,
-					 iteratorCount);
+					iteratorCount);
 			iteratorCount += codeTranslator.getFunctionsCount();
 		}
 		// Export internal library files for this target runtime

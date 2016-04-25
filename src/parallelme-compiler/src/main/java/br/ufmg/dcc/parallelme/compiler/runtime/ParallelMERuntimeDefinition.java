@@ -122,7 +122,7 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 			st.addAggr("params.{name}", this.getResourceDataName(variable.name));
 			// 4 slots. [Red][Green][Blue][Alpha]
 			st.addAggr("params.{name}", workSize + " * 4");
-			st.addAggr("params.{name}", outputBind.getDestinationObject().name);
+			st.addAggr("params.{name}", outputBind.destinationObject.name);
 			// sizeof(float) = 4 * (4 slots)
 			st.addAggr("params.{name}", workSize + " * 16");
 			ret.append(st.render());

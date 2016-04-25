@@ -16,6 +16,7 @@ import java.util.List;
 
 import org.antlr.v4.runtime.TokenStreamRewriter;
 
+import br.ufmg.dcc.parallelme.compiler.exception.CompilationException;
 import br.ufmg.dcc.parallelme.compiler.runtime.*;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.*;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.Iterator.IteratorType;
@@ -71,7 +72,7 @@ public class CompilerCodeTranslator {
 	 */
 	public void run(TokenStreamRewriter tokenStreamRewriter,
 			Symbol symbolTable, CompilerSecondPassListener listener,
-			int lastIteratorCount) {
+			int lastIteratorCount) throws CompilationException {
 		ArrayList<Symbol> classSymbols = symbolTable
 				.getSymbols(ClassSymbol.class);
 		// Gets the class symbol table
@@ -206,7 +207,7 @@ public class CompilerCodeTranslator {
 	 */
 	private InputBind replaceInputBind(TokenStreamRewriter tokenStreamRewriter,
 			VariableSymbol variableSymbol, CreatorSymbol creatorSymbol,
-			String className, int functionNumber) {
+			String className, int functionNumber) throws CompilationException {
 		// Creates a variable description to avoid unnecessary
 		// coupling between the runtime definition and compiler
 		// core.
@@ -242,7 +243,8 @@ public class CompilerCodeTranslator {
 	 *            Token stream that will be used to rewrite user code.
 	 */
 	private void replaceMethodCalls(Collection<MethodCall> methodCalls,
-			TokenStreamRewriter tokenStreamRewriter) {
+			TokenStreamRewriter tokenStreamRewriter)
+			throws CompilationException {
 		for (MethodCall methodCall : methodCalls) {
 			tokenStreamRewriter.replace(methodCall.expressionAddress.start,
 					methodCall.expressionAddress.stop,
@@ -261,7 +263,7 @@ public class CompilerCodeTranslator {
 	private Parameter[] argumentsToVariableParameter(
 			Collection<Symbol> arguments) {
 		Object[] argumentsArray = arguments.toArray();
-		Parameter[] ret = new Variable[argumentsArray.length];
+		Parameter[] ret = new Parameter[argumentsArray.length];
 		for (int i = 0; i < ret.length; i++) {
 			Symbol argument = (Symbol) argumentsArray[i];
 			if (argument instanceof LiteralSymbol<?>) {
@@ -282,6 +284,9 @@ public class CompilerCodeTranslator {
 				VariableSymbol variable = (VariableSymbol) argument;
 				ret[i] = new Variable(variable.name, variable.typeName,
 						variable.typeParameterName, variable.modifier);
+			} else if (argument instanceof ExpressionSymbol) {
+				ExpressionSymbol expression = (ExpressionSymbol) argument;
+				ret[i] = new Expression(expression.name);
 			} else {
 				// TODO Must throw an error in case argument is not literal nor
 				// literal.
@@ -305,7 +310,7 @@ public class CompilerCodeTranslator {
 	private List<Iterator> replaceIterators(
 			TokenStreamRewriter tokenStreamRewriter,
 			Collection<UserLibraryData> iteratorsAndBinds,
-			ClassSymbol classSymbol) {
+			ClassSymbol classSymbol) throws CompilationException {
 		this.functionsCount += iteratorsAndBinds.size();
 		HashSet<Variable> variables = new HashSet<>();
 		ArrayList<Iterator> iterators = new ArrayList<>();
@@ -345,14 +350,14 @@ public class CompilerCodeTranslator {
 	 */
 	private List<OutputBind> replaceOutputBinds(
 			TokenStreamRewriter tokenStreamRewriter,
-			Collection<UserLibraryData> iteratorsAndBinds, String className) {
+			Collection<UserLibraryData> iteratorsAndBinds, String className)
+			throws CompilationException {
 		ArrayList<OutputBind> outputBinds = new ArrayList<>();
 		for (UserLibraryData userLibraryData : iteratorsAndBinds) {
 			if (userLibraryData instanceof OutputBind) {
 				OutputBind outputBind = (OutputBind) userLibraryData;
-				tokenStreamRewriter.replace(
-						outputBind.getExpressionAddress().start,
-						outputBind.getExpressionAddress().stop,
+				tokenStreamRewriter.replace(outputBind.statementAddress.start,
+						outputBind.statementAddress.stop,
 						this.runtime.getAllocationData(className, outputBind));
 				outputBinds.add(outputBind);
 			}
@@ -387,7 +392,8 @@ public class CompilerCodeTranslator {
 	 *            List of all iterators and binds found.
 	 */
 	private void insertRuntimeImports(TokenStreamRewriter tokenStreamRewriter,
-			Symbol classTable, List<UserLibraryData> iteratorsAndBinds) {
+			Symbol classTable, List<UserLibraryData> iteratorsAndBinds)
+			throws CompilationException {
 		tokenStreamRewriter.insertBefore(classTable.tokenAddress.start,
 				this.runtime.getImports(iteratorsAndBinds));
 	}

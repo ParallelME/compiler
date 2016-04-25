@@ -261,6 +261,9 @@ public class ScopeDrivenListener extends JavaBaseListener {
 					ret[1] = "";
 				}
 			}
+		} else if (ctx instanceof ClassOrInterfaceTypeContext) {
+			ClassOrInterfaceTypeContext cix = (ClassOrInterfaceTypeContext) ctx;
+			ret[0] = cix.getText();
 		}
 		return ret;
 	}
@@ -371,14 +374,27 @@ public class ScopeDrivenListener extends JavaBaseListener {
 	private ArrayList<Symbol> createSymbols(List<ExpressionContext> list) {
 		ArrayList<Symbol> arguments = new ArrayList<>();
 		for (ExpressionContext expression : list) {
-			String name = expression.getText();
+			String expressionText = expression.getText();
 			Symbol symbol = null;
 			if (expression.primary() != null
 					&& expression.primary().literal() != null) {
 				symbol = this.createLiteralSymbol(expression.primary()
 						.literal());
+			} else if (expression.primary() != null
+					&& expression.primary().type() != null
+					&& expression.primary().type().classOrInterfaceType() != null) {
+				ClassOrInterfaceTypeContext classCtx = (ClassOrInterfaceTypeContext) expression
+						.primary().type().classOrInterfaceType();
+				String[] parameters = this.getTypeData(classCtx);
+				String className = parameters.length == 0 ? "" : parameters[0];
+				symbol = new ClassSymbol(className, "", this.currentScope,
+						new TokenAddress(classCtx.start, classCtx.stop), null);
+			} else if (!expression.expression().isEmpty()) {
+				symbol = new ExpressionSymbol(expressionText,
+						this.currentScope, new TokenAddress(expression.start,
+								expression.stop));
 			} else {
-				symbol = this.currentScope.getSymbolUnderScope(name);
+				symbol = this.currentScope.getSymbolUnderScope(expressionText);
 			}
 			arguments.add(symbol);
 		}

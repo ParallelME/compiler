@@ -18,35 +18,23 @@ import br.ufmg.dcc.parallelme.compiler.symboltable.TokenAddress;
  * @author Wilson de Carvalho
  */
 public class OutputBind extends UserLibraryData {
-	private Variable destinationObject;
-	private TokenAddress expressionAddress;
+	public final Variable destinationObject;
+	public final TokenAddress statementAddress;
+	// Indicates if the output bind statement is also an object declaration
+	public final boolean isObjectDeclaration;
 
 	public OutputBind(Variable variable, Variable destinationObject,
-			int sequentialNumber, TokenAddress expressionAddress) {
+			int sequentialNumber, TokenAddress statementAddress,
+			boolean isObjectDeclaration) {
 		super(variable, sequentialNumber);
-		this.setDestinationObject(destinationObject);
-		this.setExpressionAddress(expressionAddress);
-	}
-
-	public Variable getDestinationObject() {
-		return destinationObject;
-	}
-
-	public void setDestinationObject(Variable destinationObject) {
+		this.statementAddress = statementAddress;
 		this.destinationObject = destinationObject;
-	}
-
-	public TokenAddress getExpressionAddress() {
-		return expressionAddress;
-	}
-
-	public void setExpressionAddress(TokenAddress expressionAddress) {
-		this.expressionAddress = expressionAddress;
+		this.isObjectDeclaration = isObjectDeclaration;
 	}
 
 	@Override
 	public int hashCode() {
 		return this.destinationObject.hashCode() * 3
-				+ this.expressionAddress.hashCode() * 7;
+				+ this.statementAddress.hashCode() * 7;
 	}
 }

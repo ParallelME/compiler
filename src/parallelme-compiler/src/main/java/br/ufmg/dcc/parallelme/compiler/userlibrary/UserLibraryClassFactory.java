@@ -31,14 +31,22 @@ public class UserLibraryClassFactory {
 			return BitmapImage.getInstance();
 		else if (className.equals(HDRImage.getName()))
 			return HDRImage.getInstance();
-		else if (className.equals(UserFunction.getName()))
-			return new UserFunction();
+		else if (className.equals(ForeachFunction.getName()))
+			return new ForeachFunction();
 		else if (className.equals(RGB.getName()))
 			return RGB.getInstance();
 		else if (className.equals(RGBA.getName()))
 			return RGBA.getInstance();
 		else if (className.equals(Pixel.getName()))
 			return Pixel.getInstance();
+		else if (className.equals(Int16.getName()))
+			return Int16.getInstance();
+		else if (className.equals(Int32.getName()))
+			return Int32.getInstance();
+		else if (className.equals(Float32.getName()))
+			return Float32.getInstance();
+		else if (className.equals(Array.getName()))
+			return Array.getInstance();
 		else
 			return null;
 	}

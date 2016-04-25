@@ -12,6 +12,7 @@ package br.ufmg.dcc.parallelme.compiler.runtime;
 import java.io.IOException;
 import java.util.List;
 
+import br.ufmg.dcc.parallelme.compiler.exception.CompilationException;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.InputBind;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.Iterator;
 import br.ufmg.dcc.parallelme.compiler.runtime.translation.data.MethodCall;
@@ -44,7 +45,7 @@ public interface RuntimeDefinition {
 	 */
 	public String getInitializationString(String packageName, String className,
 			List<InputBind> inputBinds, List<Iterator> iterators,
-			List<OutputBind> outputBinds);
+			List<OutputBind> outputBinds) throws CompilationException;
 
 	/**
 	 * Get the necessary imports for this runtime.
@@ -54,7 +55,8 @@ public interface RuntimeDefinition {
 	 * 
 	 * @return String with the necessary imports.
 	 */
-	public String getImports(List<UserLibraryData> iteratorsAndBinds);
+	public String getImports(List<UserLibraryData> iteratorsAndBinds)
+			throws CompilationException;
 
 	/**
 	 * Create an allocation for the informed input bind.
@@ -67,7 +69,8 @@ public interface RuntimeDefinition {
 	 * 
 	 * @return A string with the creation for the new allocation.
 	 */
-	public String createAllocation(String className, InputBind inputBind);
+	public String createAllocation(String className, InputBind inputBind)
+			throws CompilationException;
 
 	/**
 	 * Declare an allocation based on the informed expression context.
@@ -78,7 +81,8 @@ public interface RuntimeDefinition {
 	 * 
 	 * @return A string with the declaration for the new allocation.
 	 */
-	public String declareAllocation(InputBind inputBind);
+	public String declareAllocation(InputBind inputBind)
+			throws CompilationException;
 
 	/**
 	 * Gets the data back from the allocation.
@@ -91,7 +95,8 @@ public interface RuntimeDefinition {
 	 * 
 	 * @return A string with the code to get the data from the allocation.
 	 */
-	public String getAllocationData(String className, OutputBind outputBind);
+	public String getAllocationData(String className, OutputBind outputBind)
+			throws CompilationException;
 
 	/**
 	 * Returns the code that will be placed in the translated Java code to run a
@@ -104,7 +109,8 @@ public interface RuntimeDefinition {
 	 *
 	 * @return A string with the code to call the iterator.
 	 */
-	public String getIteratorCall(String className, Iterator iterator);
+	public String getIteratorCall(String className, Iterator iterator)
+			throws CompilationException;
 
 	/**
 	 * Translates a given type to an equivalent runtime type. Example: translate
@@ -114,7 +120,7 @@ public interface RuntimeDefinition {
 	 *            Type that must be translated.
 	 * @return A string with the equivalent type for this runtime.
 	 */
-	public String translateType(String typeName);
+	public String translateType(String typeName) throws CompilationException;
 
 	/**
 	 * Translates variables on the give code to a correspondent runtime-specific
@@ -126,7 +132,8 @@ public interface RuntimeDefinition {
 	 *            Original code that must have the reference replaced.
 	 * @return A string with the new code with the variable replaced.
 	 */
-	public String translateVariable(Variable variable, String code);
+	public String translateVariable(Variable variable, String code)
+			throws CompilationException;
 
 	/**
 	 * Translates a given method call to a runtime-variable equivalent
@@ -136,7 +143,8 @@ public interface RuntimeDefinition {
 	 *            Method call that must be translated
 	 * @return A string with the new code for method call replacement.
 	 */
-	public String translateMethodCall(MethodCall methodCall);
+	public String translateMethodCall(MethodCall methodCall)
+			throws CompilationException;
 
 	/**
 	 * Translates a list of iterators.
@@ -158,7 +166,8 @@ public interface RuntimeDefinition {
 	 */
 	public boolean translateIteratorsAndBinds(String packageName,
 			String className, List<Iterator> iterators,
-			List<InputBind> inputBinds, List<OutputBind> outputBinds);
+			List<InputBind> inputBinds, List<OutputBind> outputBinds)
+			throws CompilationException;
 
 	/**
 	 * Exports the internal library files needed for this runtime.

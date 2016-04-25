@@ -20,9 +20,12 @@ public class BitmapLoaderTest {
 
         BitmapImage image = new BitmapImage(bitmap);
         // to Yxy
-        image.par().foreach(new UserFunction<RGB>() {
+        image.par().foreach(new ForeachFunction<RGB>() {
             @Override
             public void function(RGB pixel) {
+				pixel.red /= 255;
+				pixel.green /= 255;
+				pixel.blue /= 255;
                 float foo_r, foo_g, foo_b;
                 foo_r = foo_g = foo_b = 0.0f;
                 foo_r += 0.5141364f * pixel.red;
@@ -45,7 +48,7 @@ public class BitmapLoaderTest {
             }
         });
         // to RGB
-        image.par().foreach(new UserFunction<RGB>() {
+        image.par().foreach(new ForeachFunction<RGB>() {
             @Override
             public void function(RGB pixel) {
                 float xVal, zVal;
@@ -67,6 +70,9 @@ public class BitmapLoaderTest {
                 pixel.blue += 0.0753f * xVal;
                 pixel.blue += -0.2543f * yVal;
                 pixel.blue += 1.1892f * zVal;
+				pixel.red *= 255;
+				pixel.green *= 255;
+				pixel.blue *= 255;
             }
         });
         bitmap = image.toBitmap();

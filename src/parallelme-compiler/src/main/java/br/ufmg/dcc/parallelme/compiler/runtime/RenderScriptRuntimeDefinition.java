@@ -10,8 +10,10 @@
 package br.ufmg.dcc.parallelme.compiler.runtime;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.stringtemplate.v4.ST;
@@ -34,6 +36,9 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	private static final String templateRSFile = "<introductoryMsg>\n<header>\n<functions:{functionName|\n\n<functionName>}>";
 	private static final String templateKernels = "\t<kernels:{kernelName|ScriptC_<className> <kernelName>;\n}>";
 	private static final String templateConstructor = "\tpublic <className>(RenderScript $mRS) {\n\t\tthis.$mRS = $mRS;\n\t\t<kernels:{kernelName|this.<kernelName> = new ScriptC_<className>($mRS);\n}>\t}\n";
+	private static final String templateCreateAllocationArray = "<inputObject> = Allocation.createSized($mRS, Element.<elementType>, <allocationLength>);\n"
+			+ "<inputObject>.copyFrom(<inputArray>);\n"
+			+ "<outputObject> = Allocation.createSized($mRS, Element.<elementType>, <allocationLength>);";
 	private static final String templateCreateAllocationBitmapImage = "Type <dataTypeInputObject>;\n"
 			+ "<inputObject> = Allocation.createFromBitmap($mRS, <param>, Allocation.MipmapControl.MIPMAP_NONE, Allocation.USAGE_SCRIPT | Allocation.USAGE_SHARED);\n"
 			+ "<dataTypeInputObject> = new Type.Builder($mRS, Element.F32_3($mRS))\n"
@@ -58,13 +63,24 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	private static final String templateAllocationDataFunctionBitmapHDRImage = "\nuchar4 __attribute__((kernel)) toBitmap(<varType>"
 			+ " in, uint32_t x, uint32_t y) {"
 			+ "\n\tuchar4 out;"
-			+ "\n\tout.r = (uchar) (in.s0 * 255.0f);"
-			+ "\n\tout.g = (uchar) (in.s1 * 255.0f);"
-			+ "\n\tout.b = (uchar) (in.s2 * 255.0f);"
-			+ "\n\tout.a = 255;"
+			+ "\n\tout.r = (uchar) (in.s0);"
+			+ "\n\tout.g = (uchar) (in.s1);"
+			+ "\n\tout.b = (uchar) (in.s2);"
+			+ "\n\tout.a = <alphaValue>;"
 			+ "\n\treturn out;\n}";
-	private static final String templateIteratorParallelFunctionSignature = "<parameterTypeTranslated> __attribute__((kernel)) <userFunctionName>(<parameterTypeTranslated> <parameterName>, uint32_t x, uint32_t y)";
+	private static final String templateIteratorParallelFunctionSignature = "<parameterTypeTranslated> __attribute__((kernel)) <userFunctionName>(<parameterTypeTranslated> <parameterName>, uint32_t x<params:{var|, <var.type> <var.name>}>)";
 	private static final String templateIteratorSequentialFunctionSignature = "void <functionName>()";
+	private static final String templateIteratorParallelCall = "<externalVariables:{var|<var.kernelName>.set_<var.gVariableName>(<var.variableName>);\n}>"
+			+ "<kernelName>.forEach_<functionName>(<variable>, <variable>);\n";
+	private static final String templateIteratorSequentialCall = "<externalVariables:{var|<var.type>[] <var.arrName> = new <var.type>[1];\n"
+			+ "Allocation <var.allName> = Allocation.createSized($mRS, Element.<var.elementType>($mRS), 1);\n"
+			+ "<kernelName>.set_<var.gName>(<var.name>);\n"
+			+ "<kernelName>.set_<var.outputData>(<var.allName>);\n}>"
+			+ "<kernelName>.set_<inputData>(<inputDataVar>);\n"
+			+ "<inputSize:{var|<kernelName>.set_<var.name>(<inputDataVar>.getType().get<var.XYZ>());\n}>"
+			+ "<kernelName>.invoke_<functionName>();\n"
+			+ "<externalVariables:{var|<var.allName>.copyTo(<var.arrName>);\n"
+			+ "<var.name> = <var.arrName>[0];\n}>";
 	private static final String templateIteratorSequentialFunction = "rs_allocation <inputData>;\n"
 			+ "<outVariable:{var|rs_allocation <var.name>;\n}>"
 			+ "int gInputXSize<iteratorName>;\n"
@@ -72,51 +88,51 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 			+ "<externalVariables:{var|<var.variableType> <var.variableName>;\n}>"
 			+ "\n<functionSignature>\n {\n"
 			+ "\t<userFunctionVarType> <userFunctionVarName>;\n"
-			+ "\tfor(int x = 0; x <less> gInputXSize<iteratorName>; ++x) {\n"
-			+ "\t\tfor(int y = 0; y <less> gInputYSize<iteratorName>; ++y) {\n"
-			+ "\t\t\t<userFunctionVarName> = rsGetElementAt_<userFunctionVarType>(<inputData>, x, y);\n"
-			+ "<userCode>\n"
-			+ "\t\t}\n"
-			+ "\t}\n"
+			+ "\t<forLoop>"
 			+ "\t<externalVariables:{var|rsSetElementAt_<var.variableType>(<var.outVariableName>, <var.variableName>, 0);\n}>"
 			+ "}";
-	private static final String templateIteratorParallelCall = "<externalVariables:{var|<var.kernelName>.set_<var.gVariableName>(<var.variableName>);\n}>"
-			+ "<kernelName>.forEach_<functionName>(<variable>, <variable>);\n";
-	private static final String templateIteratorSequentialCall = "<externalVariables:{var|<var.type>[] <var.arrName> = new <var.type>[1];\n"
-			+ "Allocation <var.allName> = Allocation.createSized($mRS, Element.F32($mRS), 1);\n"
-			+ "<kernelName>.set_<var.gName>(<var.name>);\n"
-			+ "<kernelName>.set_<var.outputData>(<var.allName>);\n}>"
-			+ "<kernelName>.set_<inputData>(<inputDataVar>);\n"
-			+ "<kernelName>.set_gInputXSize<iteratorName>(<inputDataVar>.getType().getX());\n"
-			+ "<kernelName>.set_gInputYSize<iteratorName>(<inputDataVar>.getType().getY());\n"
-			+ "<kernelName>.invoke_<functionName>();\n"
-			+ "<externalVariables:{var|<var.allName>.copyTo(<var.arrName>);\n"
-			+ "<var.name> = <var.arrName>[0];\n}>";
+	private static final String templateAllocationOutputCreateBitmap = "<destinationObject> = Bitmap.createBitmap(<inputAllocation>.getType().getX(), <inputAllocation>.getType().getY(), Bitmap.Config.ARGB_8888);\n";
+	private static final String templateAllocationOutputBitmapHDRImage = "<kernelName>.forEach_toBitmap(<outputObject>, <inputObject>);\n"
+			+ "<inputObject>.copyTo(<destinationObject>);\n";
+	private static final String templateAllocationOutputCreateArray = "<type> <name> = (<type>) java.lang.reflect.Array.newInstance(<baseType>.class, <inputAllocation>.getType().getX());\n";
+	private static final String templateAllocationOutputArray = "<inputObject>.copyTo(<destinationObject>);\n";
 
-	private static final String templateAllocationOutputDataHDRImage = "Bitmap.createBitmap(<inputAllocation>.getType().getX(), <inputAllocation>.getType().getY(), Bitmap.Config.ARGB_8888);\n";
-	private static final String createAllocationFunctionBitmapImage = "\nfloat3 __attribute__((kernel)) toFloat(uchar4 in, uint32_t x, uint32_t y) {"
+	private static final String templateForLoop = "for (int <varName> = 0; <varName> <less> <varMaxVal>; <varName>++) {\n\t<body>}\n";
+	private static final String templateForLoopSequentialBody = "<userFunctionVarName> = rsGetElementAt_<userFunctionVarType>(<inputData>, x<param:{var|, <var.name>}>);\n"
+			+ "<userCode>\n"
+			+ "rsSetElementAt_<userFunctionVarType>(<inputData>, <userFunctionVarName>, x<param:{var|, <var.name>}>);\n";
+	private static final String templateCreateAllocationFunctionImage = "\nfloat3 __attribute__((kernel)) toFloat(uchar4 in, uint32_t x, uint32_t y) {"
 			+ "\n\tfloat3 out;"
-			+ "\n\tout.s0 = ((float) in.r) / 255.0f;"
-			+ "\n\tout.s1 = ((float) in.g) / 255.0f;"
-			+ "\n\tout.s2 = ((float) in.b) / 255.0f;"
-			+ "\n\treturn out;"
-			+ "\n}";
-	private static final String createAllocationFunctionHDRImage = "\nfloat4 __attribute__((kernel)) toFloat(uchar4 in, uint32_t x, uint32_t y) {"
-			+ "\n\tfloat4 out;"
-			+ "\n\tfloat f;"
-			+ "\n\tif(in.s3 != 0) {"
-			+ "\n\t\tf = ldexp(1.0f, (in.s3 & 0xFF) - (128 + 8));"
-			+ "\n\t\tout.s0 = (in.s0 & 0xFF) * f;"
-			+ "\n\t\tout.s1 = (in.s1 & 0xFF) * f;"
-			+ "\n\t\tout.s2 = (in.s2 & 0xFF) * f;"
-			+ "\n\t} else {"
-			+ "\n\t\tout.s0 = 0.0f;"
-			+ "\n\t\tout.s1 = 0.0f;"
-			+ "\n\t\tout.s2 = 0.0f;" + "\n\t}" + "\n\treturn out;" + "\n}";
+			+ "\n\tout.s0 = (float) in.r;"
+			+ "\n\tout.s1 = (float) in.g;"
+			+ "\n\tout.s2 = (float) in.b;"
+			+ "\n\treturn out;" + "\n}";
+	// Keeps a key-value map of equivalent types from ParallelME to RenderScript
+	// allocation.
+	private static Map<String, String> parallelME2RSAllocationTypes = null;
+	// Keeps a key-value map of equivalent types from Java to RenderScript
+	// allocation.
+	private static Map<String, String> java2RSAllocationTypes = null;
 
 	public RenderScriptRuntimeDefinition(CTranslator cCodeTranslator,
 			String outputDestinationFolder) {
 		super(cCodeTranslator, outputDestinationFolder);
+		this.initParallelME2RSAllocationTypes();
+		this.initJava2RSAllocationTypes();
+	}
+
+	private void initParallelME2RSAllocationTypes() {
+		parallelME2RSAllocationTypes = new HashMap<>();
+		parallelME2RSAllocationTypes.put(Int16.getName(), "I16");
+		parallelME2RSAllocationTypes.put(Int32.getName(), "I32");
+		parallelME2RSAllocationTypes.put(Float32.getName(), "F32");
+	}
+
+	private void initJava2RSAllocationTypes() {
+		java2RSAllocationTypes = new HashMap<>();
+		java2RSAllocationTypes.put("short", "I16");
+		java2RSAllocationTypes.put("int", "I32");
+		java2RSAllocationTypes.put("float", "F32");
 	}
 
 	/**
@@ -194,6 +210,17 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 			st.add("kernelName",
 					this.commonDefinitions.getKernelName(className));
 			ret = st.render();
+		} else if (userLibraryClass instanceof Array) {
+			ST st = new ST(templateCreateAllocationArray);
+			// TODO Check if parameters array ahas size 3, otherwise throw an
+			// exception and abort translation.
+			st.add("inputArray", inputBind.getParameters()[0]);
+			st.add("allocationLength", inputBind.getParameters()[2]);
+			st.add("inputObject", inputObject);
+			st.add("outputObject", outputObject);
+			st.add("elementType", parallelME2RSAllocationTypes.get(inputBind
+					.getVariable().typeParameterName));
+			ret = st.render();
 		}
 		return ret;
 	}
@@ -208,16 +235,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 				.getVariable());
 		String outputObject = this.commonDefinitions
 				.getVariableOutName(inputBind.getVariable());
-		UserLibraryClass userLibraryClass = UserLibraryClassFactory
-				.create(inputBind.getVariable().typeName);
-		// If the user library class is a BitmapImage, there is only a single
-		// constructor in which the parameter is a Bitmap. Thus we just get the
-		// first element of the arguments' array and work with it.
-		if (userLibraryClass instanceof BitmapImage) {
-			ret = "Allocation " + inputObject + ", " + outputObject + ";\n";
-		} else if (userLibraryClass instanceof HDRImage) {
-			ret = "Allocation " + inputObject + ", " + outputObject + ";\n";
-		}
+		ret = "Allocation " + inputObject + ", " + outputObject + ";\n";
 		return ret;
 	}
 
@@ -228,21 +246,46 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	public String getAllocationData(String className, OutputBind outputBind) {
 		StringBuilder ret = new StringBuilder();
 		Variable variable = outputBind.getVariable();
+		String inputObject = this.commonDefinitions.getVariableInName(variable);
+		String outputObject = this.commonDefinitions
+				.getVariableOutName(variable);
+		String destinationObject = outputBind.destinationObject.name;
 		if (variable.typeName.equals(BitmapImage.getName())
 				|| variable.typeName.equals(HDRImage.getName())) {
-			String inputObject = this.commonDefinitions
-					.getVariableInName(variable);
-			String outputObject = this.commonDefinitions
-					.getVariableOutName(variable);
-			if (variable.typeName.equals(HDRImage.getName())) {
-				ST st = new ST(templateAllocationOutputDataHDRImage);
+			// If it is an object declaration, must declare the destination
+			// object type and name.
+			if (outputBind.isObjectDeclaration) {
+				ST st = new ST(templateAllocationOutputCreateBitmap);
+				st.add("inputAllocation", inputObject);
+				st.add("destinationObject",
+						outputBind.destinationObject.typeName + " "
+								+ destinationObject);
+				ret.append(st.render());
+			}
+			ST st = new ST(templateAllocationOutputBitmapHDRImage);
+			st.add("kernelName",
+					this.commonDefinitions.getKernelName(className));
+			st.add("outputObject", outputObject);
+			st.add("inputObject", inputObject);
+			st.add("destinationObject", destinationObject);
+			ret.append(st.render());
+		} else if (variable.typeName.equals(Array.getName())) {
+			// If it is an object declaration, must declare the destination
+			// object type and name.
+			if (outputBind.isObjectDeclaration) {
+				ST st = new ST(templateAllocationOutputCreateArray);
+				st.add("type", outputBind.destinationObject.typeName);
+				st.add("name", outputBind.destinationObject.name);
+				String baseType = outputBind.destinationObject.typeName
+						.replaceAll("\\[", "").replaceAll("\\]", "").trim();
+				st.add("baseType", baseType);
 				st.add("inputAllocation", inputObject);
 				ret.append(st.render());
 			}
-			ret.append(this.commonDefinitions.getKernelName(className)
-					+ ".forEach_toBitmap(" + outputObject + ", " + inputObject
-					+ ");\n" + inputObject + ".copyTo("
-					+ outputBind.getDestinationObject().name + ");\n");
+			ST st = new ST(templateAllocationOutputArray);
+			st.add("inputObject", inputObject);
+			st.add("destinationObject", destinationObject);
+			ret.append(st.render());
 		}
 		return ret.toString();
 	}
@@ -251,8 +294,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	 * {@inheritDoc}
 	 */
 	public String getIteratorCall(String className, Iterator iterator) {
-		String functionName = this.commonDefinitions
-				.getPrefixedIteratorName(iterator);
+		String functionName = this.commonDefinitions.getIteratorName(iterator);
 		String kernelName = this.commonDefinitions.getKernelName(className);
 		String ret;
 		if (iterator.getType() == IteratorType.Parallel) {
@@ -278,8 +320,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 							"input"
 									+ this.upperCaseFirstLetter(iterator
 											.getVariable().name), iterator);
-			String iteratorName = this.commonDefinitions
-					.getPrefixedIteratorName(iterator);
+			String iteratorName = this.upperCaseFirstLetter(functionName);
 			ST st = new ST(templateIteratorSequentialCall);
 			st.add("kernelName", kernelName);
 			st.add("functionName", functionName);
@@ -290,16 +331,27 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 			for (Variable variable : iterator.getExternalVariables()) {
 				String gName = this.getGlobalVariableName(variable.name,
 						iterator);
-				String allocationName = gName + "Allocation";
+				String allocationName = this.commonDefinitions.getPrefix()
+						+ gName + "_Allocation";
 				String outputData = this.getGlobalVariableName(
 						"output" + this.upperCaseFirstLetter(variable.name),
 						iterator);
 				st.addAggr(
-						"externalVariables.{type, arrName, name, gName, allName, outputData}",
+						"externalVariables.{type, arrName, name, gName, allName, elementType, outputData}",
 						variable.typeName, this.commonDefinitions.getPrefix()
 								+ variable.name, variable.name,
 						this.getGlobalVariableName(variable.name, iterator),
-						allocationName, outputData);
+						allocationName,
+						java2RSAllocationTypes.get(variable.typeName),
+						outputData);
+			}
+			st.addAggr("inputSize.{name, XYZ}", "gInputXSize" + iteratorName,
+					"X");
+			if (iterator.getVariable().typeName.equals(BitmapImage.getName())
+					|| iterator.getVariable().typeName.equals(HDRImage
+							.getName())) {
+				st.addAggr("inputSize.{name, XYZ}", "gInputYSize"
+						+ iteratorName, "Y");
 			}
 			ret = st.render();
 		}
@@ -313,10 +365,9 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	 * iterator 2 becomes "gMax_Iterator2"
 	 */
 	private String getGlobalVariableName(String variable, Iterator iterator) {
-		String iteratorName = this.commonDefinitions
-				.getPrefixedIteratorName(iterator);
+		String iteratorName = this.commonDefinitions.getIteratorName(iterator);
 		String variableName = this.upperCaseFirstLetter(variable);
-		return "g" + variableName + iteratorName;
+		return "g" + variableName + this.upperCaseFirstLetter(iteratorName);
 	}
 
 	/**
@@ -372,62 +423,100 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 		code2Translate = code2Translate.substring(0,
 				code2Translate.lastIndexOf("}"));
 		Variable userFunctionVariable = iterator.getUserFunctionData().variableArgument;
+		// Translate parallel iterators
 		if (iterator.getType() == IteratorType.Parallel) {
-			String returnString = "\treturn " + userFunctionVariable.name + ";";
-			code2Translate = code2Translate + "\n" + returnString + "\n}";
-			// Insert external variables as global variables
-			StringBuffer externalVariables = new StringBuffer();
-			for (Variable variable : iterator.getExternalVariables()) {
-				String gVariableName = this.getGlobalVariableName(
-						variable.name, iterator);
-				externalVariables.append(variable.typeName + " "
-						+ gVariableName + ";\n");
-				code2Translate = this.replaceAndEscapePrefix(code2Translate,
-						gVariableName, variable.name);
-			}
-			externalVariables.append("\n");
-			ret = externalVariables.toString()
-					+ this.getIteratorFunctionSignature(iterator)
-					+ this.translateVariable(userFunctionVariable,
-							this.cCodeTranslator.translate(code2Translate));
+			ret = this.translateParallelIterator(iterator, code2Translate,
+					userFunctionVariable);
 		} else {
-			// Remove the first curly brace
-			code2Translate = code2Translate.substring(
-					code2Translate.indexOf("{") + 1, code2Translate.length());
-			ST st = new ST(templateIteratorSequentialFunction);
-			String variableName = this.upperCaseFirstLetter(iterator
-					.getVariable().name);
-			String gNameIn = this.getGlobalVariableName("input" + variableName,
-					iterator);
-			String iteratorName = this
-					.upperCaseFirstLetter(this.commonDefinitions
-							.getPrefixedIteratorName(iterator));
-			st.add("less", "<");
-			st.add("inputData", gNameIn);
-			st.add("functionSignature",
-					this.getIteratorFunctionSignature(iterator));
-			st.add("iteratorName", iteratorName);
-			st.add("userFunctionVarName", userFunctionVariable.name);
-			st.add("userFunctionVarType",
-					this.translateType(userFunctionVariable.typeName));
-			String cCode = this.translateVariable(userFunctionVariable,
-					this.cCodeTranslator.translate(code2Translate)).trim();
-			for (Variable variable : iterator.getExternalVariables()) {
-				String gNameOut = this.getGlobalVariableName(
-						"output" + this.upperCaseFirstLetter(variable.name),
-						iterator);
-				st.addAggr("outVariable.{name}", gNameOut);
-				String gNameVar = this.getGlobalVariableName(variable.name,
-						iterator);
-				st.addAggr(
-						"externalVariables.{ variableType, outVariableName, variableName }",
-						variable.typeName, gNameOut, gNameVar);
-				cCode = this.replaceAndEscapePrefix(cCode, gNameVar,
-						variable.name);
-			}
-			st.add("userCode", cCode);
-			ret = st.render();
+			ret = this.translateSequentialIterator(iterator, code2Translate,
+					userFunctionVariable);
 		}
+		return ret;
+	}
+
+	private String translateParallelIterator(Iterator iterator,
+			String code2Translate, Variable userFunctionVariable) {
+		String ret;
+		String returnString = "\treturn " + userFunctionVariable.name + ";";
+		code2Translate = code2Translate + "\n" + returnString + "\n}";
+		// Insert external variables as global variables
+		StringBuffer externalVariables = new StringBuffer();
+		for (Variable variable : iterator.getExternalVariables()) {
+			String gVariableName = this.getGlobalVariableName(variable.name,
+					iterator);
+			externalVariables.append(variable.typeName + " " + gVariableName
+					+ ";\n");
+			code2Translate = this.replaceAndEscapePrefix(code2Translate,
+					gVariableName, variable.name);
+		}
+		externalVariables.append("\n");
+		ret = externalVariables.toString()
+				+ this.getIteratorFunctionSignature(iterator)
+				+ this.translateVariable(userFunctionVariable,
+						this.cCodeTranslator.translate(code2Translate));
+		return ret;
+	}
+
+	private String translateSequentialIterator(Iterator iterator,
+			String code2Translate, Variable userFunctionVariable) {
+		String ret;
+		// Remove the first curly brace
+		code2Translate = code2Translate.substring(
+				code2Translate.indexOf("{") + 1, code2Translate.length());
+		ST st = new ST(templateIteratorSequentialFunction);
+		String variableName = this
+				.upperCaseFirstLetter(iterator.getVariable().name);
+		String gNameIn = this.getGlobalVariableName("input" + variableName,
+				iterator);
+		String iteratorName = this.upperCaseFirstLetter(this.commonDefinitions
+				.getIteratorName(iterator));
+		st.add("inputData", gNameIn);
+		st.add("functionSignature", this.getIteratorFunctionSignature(iterator));
+		st.add("iteratorName", iteratorName);
+		String userFunctionVarType = this
+				.translateType(userFunctionVariable.typeName);
+		st.add("userFunctionVarName", userFunctionVariable.name);
+		st.add("userFunctionVarType", userFunctionVarType);
+		String cCode = this.translateVariable(userFunctionVariable,
+				this.cCodeTranslator.translate(code2Translate)).trim();
+		for (Variable variable : iterator.getExternalVariables()) {
+			String gNameOut = this.getGlobalVariableName(
+					"output" + this.upperCaseFirstLetter(variable.name),
+					iterator);
+			st.addAggr("outVariable.{name}", gNameOut);
+			String gNameVar = this.getGlobalVariableName(variable.name,
+					iterator);
+			st.addAggr(
+					"externalVariables.{ variableType, outVariableName, variableName }",
+					variable.typeName, gNameOut, gNameVar);
+			cCode = this.replaceAndEscapePrefix(cCode, gNameVar, variable.name);
+		}
+		ST stFor = new ST(templateForLoop);
+		stFor.add("varName", "x");
+		stFor.add("less", "<");
+		stFor.add("varMaxVal", "gInputXSize" + iteratorName);
+		ST stForBody = new ST(templateForLoopSequentialBody);
+		stForBody.add("inputData", gNameIn);
+		stForBody.add("userFunctionVarName", userFunctionVariable.name);
+		stForBody.add("userFunctionVarType", userFunctionVarType);
+		stForBody.add("userCode", cCode);
+		stForBody.add("param", null);
+		// BitmapImage and HDRImage types contains two for loops
+		if (iterator.getVariable().typeName.equals(BitmapImage.getName())
+				|| iterator.getVariable().typeName.equals(HDRImage.getName())) {
+			stForBody.addAggr("param.{name}", "y");
+			ST stFor2 = new ST(templateForLoop);
+			stFor2.add("varName", "y");
+			stFor2.add("less", "<");
+			stFor2.add("varMaxVal", "gInputYSize" + iteratorName);
+			stFor2.add("body", stForBody.render());
+			stFor.add("body", stFor2.render());
+		} else {
+			// Array types
+			stFor.add("body", stForBody.render());
+		}
+		st.add("forLoop", stFor.render());
+		ret = st.render();
 		return ret;
 	}
 
@@ -467,10 +556,9 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	 */
 	private String translateInputBind(InputBind inputBind) {
 		String ret = "";
-		if (inputBind.getVariable().typeName.equals(BitmapImage.getName())) {
-			ret = createAllocationFunctionBitmapImage;
-		} else if (inputBind.getVariable().typeName.equals(HDRImage.getName())) {
-			ret = createAllocationFunctionHDRImage;
+		if (inputBind.getVariable().typeName.equals(BitmapImage.getName())
+				|| inputBind.getVariable().typeName.equals(HDRImage.getName())) {
+			ret = templateCreateAllocationFunctionImage;
 		}
 		return ret;
 	}
@@ -490,12 +578,14 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 		if (typeName.equals(BitmapImage.getName())
 				|| typeName.equals(HDRImage.getName())) {
 			String varType;
+			ST st = new ST(templateAllocationDataFunctionBitmapHDRImage);
 			if (typeName.equals(HDRImage.getName())) {
+				st.add("alphaValue", "(uchar) (in.s3)");
 				varType = "float4";
 			} else {
+				st.add("alphaValue", "255");
 				varType = "float3";
 			}
-			ST st = new ST(templateAllocationDataFunctionBitmapHDRImage);
 			st.add("varType", varType);
 			ret = st.render();
 		}
@@ -515,22 +605,25 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 		String functionSignature = "";
 		String parameterTypeTranslated = this.translateType(iterator
 				.getUserFunctionData().variableArgument.typeName);
-		if (iterator.getVariable().typeName.equals(BitmapImage.getName())
-				|| iterator.getVariable().typeName.equals(HDRImage.getName())) {
-			if (iterator.getType() == IteratorType.Parallel) {
-				ST st = new ST(templateIteratorParallelFunctionSignature);
-				st.add("parameterTypeTranslated", parameterTypeTranslated);
-				st.add("parameterName",
-						iterator.getUserFunctionData().variableArgument.name);
-				st.add("userFunctionName", this.commonDefinitions
-						.getPrefixedIteratorName(iterator));
-				functionSignature = st.render();
-			} else {
-				ST st = new ST(templateIteratorSequentialFunctionSignature);
-				st.add("functionName", this.commonDefinitions
-						.getPrefixedIteratorName(iterator));
-				functionSignature = st.render();
+		if (iterator.getType() == IteratorType.Parallel) {
+			ST st = new ST(templateIteratorParallelFunctionSignature);
+			st.add("parameterTypeTranslated", parameterTypeTranslated);
+			st.add("parameterName",
+					iterator.getUserFunctionData().variableArgument.name);
+			st.add("userFunctionName",
+					this.commonDefinitions.getIteratorName(iterator));
+			st.add("params", null);
+			if (iterator.getVariable().typeName.equals(BitmapImage.getName())
+					|| iterator.getVariable().typeName.equals(HDRImage
+							.getName())) {
+				st.addAggr("params.{type, name}", "uint32_t", "x");
 			}
+			functionSignature = st.render();
+		} else {
+			ST st = new ST(templateIteratorSequentialFunctionSignature);
+			st.add("functionName",
+					this.commonDefinitions.getIteratorName(iterator));
+			functionSignature = st.render();
 		}
 		return functionSignature + " ";
 	}

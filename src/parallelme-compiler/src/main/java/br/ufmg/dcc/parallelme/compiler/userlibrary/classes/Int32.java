@@ -7,20 +7,34 @@
  *  DCC-UFMG
  */
 
-package br.ufmg.dcc.parallelme.compiler.userlibrary.functions;
+package br.ufmg.dcc.parallelme.compiler.userlibrary.classes;
 
 import java.util.HashSet;
 
 import br.ufmg.dcc.parallelme.compiler.userlibrary.UserLibraryClassImpl;
 
 /**
- * Defines the user library function class UserFunction.
+ * Defines the user library class Int32.
  * 
  * @author Wilson de Carvalho
  */
-public class UserFunction extends UserLibraryClassImpl {
-	public UserFunction() {
+public class Int32 extends UserLibraryClassImpl {
+	private static Int32 instance = new Int32();
+
+	private Int32() {
 		this.initValidMethodsSet();
+	}
+
+	public static Int32 getInstance() {
+		return instance;
+	}	
+	
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public boolean isTyped() {
+		return false;
 	}
 
 	/**
@@ -29,21 +43,12 @@ public class UserFunction extends UserLibraryClassImpl {
 	@Override
 	protected void initValidMethodsSet() {
 		this.validMethods = new HashSet<>();
-		this.validMethods.add("function");
 	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public boolean isTyped() {
-		return true;
-	}
-
+	
 	/**
 	 * {@inheritDoc}
 	 */
 	public static String getName() {
-		return "UserFunction";
+		return "Int32";
 	}
 }

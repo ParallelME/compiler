@@ -23,13 +23,15 @@ public class PackageDefinition {
 	private static void initPackages() {
 		PackageDefinition.packages.add(PackageDefinition.getBasePackage());
 		PackageDefinition.packages
+				.add("br.ufmg.dcc.parallelme.userlibrary.datatypes");
+		PackageDefinition.packages
 				.add("br.ufmg.dcc.parallelme.userlibrary.function");
 		PackageDefinition.packages
 				.add("br.ufmg.dcc.parallelme.userlibrary.image");
 		PackageDefinition.packages
 				.add("br.ufmg.dcc.parallelme.userlibrary.parallel");
 	}
-	
+
 	public static String getBasePackage() {
 		return "br.ufmg.dcc.parallelme.userlibrary";
 	}
