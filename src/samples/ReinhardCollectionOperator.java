@@ -1,14 +1,14 @@
-package br.ufmg.dcc.tonemapreinhard;
+package org.parallelme.samples;
 
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 
-import br.ufmg.dcc.parallelme.userlibrary.function.UserFunction;
-import br.ufmg.dcc.parallelme.userlibrary.image.HDRImage;
-import br.ufmg.dcc.parallelme.userlibrary.image.Pixel;
-import br.ufmg.dcc.tonemapreinhard.formats.RGB;
-import br.ufmg.dcc.parallelme.userlibrary.image.Image;
+import org.parallelme.userlibrary.function.UserFunction;
+import org.parallelme.userlibrary.image.HDRImage;
+import org.parallelme.userlibrary.image.Pixel;
+import org.parallelme.samples.tonemapreinhard.formats.RGB;
+import org.parallelme.userlibrary.image.Image;
 
 /**
  * @author Pedro Caldeira
@@ -36,9 +36,6 @@ public class ReinhardCollectionOperator implements ReinhardOperator {
         image.par().foreach(new ForeachFunction<Pixel>() {
             @Override
             public void function(Pixel pixel) {
-				pixel.rgba.red /= 255;
-				pixel.rgba.green /= 255;
-				pixel.rgba.blue /= 255;
                 float result_0, result_1, result_2;
                 float w;
                 result_0 = result_1 = result_2 = 0.0f;
@@ -157,9 +154,9 @@ public class ReinhardCollectionOperator implements ReinhardOperator {
                 if (pixel.rgba.green < 0.0f) pixel.rgba.green = 0.0f;
                 if (pixel.rgba.blue > 1.0f) pixel.rgba.blue = 1.0f;
                 if (pixel.rgba.blue < 0.0f) pixel.rgba.blue = 0.0f;
-                pixel.rgba.red = (float) Math.pow(pixel.rgba.red, power) * 255;
-                pixel.rgba.green = (float) Math.pow(pixel.rgba.green, power) * 255;
-                pixel.rgba.blue = (float) Math.pow(pixel.rgba.blue, power) * 255;
+                pixel.rgba.red = (float) Math.pow(pixel.rgba.red, power);
+                pixel.rgba.green = (float) Math.pow(pixel.rgba.green, power);
+                pixel.rgba.blue = (float) Math.pow(pixel.rgba.blue, power);
                 pixel.rgba.alpha = 255;
             }
         });
