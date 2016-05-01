@@ -12,6 +12,7 @@
 #include <string>
 #include <unordered_map>
 #include "../error.h"
+#include "ExtraArgument.hpp"
 
 /**
  * Exception thrown if a kernel failed to be created on all platforms when being
@@ -82,6 +83,7 @@ public:
         return this;
     }
 
+
     /**
      * Sets a primitive type argument to the kernel.
      * This function doesn't work with arrays/vector types, only scalars.
@@ -104,6 +106,26 @@ public:
 
         return this;
     }
+
+    Kernel *setArg(unsigned argIndex, ExtraArgument extraArgument){
+        switch(extraArgument.argType){
+            case (ArgType::FLOAT):
+                printError("DEBUG: Extra Argument is Float");
+                printError("DEBUG: Extra Argument value %f", extraArgument.value.f);
+                return setArg(argIndex, extraArgument.value.f);
+            case (ArgType::CHAR):
+                return setArg(argIndex, extraArgument.value.c);
+            case (ArgType::INT):
+                printError("DEBUG: Extra Argument is Int");
+                printError("DEBUG: Extra Argument value %d", extraArgument.value.i);
+                return setArg(argIndex, extraArgument.value.i);
+            case (ArgType::UCHAR):
+                return setArg(argIndex, extraArgument.value.uc);
+            case (ArgType::SHORT):
+                return setArg(argIndex, extraArgument.value.s);
+        }
+    }
+
 
     /**
      * Returns the buffer with the given argIndex or nullptr if a buffer wasn't

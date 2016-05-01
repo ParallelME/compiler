@@ -6,13 +6,12 @@
  *
  */
 
-package org.parallelme.compiler.runtime.translation.data;
+package org.parallelme.compiler.intermediate;
 
 import org.parallelme.compiler.symboltable.TokenAddress;
 
 /**
- * Defines the output bind data that must be passed to the runtime to translate
- * the code.
+ * Intermediate representation for output bind operations.
  * 
  * @author Wilson de Carvalho
  */

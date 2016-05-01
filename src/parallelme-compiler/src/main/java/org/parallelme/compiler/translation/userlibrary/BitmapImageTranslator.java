@@ -6,14 +6,12 @@
  *
  */
 
-package org.parallelme.compiler.runtime.translation.data;
+package org.parallelme.compiler.translation.userlibrary;
 
 /**
- * Basic information for runtime parameter description. Created to replace
- * Symbol objects, thus avoid creating dependency from the runtime definition to
- * the core compiler.
+ * Interface for BitmapImage translation.
  * 
  * @author Wilson de Carvalho
  */
-public interface Parameter {
+public interface BitmapImageTranslator extends UserLibraryTranslatorDefinition {
 }

@@ -11,17 +11,16 @@ package org.parallelme.compiler;
 import java.util.*;
 
 import org.antlr.v4.runtime.TokenStream;
-
 import org.parallelme.compiler.antlr.JavaParser;
 import org.parallelme.compiler.antlr.JavaParser.ExpressionContext;
 import org.parallelme.compiler.antlr.JavaParser.VariableDeclaratorContext;
 import org.parallelme.compiler.antlr.JavaParser.VariableInitializerContext;
-import org.parallelme.compiler.runtime.translation.data.Iterator;
-import org.parallelme.compiler.runtime.translation.data.MethodCall;
-import org.parallelme.compiler.runtime.translation.data.OutputBind;
-import org.parallelme.compiler.runtime.translation.data.UserFunction;
-import org.parallelme.compiler.runtime.translation.data.UserLibraryData;
-import org.parallelme.compiler.runtime.translation.data.Variable;
+import org.parallelme.compiler.intermediate.Iterator;
+import org.parallelme.compiler.intermediate.MethodCall;
+import org.parallelme.compiler.intermediate.OutputBind;
+import org.parallelme.compiler.intermediate.UserFunction;
+import org.parallelme.compiler.intermediate.UserLibraryData;
+import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.symboltable.*;
 import org.parallelme.compiler.userlibrary.*;
 

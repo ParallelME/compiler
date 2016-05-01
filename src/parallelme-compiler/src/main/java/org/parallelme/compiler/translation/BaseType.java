@@ -6,9 +6,9 @@
  *
  */
 
-package org.parallelme.compiler.runtime.translation;
+package org.parallelme.compiler.translation;
 
-import org.parallelme.compiler.runtime.translation.data.Variable;
+import org.parallelme.compiler.intermediate.Variable;
 
 /**
  * Contract for user library types translation.

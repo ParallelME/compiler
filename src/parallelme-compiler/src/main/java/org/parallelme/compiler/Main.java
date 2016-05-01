@@ -8,14 +8,12 @@
 
 package org.parallelme.compiler;
 
-import java.io.IOException;
-
 import org.parallelme.compiler.CompilerArgsVerification.CompilerParameters;
-import org.parallelme.compiler.CompilerArgsVerification.TargetRuntime;
+import org.parallelme.compiler.RuntimeDefinition.TargetRuntime;
 import org.parallelme.compiler.exception.CompilationException;
+import org.parallelme.compiler.renderscript.RenderScriptRuntimeDefinition;
 import org.parallelme.compiler.runtime.ParallelMERuntimeDefinition;
-import org.parallelme.compiler.runtime.RenderScriptRuntimeDefinition;
-import org.parallelme.compiler.runtime.translation.SimpleTranslator;
+import org.parallelme.compiler.translation.SimpleTranslator;
 
 /**
  * Main file for calling ParallelME compiler.
@@ -26,8 +24,12 @@ public class Main {
 
 	public static void main(String[] args) {
 		try {
-			CompilerParameters parameters = (new CompilerArgsVerification())
-					.checkArgs(args);
+			CompilerParameters parameters = null;
+			try {
+				parameters = (new CompilerArgsVerification()).checkArgs(args);
+			} catch (Exception e) {
+				printHelpMsg();
+			}
 			if (parameters != null) {
 				SimpleLogger.logError = true;
 				SimpleLogger.logInfo = true;
@@ -48,10 +50,8 @@ public class Main {
 			}
 		} catch (CompilationException ex) {
 			SimpleLogger.error(ex.getMessage());
-		} catch (IOException ex) {
+		} catch (Exception ex) {
 			ex.printStackTrace();
-		} catch (Exception e) {
-			printHelpMsg();
 		}
 	}
 

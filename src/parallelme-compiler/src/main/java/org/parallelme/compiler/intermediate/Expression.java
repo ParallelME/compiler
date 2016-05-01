@@ -6,27 +6,24 @@
  *
  */
 
-package org.parallelme.compiler.runtime.translation.data;
+package org.parallelme.compiler.intermediate;
 
 /**
- * Basic information for runtime literal parameters.
+ * Intermediate representation for code expression.
  * 
  * @author Wilson de Carvalho
  */
-public class Literal implements Parameter {
-	public final String value;
-	public final String typeName;
+public class Expression implements Parameter {
+	public final String text;
 
-	public Literal(String value, String typeName) {
-		this.value = value;
-		this.typeName = typeName;
+	public Expression(String text) {
+		this.text = text;
 	}
 
 	@Override
 	public boolean equals(Object other) {
 		if (other.getClass() == this.getClass()) {
-			return ((Literal) other).value == this.value
-					&& ((Literal) other).typeName == this.typeName;
+			return ((Expression) other).text == this.text;
 		} else {
 			return false;
 		}
@@ -34,11 +31,11 @@ public class Literal implements Parameter {
 
 	@Override
 	public String toString() {
-		return this.value;
+		return this.text;
 	}
 
 	@Override
 	public int hashCode() {
-		return this.value.hashCode() * 3 + this.typeName.hashCode() * 7;
+		return this.text.hashCode();
 	}
 }

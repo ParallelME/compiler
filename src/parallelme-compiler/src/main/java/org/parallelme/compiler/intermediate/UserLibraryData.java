@@ -6,7 +6,7 @@
  *
  */
 
-package org.parallelme.compiler.runtime.translation.data;
+package org.parallelme.compiler.intermediate;
 
 /**
  * Defines the basic user library data that must be passed to the runtime to

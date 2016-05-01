@@ -11,9 +11,8 @@ package org.parallelme.compiler;
 import static org.junit.Assert.*;
 
 import org.junit.Test;
-
 import org.parallelme.compiler.CompilerArgsVerification.CompilerParameters;
-import org.parallelme.compiler.CompilerArgsVerification.TargetRuntime;
+import org.parallelme.compiler.RuntimeDefinition.TargetRuntime;
 
 /**
  * Performs all tests to validate CompilerArgsVerification class and simulate

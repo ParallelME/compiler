@@ -6,7 +6,7 @@
  *
  */
 
-package org.parallelme.compiler.runtime.translation;
+package org.parallelme.compiler.translation;
 
 /**
  * Defines the contract of a C code translator that will be used to translate

@@ -14,11 +14,9 @@ import java.util.HashSet;
 import java.util.List;
 
 import org.antlr.v4.runtime.TokenStreamRewriter;
-
 import org.parallelme.compiler.exception.CompilationException;
-import org.parallelme.compiler.runtime.*;
-import org.parallelme.compiler.runtime.translation.data.*;
-import org.parallelme.compiler.runtime.translation.data.Iterator.IteratorType;
+import org.parallelme.compiler.intermediate.*;
+import org.parallelme.compiler.intermediate.Iterator.IteratorType;
 import org.parallelme.compiler.symboltable.*;
 import org.parallelme.compiler.userlibrary.UserLibraryClassFactory;
 import org.parallelme.compiler.userlibrary.UserLibraryCollectionClass;
@@ -35,12 +33,13 @@ public class CompilerCodeTranslator {
 	private int functionsCount = 0;
 	private final RuntimeDefinition runtime;
 	private final String outputDestinationFolder;
-	private final CommonDefinitions commondDefinitions;
+	private final RuntimeCommonDefinitions commondDefinitions;
 
 	/**
+	 * Base constructor.
 	 * 
 	 * @param runtime
-	 *            The selected runtime for the output code.
+	 *            Selected runtime for output code.
 	 * @param outputDestinationFolder
 	 *            Output destination folder for compiled files.
 	 */
@@ -48,7 +47,7 @@ public class CompilerCodeTranslator {
 			String outputDestinationFolder) {
 		this.runtime = runtime;
 		this.outputDestinationFolder = outputDestinationFolder;
-		this.commondDefinitions = new CommonDefinitions();
+		this.commondDefinitions = new RuntimeCommonDefinitions();
 	}
 
 	public int getFunctionsCount() {
@@ -113,13 +112,11 @@ public class CompilerCodeTranslator {
 				this.insertRuntimeImports(tokenStreamRewriter, classSymbol,
 						iteratorsAndBinds);
 			}
-			// 8. Initialize the runtime using all input binds, iterators and
-			// output bind information found.
+			// 8. Initialize the runtime.
 			StringBuffer initialization = new StringBuffer();
 			initialization.append("\n"
 					+ this.runtime.getInitializationString(packageName,
-							classSymbol.name, inputBinds, iterators,
-							outputBinds));
+							classSymbol.name));
 			tokenStreamRewriter.insertAfter(classSymbol.bodyAddress.start,
 					initialization.toString());
 			// After code translation, stores the output code in a Java file
@@ -216,9 +213,12 @@ public class CompilerCodeTranslator {
 		Parameter[] arguments = this
 				.argumentsToVariableParameter(creatorSymbol.arguments);
 		InputBind inputBind = new InputBind(variable, functionNumber, arguments);
-		String inputBindDeclaration = this.runtime.declareAllocation(inputBind);
-		String inputBindCreation = this.runtime.createAllocation(className,
-				inputBind);
+		String inputBindDeclaration = this.runtime.getTranslator(
+				inputBind.getVariable().typeName)
+				.translateInputBindObjDeclaration(inputBind);
+		String inputBindCreation = this.runtime.getTranslator(
+				inputBind.getVariable().typeName)
+				.translateInputBindObjCreation(className, inputBind);
 		tokenStreamRewriter.insertBefore(variableSymbol.statementAddress.start,
 				inputBindDeclaration);
 		tokenStreamRewriter.insertAfter(creatorSymbol.statementAddress.stop,
@@ -320,7 +320,8 @@ public class CompilerCodeTranslator {
 				// so they must be grouped on a single list.
 				iterators.add(iterator);
 				// 2. Replace iterator code
-				String iteratorCall = this.runtime.getIteratorCall(
+				String iteratorCall = this.runtime.getTranslator(
+						iterator.getVariable().typeName).translateIteratorCall(
 						classSymbol.name, iterator);
 				tokenStreamRewriter.replace(
 						iterator.getStatementAddress().start,
@@ -355,9 +356,14 @@ public class CompilerCodeTranslator {
 		for (UserLibraryData userLibraryData : iteratorsAndBinds) {
 			if (userLibraryData instanceof OutputBind) {
 				OutputBind outputBind = (OutputBind) userLibraryData;
-				tokenStreamRewriter.replace(outputBind.statementAddress.start,
-						outputBind.statementAddress.stop,
-						this.runtime.getAllocationData(className, outputBind));
+				tokenStreamRewriter
+						.replace(
+								outputBind.statementAddress.start,
+								outputBind.statementAddress.stop,
+								this.runtime.getTranslator(
+										outputBind.getVariable().typeName)
+										.translateOutputBindCall(className,
+												outputBind));
 				outputBinds.add(outputBind);
 			}
 		}

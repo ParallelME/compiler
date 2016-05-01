@@ -6,10 +6,10 @@
  *
  */
 
-package org.parallelme.compiler.runtime.translation.data;
+package org.parallelme.compiler.intermediate;
 
 /**
- * Basic information for runtime variable parameters.
+ * Intermediate representation for variable parameters.
  * 
  * @author Wilson de Carvalho
  */

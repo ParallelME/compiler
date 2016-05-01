@@ -6,7 +6,7 @@
  *
  */
 
-package org.parallelme.compiler.runtime.translation.data;
+package org.parallelme.compiler.intermediate;
 
 /**
  * Stores user function data that must be translated to the target runtime.

@@ -24,7 +24,7 @@ public final class ParallelMERuntimeJNIWrapper {
 		return this.instance;
 	}
 
-	private native long init(long runtimePointer);
+	private native long init();
 	private native void cleanUp(long runtimePointer);
 
 	@Override
@@ -33,6 +33,6 @@ public final class ParallelMERuntimeJNIWrapper {
 	}
 
 	static {
-		System.loadLibrary("Name_yet_to_be_defined");
+		System.loadLibrary("reinhardOpenCLOperator");
 	}
 }

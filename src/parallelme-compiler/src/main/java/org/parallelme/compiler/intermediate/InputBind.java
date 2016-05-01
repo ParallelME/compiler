@@ -6,11 +6,10 @@
  *
  */
 
-package org.parallelme.compiler.runtime.translation.data;
+package org.parallelme.compiler.intermediate;
 
 /**
- * Defines the input bind data that must be passed to the runtime to translate
- * the code.
+ * Intermediate representation for input bind operations.
  * 
  * @author Wilson de Carvalho
  */

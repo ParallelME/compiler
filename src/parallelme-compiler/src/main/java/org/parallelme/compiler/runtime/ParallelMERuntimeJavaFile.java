@@ -14,9 +14,9 @@ import java.util.List;
 import java.util.Set;
 
 import org.stringtemplate.v4.ST;
-
-import org.parallelme.compiler.runtime.translation.data.Iterator;
-import org.parallelme.compiler.runtime.translation.data.Variable;
+import org.parallelme.compiler.RuntimeCommonDefinitions;
+import org.parallelme.compiler.intermediate.Iterator;
+import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.userlibrary.classes.BitmapImage;
 import org.parallelme.compiler.userlibrary.classes.HDRImage;
 import org.parallelme.compiler.util.Pair;
@@ -27,7 +27,7 @@ import org.parallelme.compiler.util.Pair;
  * @author Wilson de Carvalho
  */
 public class ParallelMERuntimeJavaFile {
-	private CommonDefinitions commonDefinitions = new CommonDefinitions();
+	private RuntimeCommonDefinitions commonDefinitions = new RuntimeCommonDefinitions();
 	private static final String templateClass = "<introductoryMsg>\n"
 			+ "package <packageName>;\n"
 			+ "\n<imports:{var|import <var.libraryName>;\n}>"

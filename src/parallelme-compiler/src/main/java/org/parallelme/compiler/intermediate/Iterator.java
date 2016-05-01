@@ -6,14 +6,14 @@
  *
  */
 
-package org.parallelme.compiler.runtime.translation.data;
+package org.parallelme.compiler.intermediate;
 
 import java.util.ArrayList;
 
 import org.parallelme.compiler.symboltable.TokenAddress;
 
 /**
- * Stores iterator data that must be translated to the targed runtime.
+ * Intermediate representation for iterators.
  * 
  * @author Wilson de Carvalho
  */

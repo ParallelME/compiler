@@ -11,16 +11,14 @@ package org.parallelme.compiler;
 import java.io.File;
 import java.util.ArrayList;
 
+import org.parallelme.compiler.RuntimeDefinition.TargetRuntime;
+
 /**
  * Class responsible for input argument verification.
  * 
  * @author Wilson de Carvalho
  */
 public class CompilerArgsVerification {
-	public enum TargetRuntime {
-		RenderScript, ParallelME;
-	}
-
 	public class CompilerParameters {
 		public String[] files;
 		public TargetRuntime targetRuntime;

@@ -6,18 +6,18 @@
  *
  */
 
-package org.parallelme.compiler.runtime;
+package org.parallelme.compiler;
 
 import java.io.File;
 
-import org.parallelme.compiler.runtime.translation.data.*;
+import org.parallelme.compiler.intermediate.*;
 
 /**
  * Code useful for common runtime definitions.
  * 
  * @author Wilson de Carvalho
  */
-public class CommonDefinitions {
+public class RuntimeCommonDefinitions {
 	private final String inSuffix = "In";
 	private final String outSuffix = "Out";
 	private final String iteratorName = "iterator";
@@ -33,71 +33,71 @@ public class CommonDefinitions {
 			+ " * Code created automatically by ParallelME compiler.\n"
 			+ " */\n";
 
-	public CommonDefinitions() {
+	public RuntimeCommonDefinitions() {
 	}
 
-	protected String getVariableInName(Variable variable) {
+	public String getVariableInName(Variable variable) {
 		return prefix + variable.name + inSuffix;
 	}
 
-	protected String getVariableOutName(Variable variable) {
+	public String getVariableOutName(Variable variable) {
 		return prefix + variable.name + outSuffix;
 	}
 
-	protected String getPrefix() {
+	public String getPrefix() {
 		return prefix;
 	}
 
-	protected String getHeaderComment() {
+	public String getHeaderComment() {
 		return this.headerComment;
 	}
 
 	/**
 	 * Return an unique prefixed iterator name base on its sequential number.
 	 */
-	protected String getPrefixedIteratorName(Iterator iterator) {
+	public String getPrefixedIteratorName(Iterator iterator) {
 		return this.prefix + this.getIteratorName(iterator);
 	}
 
 	/**
 	 * Return an unique iterator name base on its sequential number.
 	 */
-	protected String getIteratorName(Iterator iterator) {
+	public String getIteratorName(Iterator iterator) {
 		return iteratorName + iterator.sequentialNumber;
 	}
 
 	/**
 	 * Return an unique input bind name base on its sequential number.
 	 */
-	protected String getPrefixedInputBindName(InputBind inputBind) {
+	public String getPrefixedInputBindName(InputBind inputBind) {
 		return this.prefix + this.getInputBindName(inputBind);
 	}
 
 	/**
 	 * Return an unique input bind name base on its sequential number.
 	 */
-	protected String getInputBindName(InputBind inputBind) {
+	public String getInputBindName(InputBind inputBind) {
 		return inputBindName + inputBind.sequentialNumber;
 	}
 
 	/**
 	 * Return an unique prefixed output bind name base on its sequential number.
 	 */
-	protected String getPrefixedOutputBindName(OutputBind outputBind) {
+	public String getPrefixedOutputBindName(OutputBind outputBind) {
 		return this.prefix + this.getOutputBindName(outputBind);
 	}
 
 	/**
 	 * Return an unique output bind name base on its sequential number.
 	 */
-	protected String getOutputBindName(OutputBind outputBind) {
+	public String getOutputBindName(OutputBind outputBind) {
 		return outputBindName + outputBind.sequentialNumber;
 	}
 
 	/**
 	 * Return kernel that must be used in kernel object declarations.
 	 */
-	protected String getKernelName(String className) {
+	public String getKernelName(String className) {
 		return this.prefix + "kernel_" + className;
 	}
 
@@ -108,7 +108,7 @@ public class CommonDefinitions {
 	 *            Array of parameters.
 	 * @return Comma separated string with parameters.
 	 */
-	protected String toCommaSeparatedString(Parameter[] parameters) {
+	public String toCommaSeparatedString(Parameter[] parameters) {
 		StringBuilder params = new StringBuilder();
 		for (int i = 0; i < parameters.length; i++) {
 			params.append(parameters[i]);

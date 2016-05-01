@@ -38,7 +38,7 @@ public:
     /**
      * Constructs the runtime. If a JavaVM is specified, the worker threads of
      * the runtime will be linked to the JavaVM.
-     * The Sched class is the scheduler to be used by the runtime, defaulting to
+     * The S class is the scheduler to be used by the runtime, defaulting to
      * First Come First Served. It must be a derived class from Scheduler.
      */
     template<class Sched = SchedulerFCFS>

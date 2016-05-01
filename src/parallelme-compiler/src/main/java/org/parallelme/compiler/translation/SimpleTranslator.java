@@ -6,20 +6,28 @@
  *
  */
 
-package org.parallelme.compiler.runtime.translation;
+package org.parallelme.compiler.translation;
 
 /**
- * Java2C wrapper.
+ * 
  * 
  * @author Wilson de Carvalho
  */
-public class Java2C implements CTranslator {
+public class SimpleTranslator implements CTranslator {
+
 	/**
 	 * {@inheritDoc}
+	 * 
+	 * It is important to note that this translator will simply perform function
+	 * replacement and won't perform syntactic analysis
 	 */
 	@Override
 	public String translate(String javaCode) {
-		// TODO Integrate Java2C.
-		return javaCode;
+		String ret = this.replaceMathFunctions(javaCode);
+		return ret;
+	}
+
+	private String replaceMathFunctions(String javaCode) {
+		return javaCode.replaceAll("Math.", "");
 	}
 }

@@ -16,13 +16,13 @@ import java.util.Map;
 import java.util.Set;
 
 import org.stringtemplate.v4.ST;
-
-import org.parallelme.compiler.runtime.translation.PrimitiveTypes;
-import org.parallelme.compiler.runtime.translation.data.InputBind;
-import org.parallelme.compiler.runtime.translation.data.Iterator;
-import org.parallelme.compiler.runtime.translation.data.OutputBind;
-import org.parallelme.compiler.runtime.translation.data.Variable;
-import org.parallelme.compiler.runtime.translation.data.Iterator.IteratorType;
+import org.parallelme.compiler.RuntimeCommonDefinitions;
+import org.parallelme.compiler.intermediate.InputBind;
+import org.parallelme.compiler.intermediate.Iterator;
+import org.parallelme.compiler.intermediate.OutputBind;
+import org.parallelme.compiler.intermediate.Variable;
+import org.parallelme.compiler.intermediate.Iterator.IteratorType;
+import org.parallelme.compiler.translation.PrimitiveTypes;
 import org.parallelme.compiler.userlibrary.classes.BitmapImage;
 import org.parallelme.compiler.userlibrary.classes.HDRImage;
 import org.parallelme.compiler.util.Pair;
@@ -34,7 +34,7 @@ import org.parallelme.compiler.util.Pair;
  * @author Wilson de Carvalho
  */
 public class ParallelMERuntimeCppHppFile extends ParallelMERuntimeCFileBaseImpl {
-	private CommonDefinitions commonDefinitions = new CommonDefinitions();
+	private RuntimeCommonDefinitions commonDefinitions = new RuntimeCommonDefinitions();
 	private static final String templateJNICppFile = "<introductoryMsg>\n<includes:{var|#include <var.value>\n}>"
 			+ "\nJavaVM *gJvm;\n\n"
 			+ "JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserved) {\n"

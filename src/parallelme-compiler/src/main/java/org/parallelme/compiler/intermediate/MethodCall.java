@@ -6,13 +6,13 @@
  *
  */
 
-package org.parallelme.compiler.runtime.translation.data;
+package org.parallelme.compiler.intermediate;
 
 import org.parallelme.compiler.symboltable.TokenAddress;
 
 /**
- * Represents a method call for a regular (non-iterator, non-bind) operation on
- * a given object.
+ * Intermediate representation for regular method call (non-iterator, non-bind)
+ * on a given object.
  * 
  * @author Wilson de Carvalho
  */

@@ -14,11 +14,9 @@ import java.io.IOException;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
-
 import org.parallelme.compiler.antlr.JavaLexer;
 import org.parallelme.compiler.antlr.JavaParser;
 import org.parallelme.compiler.exception.CompilationException;
-import org.parallelme.compiler.runtime.RuntimeDefinition;
 import org.parallelme.compiler.symboltable.*;
 
 /**
