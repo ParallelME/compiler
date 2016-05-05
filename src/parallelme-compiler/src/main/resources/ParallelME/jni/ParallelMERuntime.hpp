@@ -11,10 +11,9 @@
 #include <iostream>
 #include <list>
 #include <map>
-#include "../error.h"
-#include "../runtime/ExtraArgument.hpp"
-#include "../runtime/Allocation.hpp"
-#include "../runtime/Device.hpp"
+#include "runtime/ExtraArgument.hpp"
+#include "runtime/Allocation.hpp"
+#include "runtime/Device.hpp"
 
 class Runtime;
 class Program;

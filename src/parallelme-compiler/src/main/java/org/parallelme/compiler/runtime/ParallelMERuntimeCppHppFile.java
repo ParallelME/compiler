@@ -8,7 +8,6 @@
 
 package org.parallelme.compiler.runtime;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -17,15 +16,12 @@ import java.util.Set;
 
 import org.stringtemplate.v4.ST;
 import org.parallelme.compiler.RuntimeCommonDefinitions;
-import org.parallelme.compiler.intermediate.InputBind;
 import org.parallelme.compiler.intermediate.Iterator;
-import org.parallelme.compiler.intermediate.OutputBind;
 import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.intermediate.Iterator.IteratorType;
 import org.parallelme.compiler.translation.PrimitiveTypes;
 import org.parallelme.compiler.userlibrary.classes.BitmapImage;
 import org.parallelme.compiler.userlibrary.classes.HDRImage;
-import org.parallelme.compiler.util.Pair;
 
 /**
  * Stores all actions and definitions used to create cpp and hpp files'
@@ -44,13 +40,18 @@ public class ParallelMERuntimeCppHppFile extends ParallelMERuntimeCFileBaseImpl 
 			+ "<functions:{var|<var.decl><var.LDLIM>\n<var.body>\n<var.RDLIM>\n\n}>";
 	private static final String templateFunctionDeclJNI = "JNIEXPORT <return> JNICALL Java_<className>_<functionName>(JNIEnv *env, jobject a<params:{var|, <var.type> <var.name>}>)";
 	private static final String templateFunctionBodyJNI = "\ttry {\n"
-			+ "\t\tauto foo = reinterpret_cast<castContents>(parallelMERuntime);\n"
-			+ "\t\tstd::list<ExtraArgumentType> extra_args;\n"
-			+ "\t\t<params:{var|ExtraArgument ea_<var.name>;\n"
-			+ "ea_<var.name>.argType = ArgType::<var.argType>;\n"
-			+ "ea_<var.name>.value.<var.argAlias> = <var.name>;\n"
-			+ "extra_args.push_back(ea_<var.name>);\n}>"
-			+ "\t\tfoo->addKernel(input_array_id, \"<functionName>\", extra_args, worksize<kernelParams:{var|, <var.name>}>);\n"
+			+ "\t\tauto $foo = reinterpret_cast\\<ParallelMERuntime *>($parallelMERuntime);\n"
+			+ "\t\tstd::list\\<ExtraArgumentType> $extra_args;\n"
+			+ "\t\t<paramsEA:{var|ExtraArgument $ea_<var.name>;\n"
+			+ "$ea_<var.name>.argType = ArgType::<var.argType>;\n"
+			+ "$ea_<var.name>.value.<var.argAlias> = $<var.name>;\n"
+			+ "$extra_args.push_back($ea_<var.name>);\n}>"
+			+ "\t\tstd::list\\<int> $input_args;\n"
+			+ "\t\t$input_args.push_back($inputBufferId);\n"
+			+ "\t\tstd::list\\<int> $output_args;\n"
+			+ "\t\t$output_args.push_back($outputBufferId);\n"
+			+ "\t\t<paramsOA:{var|$output_args.push_back(<var.name>);}>\n"
+			+ "\t\t$foo->addKernel($input_args, $output_args, \"<functionName>\", $extra_args, $worksize);\n"
 			+ "\t} catch(std::runtime_error &e) {\n"
 			+ "\t\tstop_if(true, \"Error on call to ParallelME kernel at <functionName>: %s\", e.what());\n"
 			+ "\t}" + "<returnStatement>";
@@ -64,30 +65,6 @@ public class ParallelMERuntimeCppHppFile extends ParallelMERuntimeCFileBaseImpl 
 			+ "<functions:{var|<var.decl>;\n\n}>"
 			+ "#ifdef __cplusplus\n"
 			+ "}\n" + "#endif\n" + "#endif\n";
-	private static final String templateKernelDecl = "__kernel void <functionName>(<params:{var|<var.type> <var.name>}>)";
-	private static final String toFloatKernel = "__kernel void toFloat(__global uchar4 *gIn, __global float4 *gOut) {\n"
-			+ "\tint gid = get_global_id(0);\n"
-			+ "\tuchar4 in = gIn[gid];\n"
-			+ "\tfloat4 out;\n"
-			+ "\tfloat f;\n"
-			+ "\tif(in.s3 != 0) {\n"
-			+ "\t\tf = ldexp(1.0f, (in.s3 & 0xFF) - (128 + 8));\n"
-			+ "\t\tout.s0 = (in.s0 & 0xFF) * f;\n"
-			+ "\t\tout.s1 = (in.s1 & 0xFF) * f;\n"
-			+ "\t\tout.s2 = (in.s2 & 0xFF) * f;\n"
-			+ "\t} else {\n"
-			+ "\t\tout.s0 = 0.0f;\n"
-			+ "\t\tout.s1 = 0.0f;\n"
-			+ "\t\tout.s2 = 0.0f;\n" + "\t}\n" + "\tgOut[gid] = out;\n" + "}\n";
-	private static final String toBitmapKernel = "__kernel void toBitmap(__global float4 *gIn, __global uchar4 *gOut) {\n"
-			+ "\tint gid = get_global_id(0);\n"
-			+ "\tfloat4 in = gIn[gid];\n"
-			+ "\tuchar4 out;\n"
-			+ "\tout.x = (uchar) (255.0f * in.s0);\n"
-			+ "\tout.y = (uchar) (255.0f * in.s1);\n"
-			+ "\tout.z = (uchar) (255.0f * in.s2);\n"
-			+ "\tout.w = 255;\n"
-			+ "\tgOut[gid] = out;\n" + "}\n";
 
 	/**
 	 * Creates a string with a C class that wraps all JNI calls
@@ -194,14 +171,33 @@ public class ParallelMERuntimeCppHppFile extends ParallelMERuntimeCFileBaseImpl 
 		st.add("return", "void");
 		st.add("className", cClassName);
 		st.add("functionName", this.commonDefinitions.getIteratorName(iterator));
-		st.addAggr("params.{type, name}", "jlong", "parallelMERuntime");
-		st.addAggr("params.{type, name}", "jint", "input_array_id");
-		st.addAggr("params.{type, name}", "jint", "worksize");
-		List<Pair<String, String>> params = this
-				.getJNIFunctionDeclParams(iterator);
-		for (int i = 0; i < params.size(); i++) {
-			Pair<String, String> pair = params.get(i);
-			st.addAggr("params.{type, name}", pair.left, pair.right);
+		st.addAggr("params.{type, name}", "jlong",
+				this.commonDefinitions.getPrefix() + "parallelMERuntime");
+		st.addAggr("params.{type, name}", "jint",
+				this.commonDefinitions.getPrefix() + "inputBufferId");
+		st.addAggr("params.{type, name}", "jint",
+				this.commonDefinitions.getPrefix() + "outputBufferId");
+		st.addAggr("params.{type, name}", "jint",
+				this.commonDefinitions.getPrefix() + "worksize");
+		// Create output buffers for each external variable
+		for (Variable variable : iterator.getExternalVariables()) {
+			st.addAggr("params.{type, name}", "jint",
+					this.commonDefinitions.getVariableOutName(variable));
+		}
+		if (iterator.getType() == IteratorType.Sequential) {
+			if (iterator.getVariable().typeName.equals(BitmapImage.getName())
+					|| iterator.getVariable().typeName.equals(HDRImage
+							.getName())) {
+				st.addAggr("params.{type, name}", "jint",
+						this.commonDefinitions.getPrefix() + "height");
+				st.addAggr("params.{type, name}", "jint",
+						this.commonDefinitions.getPrefix() + "width");
+			}
+		}
+		// External variables are added with its original name
+		for (Variable variable : iterator.getExternalVariables()) {
+			st.addAggr("params.{type, name}",
+					PrimitiveTypes.getJNIType(variable.typeName), variable.name);
 		}
 		return st.render();
 	}
@@ -211,14 +207,26 @@ public class ParallelMERuntimeCppHppFile extends ParallelMERuntimeCFileBaseImpl 
 	 */
 	private String getJNIFunctionBody(Iterator iterator) {
 		ST st = new ST(templateFunctionBodyJNI);
-		st.add("ExtraArgumentType", "<ExtraArgument>");
 		st.add("functionName", this.commonDefinitions.getIteratorName(iterator));
-		st.add("castContents", "<ParallelMERuntime *>");
-		st.add("params", null);
-		st.add("kernelParams", null);
+		st.add("paramsEA", null);
 		st.add("returnStatement", null);
+		st.add("paramsOA", null);
+		if (iterator.getType() == IteratorType.Sequential) {
+			if (iterator.getVariable().typeName.equals(BitmapImage.getName())
+					|| iterator.getVariable().typeName.equals(HDRImage
+							.getName())) {
+				st.addAggr("paramsEA.{name, argType, argAlias}", "height",
+						PrimitiveTypes.getRuntimeArgType("int"),
+						PrimitiveTypes.getRuntimeAlias("int"));
+				st.addAggr("paramsEA.{name, argType, argAlias}", "width",
+						PrimitiveTypes.getRuntimeArgType("int"),
+						PrimitiveTypes.getRuntimeAlias("int"));
+			}
+		}
 		for (Variable variable : iterator.getExternalVariables()) {
-			st.addAggr("params.{name, argType, argAlias}", variable.name,
+			st.addAggr("paramsOA.{name}",
+					this.commonDefinitions.getVariableOutName(variable));
+			st.addAggr("paramsEA.{name, argType, argAlias}", variable.name,
 					PrimitiveTypes.getRuntimeArgType(variable.typeName),
 					PrimitiveTypes.getRuntimeAlias(variable.typeName));
 		}
@@ -238,25 +246,34 @@ public class ParallelMERuntimeCppHppFile extends ParallelMERuntimeCFileBaseImpl 
 					packageName, className);
 			// toBitmap
 			ST st = new ST(templateFunctionDeclJNI);
-			st.add("return", "jobject");
+			st.add("return", "void");
 			st.add("className", cClassName);
 			st.add("functionName", "toBitmap");
-			st.addAggr("params.{type, name}", "jlong", "parallelMERuntime");
-			st.addAggr("params.{type, name}", "jint", "input_array_id");
-			st.addAggr("params.{type, name}", "jint", "worksize");
-			st.addAggr("params.{type, name}", "jbyteArray", "input_array");
-			st.addAggr("params.{type, name}", "jint", "input_buffer_size");
-			st.addAggr("params.{type, name}", "jobject", "bitmap");
-			st.addAggr("params.{type, name}", "jint", "bitmap_buffer_size");
+			st.addAggr("params.{type, name}", "jlong",
+					this.commonDefinitions.getPrefix() + "parallelMERuntime");
+			st.addAggr("params.{type, name}", "jint",
+					this.commonDefinitions.getPrefix() + "inputBufferId");
+			st.addAggr("params.{type, name}", "jint",
+					this.commonDefinitions.getPrefix() + "outputBufferId");
+			st.addAggr("params.{type, name}", "jint",
+					this.commonDefinitions.getPrefix() + "worksize");
 			ret.put("toBitmap", st.render());
-			// toFloat
+			// toFloat. Duplicated code because string template will always add
+			// strings whenever you try to replace a previously filled
+			// parameter, so to simply add a new "functionName" we must
+			// re-create the ST object.
 			st = new ST(templateFunctionDeclJNI);
 			st.add("return", "void");
 			st.add("className", cClassName);
-			st.add("functionName", "toFloat");
-			st.addAggr("params.{type, name}", "jlong", "parallelMERuntime");
-			st.addAggr("params.{type, name}", "jint", "input_array_id");
-			st.addAggr("params.{type, name}", "jint", "worksize");
+			st.add("functionName", "toBitmap");
+			st.addAggr("params.{type, name}", "jlong",
+					this.commonDefinitions.getPrefix() + "parallelMERuntime");
+			st.addAggr("params.{type, name}", "jint",
+					this.commonDefinitions.getPrefix() + "inputBufferId");
+			st.addAggr("params.{type, name}", "jint",
+					this.commonDefinitions.getPrefix() + "outputBufferId");
+			st.addAggr("params.{type, name}", "jint",
+					this.commonDefinitions.getPrefix() + "worksize");
 			ret.put("toFloat", st.render());
 		}
 		return ret;
@@ -273,170 +290,19 @@ public class ParallelMERuntimeCppHppFile extends ParallelMERuntimeCFileBaseImpl 
 				|| userLibraryType.equals(HDRImage.getName())) {
 			// toBitmap
 			ST st = new ST(templateFunctionBodyJNI);
-			st.add("ExtraArgumentType", "<ExtraArgument>");
+			st.add("paramsOA", null);
 			st.add("functionName", "toBitmap");
-			st.add("castContents", "<ParallelMERuntime *>");
-			st.add("params", null);
-			st.addAggr("kernelParams.{name}", "input_array");
-			st.addAggr("kernelParams.{name}", "input_buffer_size");
-			st.addAggr("kernelParams.{name}", "bitmap");
-			st.addAggr("kernelParams.{name}", "bitmap_buffer_size");
+			st.add("paramsEA", null);
 			st.add("returnStatement", "\n\treturn bitmap;");
 			ret.put("toBitmap", st.render());
 			// toFloat
 			st = new ST(templateFunctionBodyJNI);
-			st.add("ExtraArgumentType", "<ExtraArgument>");
+			st.add("paramsOA", null);
 			st.add("functionName", "toFloat");
-			st.add("castContents", "<ParallelMERuntime *>");
-			st.add("params", null);
-			st.add("kernelParams", null);
+			st.add("paramsEA", null);
 			st.add("returnStatement", null);
 			ret.put("toFloat", st.render());
 		}
 		return ret;
-	}
-
-	/**
-	 * Analyzes a given iterator object, takes its external objects and creates
-	 * a string for each parameter declaration according to JNI parameter types.
-	 */
-	private List<Pair<String, String>> getJNIFunctionDeclParams(
-			Iterator iterator) {
-		ArrayList<Pair<String, String>> ret = new ArrayList<>();
-		for (Variable variable : iterator.getExternalVariables()) {
-			// TODO Check if variable type is primitive. If it is not, show some
-			// error or throw an exception (check what is the best option).
-			ret.add(new Pair<String, String>(PrimitiveTypes
-					.getJNIType(variable.typeName), variable.name));
-		}
-		return ret;
-	}
-
-	/**
-	 * Creates a string with the contents of the kernels file.
-	 * 
-	 * @param packageName
-	 *            Name of the package of which the returned class will be part.
-	 * @param className
-	 *            Name of the JNI wrapper class.
-	 */
-	public String getHKernelFile(String packageName, String className,
-			List<InputBind> inputBinds, List<Iterator> iterators,
-			List<OutputBind> outputBinds) {
-		String templateKernelFile = "<introductoryMsg>\n"
-				+ "#ifndef KERNELS_H\n" + "#define KERNELS_H\n\n"
-				+ "const char kernels[] =\n"
-				+ "\t<kernels:{var|\"<var.line>\"\n}>" + "#endif\n";
-		ST st = new ST(templateKernelFile);
-		// 1. Add header comment
-		st.add("introductoryMsg", this.commonDefinitions.getHeaderComment());
-		// 2. Translate input binds
-		Set<String> inputBindTypes = new HashSet<String>();
-		for (InputBind inputBind : inputBinds) {
-			if (!inputBindTypes.contains(inputBind.getVariable().typeName)) {
-				inputBindTypes.add(inputBind.getVariable().typeName);
-				this.translateInputBind(inputBind, st);
-				st.addAggr("kernels.{line}", "\\n");
-			}
-		}
-		// 3. Translate iterators
-		for (Iterator iterator : iterators) {
-			this.translateIterator(iterator, st);
-			st.addAggr("kernels.{line}", "\\n");
-		}
-		// 4. Translate outputbinds
-		Set<String> outputBindTypes = new HashSet<String>();
-		for (OutputBind outputBind : outputBinds) {
-			if (!outputBindTypes.contains(outputBind.getVariable().typeName)) {
-				outputBindTypes.add(outputBind.getVariable().typeName);
-				this.translateOutputBind(outputBind, st);
-				st.addAggr("kernels.{line}", "\\n");
-			}
-		}
-		return st.render();
-	}
-
-	/**
-	 * Translates a given input bind.
-	 * 
-	 * @param inputBind
-	 *            Object containing the necessary information to translate an
-	 *            input bind.
-	 * @param st
-	 *            String template that will be filled with input bind's kernel
-	 *            information.
-	 */
-	private void translateInputBind(InputBind inputBind, ST st) {
-		if (inputBind.getVariable().typeName.equals(BitmapImage.getName())
-				|| inputBind.getVariable().typeName.equals(HDRImage.getName())) {
-			this.addKernelByLine(toFloatKernel, st);
-		}
-	}
-
-	/**
-	 * Translates a given iterator.
-	 * 
-	 * @param iterator
-	 *            Object containing the necessary information to translate an
-	 *            iterator.
-	 * @param st
-	 *            String template that will be filled with iterator's kernel
-	 *            information.
-	 */
-	private void translateIterator(Iterator iterator, ST st) {
-		st.addAggr("kernels.{line}", this.getKernelFunctionDecl(iterator));
-		this.addKernelByLine(iterator.getUserFunctionData().Code, st);
-	}
-
-	/**
-	 * Translates a given output bind.
-	 * 
-	 * @param outputBind
-	 *            Object containing the necessary information to translate an
-	 *            output bind.
-	 * @param st
-	 *            String template that will be filled with output bind's kernel
-	 *            information.
-	 */
-	private void translateOutputBind(OutputBind outputBind, ST st) {
-		if (outputBind.getVariable().typeName.equals(BitmapImage.getName())
-				|| outputBind.getVariable().typeName.equals(HDRImage.getName())) {
-			this.addKernelByLine(toBitmapKernel, st);
-		}
-	}
-
-	/**
-	 * Add a given kernel line-by-line to the string template informed.
-	 * 
-	 * @param kernel
-	 *            Multi-line kernel function.
-	 * @param st
-	 *            String template with "kernes.line" parameter.
-	 */
-	private void addKernelByLine(String kernel, ST st) {
-		String[] lines = kernel.split("\n");
-		for (String line : lines) {
-			st.addAggr("kernels.{line}", line + "\\n");
-		}
-	}
-
-	/**
-	 * Creates kernel declaration for a given iterator.
-	 */
-	private String getKernelFunctionDecl(Iterator iterator) {
-		ST st = new ST(templateKernelDecl);
-		st.add("return", "void");
-		st.add("functionName", this.commonDefinitions.getIteratorName(iterator));
-		st.addAggr("params.{type, name}", "float4", "*gData");
-		if (iterator.getType() == IteratorType.Sequential) {
-			st.addAggr("params.{type, name}", ", int", "height");
-			st.addAggr("params.{type, name}", ", int", "width");
-		}
-		for (Variable variable : iterator.getExternalVariables()) {
-			st.addAggr("params.{type, name}",
-					", " + PrimitiveTypes.getCType(variable.typeName),
-					variable.name);
-		}
-		return st.render();
 	}
 }

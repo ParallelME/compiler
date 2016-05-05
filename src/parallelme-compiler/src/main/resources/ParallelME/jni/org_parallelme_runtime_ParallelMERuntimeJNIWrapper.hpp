@@ -20,6 +20,8 @@ JNIEXPORT jlong JNICALL Java_org_parallelme_runtime_ParallelMERuntimeJNIWrapper_
 
 JNIEXPORT jlong JNICALL Java_org_parallelme_runtime_ParallelMERuntimeJNIWrapper_cleanUp(JNIEnv *, jobject);
 
+JNIEXPORT void JNICALL Java_org_parallelme_runtime_ParallelMERuntimeJNIWrapper_waitFinish(JNIEnv *, jobject, jlong);
+
 #ifdef __cplusplus
 }
 #endif

@@ -49,7 +49,7 @@ public abstract class RSTranslator extends BaseTranslator {
 			+ "\t<externalVariables:{var|rsSetElementAt_<var.variableType>(<var.outVariableName>, <var.variableName>, 0);\n}>"
 			+ "}";
 
-	private static final String templateForLoop = "for (int <varName> = 0; <varName> <less> <varMaxVal>; <varName>++) {\n\t<body>}\n";
+	private static final String templateForLoop = "for (int <varName> = 0; <varName> \\< <varMaxVal>; <varName>++) {\n\t<body>}\n";
 	private static final String templateForLoopSequentialBody = "<userFunctionVarName> = rsGetElementAt_<userFunctionVarType>(<inputData>, x<param:{var|, <var.name>}>);\n"
 			+ "<userCode>\n"
 			+ "rsSetElementAt_<userFunctionVarType>(<inputData>, <userFunctionVarName>, x<param:{var|, <var.name>}>);\n";
@@ -144,49 +144,15 @@ public abstract class RSTranslator extends BaseTranslator {
 	}
 
 	/**
-	 * Create a global variable name for the given variable following some
-	 * standards. Global variables will be prefixed with "g" followed by an
-	 * upper case letter and sufixed by the iterator name, so "max" from
-	 * iterator 2 becomes "gMax_Iterator2"
-	 */
-	private String getGlobalVariableName(String variable, Iterator iterator) {
-		String iteratorName = this.commonDefinitions.getIteratorName(iterator);
-		String variableName = this.upperCaseFirstLetter(variable);
-		return "g" + variableName + this.upperCaseFirstLetter(iteratorName);
-	}
-
-	/**
-	 * Change the first letter of the informed string to upper case.
-	 */
-	private String upperCaseFirstLetter(String string) {
-		return string.substring(0, 1).toUpperCase()
-				+ string.substring(1, string.length());
-	}
-
-	/**
 	 * {@inheritDoc}
 	 */
 	@Override
-	public String translateIterator(String className, Iterator iterator) {
-		String ret;
+	protected String translateParallelIterator(Iterator iterator) {
+		Variable userFunctionVariable = iterator.getUserFunctionData().variableArgument;
 		String code2Translate = iterator.getUserFunctionData().Code.trim();
 		// Remove the last curly brace
 		code2Translate = code2Translate.substring(0,
 				code2Translate.lastIndexOf("}"));
-		Variable userFunctionVariable = iterator.getUserFunctionData().variableArgument;
-		// Translate parallel iterators
-		if (iterator.getType() == IteratorType.Parallel) {
-			ret = this.translateParallelIterator(iterator, code2Translate,
-					userFunctionVariable);
-		} else {
-			ret = this.translateSequentialIterator(iterator, code2Translate,
-					userFunctionVariable);
-		}
-		return ret;
-	}
-
-	private String translateParallelIterator(Iterator iterator,
-			String code2Translate, Variable userFunctionVariable) {
 		String ret;
 		String returnString = "\treturn " + userFunctionVariable.name + ";";
 		code2Translate = code2Translate + "\n" + returnString + "\n}";
@@ -208,9 +174,16 @@ public abstract class RSTranslator extends BaseTranslator {
 		return ret;
 	}
 
-	private String translateSequentialIterator(Iterator iterator,
-			String code2Translate, Variable userFunctionVariable) {
-		String ret;
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	protected String translateSequentialIterator(Iterator iterator) {
+		Variable userFunctionVariable = iterator.getUserFunctionData().variableArgument;
+		String code2Translate = iterator.getUserFunctionData().Code.trim();
+		// Remove the last curly brace
+		code2Translate = code2Translate.substring(0,
+				code2Translate.lastIndexOf("}"));
 		// Remove the first curly brace
 		code2Translate = code2Translate.substring(
 				code2Translate.indexOf("{") + 1, code2Translate.length());
@@ -244,7 +217,6 @@ public abstract class RSTranslator extends BaseTranslator {
 		}
 		ST stFor = new ST(templateForLoop);
 		stFor.add("varName", "x");
-		stFor.add("less", "<");
 		stFor.add("varMaxVal", "gInputXSize" + iteratorName);
 		ST stForBody = new ST(templateForLoopSequentialBody);
 		stForBody.add("inputData", gNameIn);
@@ -258,7 +230,6 @@ public abstract class RSTranslator extends BaseTranslator {
 			stForBody.addAggr("param.{name}", "y");
 			ST stFor2 = new ST(templateForLoop);
 			stFor2.add("varName", "y");
-			stFor2.add("less", "<");
 			stFor2.add("varMaxVal", "gInputYSize" + iteratorName);
 			stFor2.add("body", stForBody.render());
 			stFor.add("body", stFor2.render());
@@ -267,25 +238,7 @@ public abstract class RSTranslator extends BaseTranslator {
 			stFor.add("body", stForBody.render());
 		}
 		st.add("forLoop", stFor.render());
-		ret = st.render();
-		return ret;
-	}
-
-	/**
-	 * Replace all instances of a given oldName by a newName, checking if this
-	 * newName contains a $ sign, which is reserved in regex. In case a $
-	 * exists, it will be escaped during replacement.
-	 */
-	private String replaceAndEscapePrefix(String string, String newName,
-			String oldName) {
-		if (newName.contains("$")) {
-			int idx = newName.indexOf("$");
-			newName = newName.substring(0, idx) + "\\$"
-					+ newName.substring(idx + 1, newName.length());
-			return string.replaceAll(oldName, newName);
-		} else {
-			return string.replaceAll(oldName, newName);
-		}
+		return st.render();
 	}
 
 	/**

@@ -19,7 +19,6 @@ import org.parallelme.compiler.intermediate.Iterator;
 import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.userlibrary.classes.BitmapImage;
 import org.parallelme.compiler.userlibrary.classes.HDRImage;
-import org.parallelme.compiler.util.Pair;
 
 /**
  * Stores all actions and definitions used to create Java files contents.
@@ -37,8 +36,8 @@ public class ParallelMERuntimeJavaFile {
 			+ "\t\treturn this.instance;\n" + "\t}\n\n"
 			+ "\t<\tfunctionsDecl:{var|<var.decl>;\n}>"
 			+ "\n\t<functionsImpl:{var|\n\n<var.impl>}>}\n";
-	private static final String templateNativeFunctionDecl = "private native <return> <functionName>(long runtimePointer<params:{var|<var.type> <var.name>}>)";
-	private static final String templateFunctionImpl = "public void <functionName>(<paramsDecl:{var|<var.type> <var.name>}>) {\n"
+	private static final String templateNativeFunctionDecl = "private native <return> <functionName>(long runtimePointer<params:{var|, <var.type> <var.name>}>)";
+	private static final String templateFunctionImpl = "public void <functionName>(<paramsDecl:{var|<var.type> <var.name>}; separator=\", \">) {\n"
 			+ "\t<functionName>(ParallelMERuntimeJNIWrapper.getInstance().runtimePointer<paramsBody:{var|, <var.name>}>);\n"
 			+ "}\n";
 
@@ -79,75 +78,7 @@ public class ParallelMERuntimeJavaFile {
 			stClass.addAggr("functionsImpl.{impl}",
 					this.getFunctionImpl(iterator));
 		}
-		// 4. Add conversion functions that are necessary for each variable type
-		for (Pair<String, String> declImpl : this
-				.getFunctionDeclImplByType(iteratorVariableTypes)) {
-			stClass.addAggr("functionsDecl.{decl}", declImpl.left);
-			stClass.addAggr("functionsImpl.{impl}", declImpl.right);
-		}
-		stClass.add("libraryName", "Name_yet_to_be_defined");
 		return stClass.render();
-	}
-
-	private List<Pair<String, String>> getFunctionDeclImplByType(
-			Set<String> iteratorVariableTypes) {
-		ArrayList<Pair<String, String>> ret = new ArrayList<>();
-		if (iteratorVariableTypes.contains(HDRImage.getName())
-				|| iteratorVariableTypes.contains(BitmapImage.getName())) {
-			ret.add(this.getToFloatDeclImpl());
-			ret.add(this.getToBitmapDeclImpl());
-		}
-		return ret;
-	}
-
-	/**
-	 * Creates a pair of strings containg the jni declaration (left) and the
-	 * method implementation (right) for toFloat operation.
-	 */
-	private Pair<String, String> getToFloatDeclImpl() {
-		ST stDecl = new ST(templateNativeFunctionDecl);
-		stDecl.add("return", "void");
-		stDecl.add("functionName", "toFloat");
-		stDecl.addAggr("params.{type, name}", ", int", "input_array_id");
-		stDecl.addAggr("params.{type, name}", ", int", "worksize");
-		ST stImpl = new ST(templateFunctionImpl);
-		stImpl.add("functionName", "toFloat");
-		stImpl.addAggr("paramsDecl.{type, name}", "int", "input_array_id, ");
-		stImpl.addAggr("paramsDecl.{type, name}", "int", "worksize");
-		stImpl.addAggr("paramsBody.{name}", "input_array_id");
-		stImpl.addAggr("paramsBody.{name}", "worksize");
-		return new Pair<String, String>(stDecl.render(), stImpl.render());
-	}
-
-	/**
-	 * Creates a pair of strings containg the jni declaration (left) and the
-	 * method implementation (right) for toBitmap operation.
-	 */
-	private Pair<String, String> getToBitmapDeclImpl() {
-		ST stDecl = new ST(templateNativeFunctionDecl);
-		stDecl.add("return", "void");
-		stDecl.add("functionName", "toBitmap");
-		stDecl.addAggr("params.{type, name}", ", int", "input_array_id");
-		stDecl.addAggr("params.{type, name}", ", int", "worksize");
-		stDecl.addAggr("params.{type, name}", ", byte[]", "input_array");
-		stDecl.addAggr("params.{type, name}", ", int", "input_buffer_size");
-		stDecl.addAggr("params.{type, name}", ", Bitmap", "output_bitmap");
-		stDecl.addAggr("params.{type, name}", ", int", "output_buffer_size");
-		ST stImpl = new ST(templateFunctionImpl);
-		stImpl.add("functionName", "toBitmap");
-		stImpl.addAggr("paramsDecl.{type, name}", "int", "input_array_id, ");
-		stImpl.addAggr("paramsDecl.{type, name}", "int", "worksize, ");
-		stImpl.addAggr("paramsDecl.{type, name}", "byte[]", "input_array, ");
-		stImpl.addAggr("paramsDecl.{type, name}", "int", "input_buffer_size, ");
-		stImpl.addAggr("paramsDecl.{type, name}", "Bitmap", "bitmap, ");
-		stImpl.addAggr("paramsDecl.{type, name}", "int", "bitmap_buffer_size");
-		stImpl.addAggr("paramsBody.{name}", "input_array_id");
-		stImpl.addAggr("paramsBody.{name}", "worksize");
-		stImpl.addAggr("paramsBody.{name}", "input_array");
-		stImpl.addAggr("paramsBody.{name}", "input_buffer_size");
-		stImpl.addAggr("paramsBody.{name}", "bitmap");
-		stImpl.addAggr("paramsBody.{name}", "bitmap_buffer_size");
-		return new Pair<String, String>(stDecl.render(), stImpl.render());
 	}
 
 	/**
@@ -178,11 +109,11 @@ public class ParallelMERuntimeJavaFile {
 		ST st = new ST(templateNativeFunctionDecl);
 		st.add("return", "void");
 		st.add("functionName", this.commonDefinitions.getIteratorName(iterator));
-		st.addAggr("params.{type, name}", ", int", "input_array_id");
-		st.addAggr("params.{type, name}", ", int", "worksize");
+		st.addAggr("params.{type, name}", "int", "inputBufferId");
+		st.addAggr("params.{type, name}", "int", "outputBufferId");
+		st.addAggr("params.{type, name}", "int", "worksize");
 		for (Variable variable : iterator.getExternalVariables()) {
-			String varType = ", " + variable.typeName;
-			st.addAggr("params.{type, name}", varType, variable.name);
+			st.addAggr("params.{type, name}", variable.typeName, variable.name);
 		}
 		return st.render();
 	}
@@ -193,13 +124,15 @@ public class ParallelMERuntimeJavaFile {
 	private String getFunctionImpl(Iterator iterator) {
 		ST st = new ST(templateFunctionImpl);
 		st.add("functionName", this.commonDefinitions.getIteratorName(iterator));
-		st.addAggr("paramsDecl.{type, name}", "int", "input_array_id, ");
+		st.addAggr("paramsDecl.{type, name}", "int", "inputBufferId");
+		st.addAggr("paramsDecl.{type, name}", "int", "outputBufferId");
 		st.addAggr("paramsDecl.{type, name}", "int", "worksize");
-		st.addAggr("paramsBody.{name}", "input_array_id");
+		st.addAggr("paramsBody.{name}", "outputBufferId");
+		st.addAggr("paramsBody.{name}", "inputBufferId");
 		st.addAggr("paramsBody.{name}", "worksize");
 		for (Variable variable : iterator.getExternalVariables()) {
-			String varType = ", " + variable.typeName;
-			st.addAggr("paramsDecl.{type, name}", varType, variable.name);
+			st.addAggr("paramsDecl.{type, name}", variable.typeName,
+					variable.name);
 			st.addAggr("paramsBody.{name}", variable.name);
 		}
 		return st.render();

@@ -10,13 +10,16 @@ package org.parallelme.compiler.runtime;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.parallelme.compiler.RuntimeDefinitionImpl;
 import org.parallelme.compiler.intermediate.*;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.userlibrary.classes.HDRImage;
 import org.parallelme.compiler.util.FileWriter;
+import org.stringtemplate.v4.ST;
 
 /**
  * Definitions for ParallelME runtime.
@@ -36,8 +39,8 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	private void initTranslators() {
 		if (super.translators == null) {
 			super.translators = new HashMap<>();
-			super.translators.put(HDRImage.getName(),
-					new PMHDRImageTranslator());
+			super.translators.put(HDRImage.getName(), new PMHDRImageTranslator(
+					this.cCodeTranslator));
 		}
 	}
 
@@ -55,6 +58,7 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	@Override
 	public String getImports(List<UserLibraryData> iteratorsAndBinds) {
 		StringBuffer ret = new StringBuffer();
+		ret.append("import org.parallelme.runtime.ParallelMERuntimeJNIWrapper;\n");
 		ret.append(this.getUserLibraryImports(iteratorsAndBinds));
 		ret.append("\n");
 		return ret.toString();
@@ -120,10 +124,61 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	private void createKernelFiles(String packageName, String className,
 			List<InputBind> inputBinds, List<Iterator> iterators,
 			List<OutputBind> outputBinds) {
-		FileWriter.writeFile("kernel.h", this.commonDefinitions
-				.getJNIDestinationFolder(this.outputDestinationFolder),
-				this.cppHppContentCreation.getHKernelFile(packageName,
-						className, inputBinds, iterators, outputBinds));
+		String templateKernelFile = "<introductoryMsg>\n"
+				+ "#ifndef KERNELS_H\n" + "#define KERNELS_H\n\n"
+				+ "const char kernels[] =\n"
+				+ "\t<kernels:{var|\"<var.line>\"\n}>" + "#endif\n";
+		ST st = new ST(templateKernelFile);
+		// 1. Add header comment
+		st.add("introductoryMsg", this.commonDefinitions.getHeaderComment());
+		// 2. Translate input binds
+		Set<String> inputBindTypes = new HashSet<String>();
+		for (InputBind inputBind : inputBinds) {
+			if (!inputBindTypes.contains(inputBind.getVariable().typeName)) {
+				inputBindTypes.add(inputBind.getVariable().typeName);
+				String kernel = this.translators.get(
+						inputBind.getVariable().typeName).translateInputBind(
+						className, inputBind);
+				this.addKernelByLine(kernel, st);
+			}
+		}
+		// 3. Translate iterators
+		for (Iterator iterator : iterators) {
+			String kernel = this.translators.get(
+					iterator.getVariable().typeName).translateIterator(
+					className, iterator);
+			this.addKernelByLine(kernel, st);
+		}
+		// 4. Translate outputbinds
+		Set<String> outputBindTypes = new HashSet<String>();
+		for (OutputBind outputBind : outputBinds) {
+			if (!outputBindTypes.contains(outputBind.getVariable().typeName)) {
+				outputBindTypes.add(outputBind.getVariable().typeName);
+				String kernel = this.translators.get(
+						outputBind.getVariable().typeName).translateOutputBind(
+						className, outputBind);
+				this.addKernelByLine(kernel, st);
+			}
+		}
+		FileWriter.writeFile("kernels.h", this.commonDefinitions
+				.getJNIDestinationFolder(this.outputDestinationFolder), st
+				.render());
+	}
+
+	/**
+	 * Add a given kernel line-by-line to the string template informed.
+	 * 
+	 * @param kernel
+	 *            Multi-line kernel function.
+	 * @param st
+	 *            String template with "kernes.line" parameter.
+	 */
+	private void addKernelByLine(String kernel, ST st) {
+		String[] lines = kernel.split("\n");
+		for (String line : lines) {
+			st.addAggr("kernels.{line}", line + "\\n");
+		}
+		st.addAggr("kernels.{line}", "\\n");
 	}
 
 	/**

@@ -9,6 +9,8 @@
 package org.parallelme.compiler.translation.userlibrary;
 
 import org.parallelme.compiler.RuntimeCommonDefinitions;
+import org.parallelme.compiler.intermediate.Iterator;
+import org.parallelme.compiler.intermediate.Iterator.IteratorType;
 import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.translation.BoxedTypes;
 import org.parallelme.compiler.translation.PrimitiveTypes;
@@ -21,7 +23,8 @@ import org.parallelme.compiler.userlibrary.classes.RGB;
 import org.parallelme.compiler.userlibrary.classes.RGBA;
 
 /**
- * Base class for translators containing code that is shared between different target runtimes.
+ * Base class for translators containing code that is shared between different
+ * target runtimes.
  * 
  * @author Wilson de Carvalho
  */
@@ -57,7 +60,7 @@ public abstract class BaseTranslator implements UserLibraryTranslatorDefinition 
 		}
 		return translatedType;
 	}
-	
+
 	/**
 	 * Translates variables on the give code to a correspondent runtime-specific
 	 * type. Example: replaces all RGB objects by float3 on RenderScript.
@@ -131,4 +134,77 @@ public abstract class BaseTranslator implements UserLibraryTranslatorDefinition 
 		ret = ret.replaceAll(variable.name + ".value", variable.name);
 		return ret;
 	}
+
+	/**
+	 * Create a global variable name for the given variable following some
+	 * standards. Global variables will be prefixed with "g" followed by an
+	 * upper case letter and sufixed by the iterator name, so "max" from
+	 * iterator 2 becomes "gMax_Iterator2"
+	 */
+	protected String getGlobalVariableName(String variable, Iterator iterator) {
+		String iteratorName = this.commonDefinitions.getIteratorName(iterator);
+		String variableName = this.upperCaseFirstLetter(variable);
+		return "g" + variableName + this.upperCaseFirstLetter(iteratorName);
+	}
+
+	/**
+	 * Change the first letter of the informed string to upper case.
+	 */
+	protected String upperCaseFirstLetter(String string) {
+		return string.substring(0, 1).toUpperCase()
+				+ string.substring(1, string.length());
+	}
+
+	/**
+	 * Replace all instances of a given oldName by a newName, checking if this
+	 * newName contains a $ sign, which is reserved in regex. In case a $
+	 * exists, it will be escaped during replacement.
+	 */
+	protected String replaceAndEscapePrefix(String string, String newName,
+			String oldName) {
+		if (newName.contains("$")) {
+			int idx = newName.indexOf("$");
+			newName = newName.substring(0, idx) + "\\$"
+					+ newName.substring(idx + 1, newName.length());
+			return string.replaceAll(oldName, newName);
+		} else {
+			return string.replaceAll(oldName, newName);
+		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String translateIterator(String className, Iterator iterator) {
+		String ret;
+		// Translate parallel iterators
+		if (iterator.getType() == IteratorType.Parallel) {
+			ret = this.translateParallelIterator(iterator);
+		} else {
+			ret = this.translateSequentialIterator(iterator);
+		}
+		return ret;
+	}
+
+	/**
+	 * Translates a parallel iterator returning a C code compatible with this
+	 * runtime.
+	 * 
+	 * @param iterator
+	 *            Iterator that must be translated.
+	 * @return C code with iterator's user code compatible with this runtime.
+	 */
+	abstract protected String translateParallelIterator(Iterator iterator);
+
+	/**
+	 * Translates a sequential iterator returning a C code compatible with this
+	 * runtime.
+	 * 
+	 * @param iterator
+	 *            Iterator that must be translated.
+	 * @return C code with iterator's user code compatible with this runtime.
+	 */
+	abstract protected String translateSequentialIterator(Iterator iterator);
+
 }

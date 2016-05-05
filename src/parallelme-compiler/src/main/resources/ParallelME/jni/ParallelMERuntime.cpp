@@ -3,23 +3,19 @@
 //
 
 #include "ParallelMERuntime.hpp"
-#include "../runtime/Runtime.hpp"
-#include "../runtime/Program.hpp"
-#include "../runtime/Buffer.hpp"
-#include "../runtime/Task.hpp"
-#include "../runtime/Kernel.hpp"
-#include "../runtime/Device.hpp"
-#include "../error.h"
-#include "../runtime/Allocation.hpp"
+#include "runtime/Runtime.hpp"
+#include "runtime/Program.hpp"
+#include "runtime/Buffer.hpp"
+#include "runtime/Task.hpp"
+#include "runtime/Kernel.hpp"
+#include "runtime/Device.hpp"
+#include "runtime/Allocation.hpp"
 #include "kernels.h"
 #include <android/bitmap.h>
 
-/*
- * TODO: change "tonemapSource" to "kernelsSource"
- */
 ParallelMERuntime::ParallelMERuntime(JavaVM *jvm, JNIEnv *p_mainEnv) : _jvm(jvm) {
     _runtime = std::make_shared<Runtime>(_jvm);
-    _program = std::make_shared<Program>(_runtime, tonemapSource,
+    _program = std::make_shared<Program>(_runtime, kernels,
                                          "-Werror -cl-strict-aliasing -cl-mad-enable -cl-no-signed-zeros -cl-finite-math-only");
     numberOfTasks = 0;
 }

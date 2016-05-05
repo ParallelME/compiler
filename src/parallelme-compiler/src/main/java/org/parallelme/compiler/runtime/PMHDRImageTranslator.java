@@ -9,9 +9,8 @@
 package org.parallelme.compiler.runtime;
 
 import org.parallelme.compiler.intermediate.InputBind;
-import org.parallelme.compiler.intermediate.Iterator;
 import org.parallelme.compiler.intermediate.OutputBind;
-import org.parallelme.compiler.intermediate.Variable;
+import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.translation.userlibrary.HDRImageTranslator;
 import org.stringtemplate.v4.ST;
 
@@ -23,17 +22,24 @@ import org.stringtemplate.v4.ST;
 public class PMHDRImageTranslator extends PMImageTranslator implements
 		HDRImageTranslator {
 	private static final String templateCreateJavaAllocation = "RGBE.ResourceData <resourceData> = RGBE.loadFromResource(<params>);\n"
-			+ "\t<varName>Worksize = <resourceData>.width * <resourceData>.height;\n"
-			+ "\t<varName>ResourceDataId = <jniJavaClassName>.getInstance().getNewResourceId();";
-	private static final String templateCreateAllocation = "int <varName>Worksize, <varName>ResourceDataId;\n";
+			+ "\t<worksize> = <resourceData>.width * <resourceData>.height;\n"
+			+ "\t<inputBufferId> = ParallelMERuntimeJNIWrapper().getInstance().createAllocation(<resourceData>.data, 4 * <worksize>);\n"
+			+ "\t<outputDataBuffer> = new float[<worksize>];\n"
+			+ "\t<outputBufferId> = ParallelMERuntimeJNIWrapper().getInstance().createAllocation(<outputDataBuffer>, <worksize>);\n"
+			+ "\tParallelMERuntimeJNIWrapper().getInstance().toFloat(<inputBufferId>, <outputBufferId>, <worksize>);\n";
+	private static final String templateCreateAllocation = "int <worksize>, <inputBufferId>, <outputBufferId>;\n"
+			+ "\tfloat[] <outputDataBuffer>;";
+
+	public PMHDRImageTranslator(CTranslator cCodeTranslator) {
+		super(cCodeTranslator);
+	}
 
 	/**
 	 * {@inheritDoc}
 	 */
 	@Override
 	public String translateInputBind(String className, InputBind inputBind) {
-		// TODO Auto-generated method stub
-		return "";
+		return templateKernelToFloat;
 	}
 
 	/**
@@ -52,15 +58,18 @@ public class PMHDRImageTranslator extends PMImageTranslator implements
 	public String translateInputBindObjCreation(String className,
 			InputBind inputBind) {
 		String resourceData = this.commonDefinitions.getPrefix()
-				+ inputBind.getVariable() + "ResourceData";
+				+ inputBind.getVariable() + "Buffer";
 		ST st = new ST(templateCreateJavaAllocation);
 		st.add("resourceData", resourceData);
 		st.add("params", this.commonDefinitions
 				.toCommaSeparatedString(inputBind.getParameters()));
-		st.add("varName",
-				this.commonDefinitions.getPrefix()
-						+ inputBind.getVariable().name);
-		st.add("jniJavaClassName", this.getJNIWrapperClassName(className));
+		st.add("worksize", this.getWorksizeName(inputBind.getVariable()));
+		st.add("inputBufferId",
+				this.getInputBufferIdName(inputBind.getVariable()));
+		st.add("outputBufferId",
+				this.getOutputBufferIdName(inputBind.getVariable()));
+		st.add("outputDataBuffer",
+				this.getOutputBufferDataName(inputBind.getVariable()));
 		return st.render();
 	}
 
@@ -71,9 +80,13 @@ public class PMHDRImageTranslator extends PMImageTranslator implements
 	public String translateInputBindObjDeclaration(InputBind inputBind) {
 		StringBuilder ret = new StringBuilder();
 		ST st = new ST(templateCreateAllocation);
-		st.add("varName",
-				this.commonDefinitions.getPrefix()
-						+ inputBind.getVariable().name);
+		st.add("worksize", this.getWorksizeName(inputBind.getVariable()));
+		st.add("inputBufferId",
+				this.getInputBufferIdName(inputBind.getVariable()));
+		st.add("outputBufferId",
+				this.getOutputBufferIdName(inputBind.getVariable()));
+		st.add("outputDataBuffer",
+				this.getOutputBufferDataName(inputBind.getVariable()));
 		ret.append(st.render());
 		return ret.toString();
 	}
@@ -83,34 +96,6 @@ public class PMHDRImageTranslator extends PMImageTranslator implements
 	 */
 	@Override
 	public String translateOutputBind(String className, OutputBind outputBind) {
-		// TODO Auto-generated method stub
-		return "";
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String translateIterator(String className, Iterator iterator) {
-		// TODO Auto-generated method stub
-		return "";
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	public String translateIteratorCall(String className, Iterator iterator) {
-		String jniJavaClassName = this.getJNIWrapperClassName(className);
-		ST st = new ST(templateCallJNIFunction);
-		st.add("jniJavaClassName", jniJavaClassName);
-		st.add("functionName", this.commonDefinitions.getIteratorName(iterator));
-		st.add("resourceDataId",
-				this.getResourceDataIdName(iterator.getVariable().name));
-		st.addAggr("params.{name}",
-				this.getWorksizeName(iterator.getVariable().name));
-		for (Variable variable : iterator.getExternalVariables()) {
-			st.addAggr("params.{name}", variable.name);
-		}
-		return st.render() + ";";
+		return templateKernelToBitmap;
 	}
 }
