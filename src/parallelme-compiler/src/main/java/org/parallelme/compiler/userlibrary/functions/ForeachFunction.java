@@ -8,7 +8,7 @@
 
 package org.parallelme.compiler.userlibrary.functions;
 
-import java.util.HashSet;
+import java.util.HashMap;
 
 import org.parallelme.compiler.userlibrary.UserLibraryClassImpl;
 
@@ -27,8 +27,8 @@ public class ForeachFunction extends UserLibraryClassImpl {
 	 */
 	@Override
 	protected void initValidMethodsSet() {
-		this.validMethods = new HashSet<>();
-		this.validMethods.add("function");
+		this.validMethods = new HashMap<>();
+		this.validMethods.put("function", "void");
 	}
 
 	/**

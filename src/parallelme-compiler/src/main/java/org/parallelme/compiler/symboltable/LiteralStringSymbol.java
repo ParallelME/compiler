@@ -14,7 +14,8 @@ package org.parallelme.compiler.symboltable;
  * @author Wilson de Carvalho
  */
 public class LiteralStringSymbol extends LiteralSymbol<String> {
-	public LiteralStringSymbol(String name, Symbol enclosingScope, String value) {
-		super(name, enclosingScope, value);
+	public LiteralStringSymbol(String name, Symbol enclosingScope,
+			String value, int identifier) {
+		super(name, enclosingScope, value, identifier);
 	}
 }

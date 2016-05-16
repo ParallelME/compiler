@@ -18,8 +18,8 @@ public class MethodBodySymbol extends Symbol {
 	public final String content;
 
 	public MethodBodySymbol(String content, Symbol enclosingScope,
-			TokenAddress tokenAddress) {
-		super("", enclosingScope, tokenAddress);
+			TokenAddress tokenAddress, int identifier) {
+		super("", enclosingScope, tokenAddress, identifier);
 		this.content = content;
 	}
 }

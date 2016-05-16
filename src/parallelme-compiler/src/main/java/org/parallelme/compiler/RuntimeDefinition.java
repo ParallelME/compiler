@@ -31,6 +31,17 @@ public interface RuntimeDefinition {
 	}
 
 	/**
+	 * Returns the target runtime for this implementation.
+	 */
+	public TargetRuntime getTargetRuntime();
+
+	/**
+	 * Returns the body for the <b>isValid</b> method in runtime wrapper
+	 * implementation.
+	 */
+	public List<String> getIsValidBody();
+
+	/**
 	 * Get the initialization string for this runtime.
 	 * 
 	 * @param packageName
@@ -38,10 +49,11 @@ public interface RuntimeDefinition {
 	 * @param className
 	 *            Current class name.
 	 * 
-	 * @return Initialization string.
+	 * @return List with initialization string (each line of the initialization
+	 *         string is an element on the list).
 	 */
-	public String getInitializationString(String packageName, String className)
-			throws CompilationException;
+	public List<String> getInitializationString(String packageName,
+			String className) throws CompilationException;
 
 	/**
 	 * Get the necessary imports for this runtime.

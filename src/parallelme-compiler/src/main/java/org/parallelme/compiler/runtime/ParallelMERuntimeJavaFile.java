@@ -87,7 +87,7 @@ public class ParallelMERuntimeJavaFile {
 	private Set<String> getIteratorVariableTypes(List<Iterator> iterators) {
 		HashSet<String> types = new HashSet<>();
 		for (Iterator iterator : iterators) {
-			types.add(iterator.getVariable().typeName);
+			types.add(iterator.variable.typeName);
 		}
 		return types;
 	}

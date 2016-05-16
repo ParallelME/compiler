@@ -53,20 +53,20 @@ public class RSHDRImageTranslator extends RSImageTranslator implements
 	@Override
 	public String translateInputBindObjCreation(String className,
 			InputBind inputBind) {
-		String inputObject = this.commonDefinitions.getVariableInName(inputBind
-				.getVariable());
+		String inputObject = this.commonDefinitions
+				.getVariableInName(inputBind.variable);
 		String outputObject = this.commonDefinitions
-				.getVariableOutName(inputBind.getVariable());
+				.getVariableOutName(inputBind.variable);
 		String dataTypeInputObject = this.commonDefinitions.getPrefix()
-				+ inputBind.getVariable() + "InDataType";
+				+ inputBind.variable + "InDataType";
 		String dataTypeOutputObject = this.commonDefinitions.getPrefix()
-				+ inputBind.getVariable() + "OutDataType";
+				+ inputBind.variable + "OutDataType";
 		String resourceData = this.commonDefinitions.getPrefix()
-				+ inputBind.getVariable() + "ResourceData";
+				+ inputBind.variable + "ResourceData";
 		ST st = new ST(templateCreateAllocation);
 		st.add("resourceData", resourceData);
 		st.add("params", this.commonDefinitions
-				.toCommaSeparatedString(inputBind.getParameters()));
+				.toCommaSeparatedString(inputBind.parameters));
 		st.add("dataTypeInputObject", dataTypeInputObject);
 		st.add("dataTypeOutputObject", dataTypeOutputObject);
 		st.add("inputObject", inputObject);

@@ -92,7 +92,7 @@ public class ParallelMERuntimeCppHppFile extends ParallelMERuntimeCFileBaseImpl 
 		// user library class
 		Set<String> variablesType = new HashSet<>();
 		for (Iterator iterator : iterators) {
-			String typeName = iterator.getVariable().typeName;
+			String typeName = iterator.variable.typeName;
 			if (!variablesType.contains(typeName)) {
 				variablesType.add(typeName);
 				Map<String, String> functionDeclByName = this
@@ -113,7 +113,7 @@ public class ParallelMERuntimeCppHppFile extends ParallelMERuntimeCFileBaseImpl 
 			String body = this.getJNIFunctionBody(iterator);
 			st.addAggr("functions.{decl, body, LDLIM, RDLIM}", decl, body,
 					" {", "}");
-			variableTypes.add(iterator.getVariable().typeName);
+			variableTypes.add(iterator.variable.typeName);
 		}
 		// 3. Add imports
 		for (String variableType : variableTypes) {
@@ -144,7 +144,7 @@ public class ParallelMERuntimeCppHppFile extends ParallelMERuntimeCFileBaseImpl 
 		// user library class
 		Set<String> variablesType = new HashSet<>();
 		for (Iterator iterator : iterators) {
-			String typeName = iterator.getVariable().typeName;
+			String typeName = iterator.variable.typeName;
 			if (!variablesType.contains(typeName)) {
 				variablesType.add(typeName);
 				for (String decl : this.getJNIFunctionDeclByUserLibrary(
@@ -185,9 +185,8 @@ public class ParallelMERuntimeCppHppFile extends ParallelMERuntimeCFileBaseImpl 
 					this.commonDefinitions.getVariableOutName(variable));
 		}
 		if (iterator.getType() == IteratorType.Sequential) {
-			if (iterator.getVariable().typeName.equals(BitmapImage.getName())
-					|| iterator.getVariable().typeName.equals(HDRImage
-							.getName())) {
+			if (iterator.variable.typeName.equals(BitmapImage.getName())
+					|| iterator.variable.typeName.equals(HDRImage.getName())) {
 				st.addAggr("params.{type, name}", "jint",
 						this.commonDefinitions.getPrefix() + "height");
 				st.addAggr("params.{type, name}", "jint",
@@ -212,9 +211,8 @@ public class ParallelMERuntimeCppHppFile extends ParallelMERuntimeCFileBaseImpl 
 		st.add("returnStatement", null);
 		st.add("paramsOA", null);
 		if (iterator.getType() == IteratorType.Sequential) {
-			if (iterator.getVariable().typeName.equals(BitmapImage.getName())
-					|| iterator.getVariable().typeName.equals(HDRImage
-							.getName())) {
+			if (iterator.variable.typeName.equals(BitmapImage.getName())
+					|| iterator.variable.typeName.equals(HDRImage.getName())) {
 				st.addAggr("paramsEA.{name, argType, argAlias}", "height",
 						PrimitiveTypes.getRuntimeArgType("int"),
 						PrimitiveTypes.getRuntimeAlias("int"));

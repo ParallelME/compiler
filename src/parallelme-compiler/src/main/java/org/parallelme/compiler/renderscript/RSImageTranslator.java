@@ -9,6 +9,7 @@
 package org.parallelme.compiler.renderscript;
 
 import org.parallelme.compiler.intermediate.InputBind;
+import org.parallelme.compiler.intermediate.MethodCall;
 import org.parallelme.compiler.intermediate.OutputBind;
 import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.translation.CTranslator;
@@ -26,7 +27,7 @@ public abstract class RSImageTranslator extends RSTranslator implements
 		ImageTranslator {
 	private static final String templateCreateOutputAllocation = "<destinationObject> = Bitmap.createBitmap(<inputAllocation>.getType().getX(), <inputAllocation>.getType().getY(), Bitmap.Config.ARGB_8888);\n";
 	private static final String templateOutputAllocationCall = "<kernelName>.forEach_toBitmap(<outputObject>, <inputObject>);\n"
-			+ "<inputObject>.copyTo(<destinationObject>);\n";
+			+ "<inputObject>.copyTo(<destinationObject>);";
 	private static final String templateCreateAllocationFunction = "\nfloat3 __attribute__((kernel)) toFloat(uchar4 in, uint32_t x, uint32_t y) {"
 			+ "\n\tfloat3 out;"
 			+ "\n\tout.s0 = (float) in.r;"
@@ -60,10 +61,10 @@ public abstract class RSImageTranslator extends RSTranslator implements
 	@Override
 	public String translateInputBindObjDeclaration(InputBind inputBind) {
 		String inAllocation = this.commonDefinitions
-				.getVariableInName(inputBind.getVariable());
+				.getVariableInName(inputBind.variable);
 		String outAllocation = this.commonDefinitions
-				.getVariableOutName(inputBind.getVariable());
-		return "Allocation " + inAllocation + ", " + outAllocation + ";\n";
+				.getVariableOutName(inputBind.variable);
+		return "Allocation " + inAllocation + ", " + outAllocation + ";";
 	}
 
 	/**
@@ -73,7 +74,7 @@ public abstract class RSImageTranslator extends RSTranslator implements
 	public String translateOutputBindCall(String className,
 			OutputBind outputBind) {
 		StringBuilder ret = new StringBuilder();
-		Variable variable = outputBind.getVariable();
+		Variable variable = outputBind.variable;
 		String inputObject = this.commonDefinitions.getVariableInName(variable);
 		String outputObject = this.commonDefinitions
 				.getVariableOutName(variable);
@@ -103,7 +104,7 @@ public abstract class RSImageTranslator extends RSTranslator implements
 	@Override
 	public String translateOutputBind(String className, OutputBind outputBind) {
 		String ret = "";
-		String typeName = outputBind.getVariable().typeName;
+		String typeName = outputBind.variable.typeName;
 		if (typeName.equals(BitmapImage.getName())
 				|| typeName.equals(HDRImage.getName())) {
 			String varType;
@@ -117,6 +118,40 @@ public abstract class RSImageTranslator extends RSTranslator implements
 			}
 			st.add("varType", varType);
 			ret = st.render();
+		}
+		return ret;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public String translateMethodCall(String className, MethodCall methodCall) {
+		// TODO Throw an exception whenever an non supported method is provided.
+		String ret = "return ";
+		if (methodCall.variable.typeName.equals(BitmapImage.getName())) {
+			if (methodCall.methodName.equals(BitmapImage.getInstance()
+					.getHeightMethodName())) {
+				ret += this.commonDefinitions
+						.getVariableInName(methodCall.variable)
+						+ ".getType().getY();";
+			} else if (methodCall.methodName.equals(BitmapImage.getInstance()
+					.getWidthMethodName())) {
+				ret += this.commonDefinitions
+						.getVariableInName(methodCall.variable)
+						+ ".getType().getX();";
+			}
+		} else if (methodCall.variable.typeName.equals(HDRImage.getName())) {
+			if (methodCall.methodName.equals(HDRImage.getInstance()
+					.getHeightMethodName())) {
+				ret += this.commonDefinitions
+						.getVariableInName(methodCall.variable)
+						+ ".getType().getY();";
+			} else if (methodCall.methodName.equals(HDRImage.getInstance()
+					.getWidthMethodName())) {
+				ret += this.commonDefinitions
+						.getVariableInName(methodCall.variable)
+						+ ".getType().getX();";
+			}
 		}
 		return ret;
 	}

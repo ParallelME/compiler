@@ -18,6 +18,7 @@ import org.parallelme.compiler.antlr.JavaLexer;
 import org.parallelme.compiler.antlr.JavaParser;
 import org.parallelme.compiler.exception.CompilationException;
 import org.parallelme.compiler.symboltable.*;
+import org.parallelme.compiler.translation.SimpleTranslator;
 
 /**
  * Main class for ParallelME compiler. It is responsible for parsing the user
@@ -27,13 +28,6 @@ import org.parallelme.compiler.symboltable.*;
  * @author Wilson de Carvalho, Pedro Caldeira
  */
 public class Compiler {
-	// Target runtime for output code.
-	private final RuntimeDefinition targetRuntime;
-
-	public Compiler(RuntimeDefinition targetRuntime) {
-		this.targetRuntime = targetRuntime;
-	}
-
 	/**
 	 * Compile a list of files storing them on the folder informed.
 	 * 
@@ -80,23 +74,18 @@ public class Compiler {
 				is.close();
 			}
 		}
-		int iteratorCount = 0;
 		// ####### Second pass and code translation #######
 		CompilerCodeTranslator codeTranslator = new CompilerCodeTranslator(
-				this.targetRuntime, destinationFolder);
+				destinationFolder, new SimpleTranslator());
 		for (int i = 0; i < files.length; i++) {
 			String file = files[i];
 			SimpleLogger.info("2nd pass file - " + file);
 			TokenStreamRewriter tokenStreamRewriter = tokenStreams[i];
 			// Walk on the parse tree again
 			CompilerSecondPassListener listener = new CompilerSecondPassListener(
-					tokenStreamRewriter.getTokenStream(), iteratorCount);
+					tokenStreamRewriter.getTokenStream());
 			walker.walk(listener, parseTrees[i]);
-			codeTranslator.run(tokenStreamRewriter, symbolTables[i], listener,
-					iteratorCount);
-			iteratorCount += codeTranslator.getFunctionsCount();
+			codeTranslator.run(symbolTables[i], listener, tokenStreamRewriter);
 		}
-		// Export internal library files for this target runtime
-		this.targetRuntime.exportInternalLibrary("", destinationFolder);
 	}
 }

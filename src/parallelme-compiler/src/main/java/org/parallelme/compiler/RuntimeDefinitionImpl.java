@@ -98,7 +98,7 @@ public abstract class RuntimeDefinitionImpl implements RuntimeDefinition {
 		boolean exportedHDR = false;
 		for (UserLibraryData userLibraryData : iteratorsAndBinds) {
 			if (!exportedHDR
-					&& userLibraryData.getVariable().typeName.equals(HDRImage
+					&& userLibraryData.variable.typeName.equals(HDRImage
 							.getName())) {
 				imports.append("import org.parallelme.userlibrary.RGBE;\n");
 				exportedHDR = true;
@@ -106,7 +106,6 @@ public abstract class RuntimeDefinitionImpl implements RuntimeDefinition {
 		}
 		return imports.toString();
 	}
-
 
 	/**
 	 * {@inheritDoc}

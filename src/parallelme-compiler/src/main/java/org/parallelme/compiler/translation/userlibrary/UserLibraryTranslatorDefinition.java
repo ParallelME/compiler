@@ -10,6 +10,7 @@ package org.parallelme.compiler.translation.userlibrary;
 
 import org.parallelme.compiler.intermediate.InputBind;
 import org.parallelme.compiler.intermediate.Iterator;
+import org.parallelme.compiler.intermediate.MethodCall;
 import org.parallelme.compiler.intermediate.OutputBind;
 
 /**
@@ -137,4 +138,19 @@ public interface UserLibraryTranslatorDefinition {
 	 *         code written with the user library.
 	 */
 	public String translateIteratorCall(String className, Iterator iterator);
+
+	/**
+	 * Translates a given method call returning the Java code that will be used
+	 * to call a given runtime code.
+	 * 
+	 * @param className
+	 *            Name of the java class (user class) where the input bind was
+	 *            originally created.
+	 * @param methodCall
+	 *            Method call information.
+	 * 
+	 * @return A string with the java code for replacement on the original user
+	 *         code written with the user library.
+	 */
+	public String translateMethodCall(String className, MethodCall methodCall);	
 }

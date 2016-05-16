@@ -15,13 +15,14 @@ import org.parallelme.userlibrary.image.Image;
  */
 public class ReinhardCollectionOperator implements ReinhardOperator {
     private HDRImage image;
+    private HDRImage image2;
     private float sum = 0.0f;
     private float max = 0.0f;
 
     @Override
     public Bitmap runOp(Resources res, int resource, float key, float gamma) {
         image = new HDRImage(res, resource);
-
+		
         this.toYxy();
         this.scaleToMidtone(key);
         this.tonemap();

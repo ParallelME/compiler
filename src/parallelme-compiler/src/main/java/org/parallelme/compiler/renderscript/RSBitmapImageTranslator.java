@@ -49,16 +49,16 @@ public class RSBitmapImageTranslator extends RSImageTranslator implements
 	public String translateInputBindObjCreation(String className,
 			InputBind inputBind) {
 		String inputObject = this.commonDefinitions.getVariableInName(inputBind
-				.getVariable());
+				.variable);
 		String outputObject = this.commonDefinitions
-				.getVariableOutName(inputBind.getVariable());
+				.getVariableOutName(inputBind.variable);
 		String dataTypeInputObject = this.commonDefinitions.getPrefix()
-				+ inputBind.getVariable() + "InDataType";
+				+ inputBind.variable + "InDataType";
 		ST st = new ST(templateCreateAllocation);
 		st.add("dataTypeInputObject", dataTypeInputObject);
 		st.add("inputObject", inputObject);
 		st.add("outputObject", outputObject);
-		st.add("param", inputBind.getParameters()[0]);
+		st.add("param", inputBind.parameters[0]);
 		st.add("kernelName", this.commonDefinitions.getKernelName(className));
 		return st.render();
 	}

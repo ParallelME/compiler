@@ -29,10 +29,4 @@ public class OutputBind extends UserLibraryData {
 		this.destinationObject = destinationObject;
 		this.isObjectDeclaration = isObjectDeclaration;
 	}
-
-	@Override
-	public int hashCode() {
-		return this.destinationObject.hashCode() * 3
-				+ this.statementAddress.hashCode() * 7;
-	}
 }

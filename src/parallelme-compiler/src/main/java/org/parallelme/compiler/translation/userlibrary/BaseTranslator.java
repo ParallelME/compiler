@@ -206,5 +206,4 @@ public abstract class BaseTranslator implements UserLibraryTranslatorDefinition 
 	 * @return C code with iterator's user code compatible with this runtime.
 	 */
 	abstract protected String translateSequentialIterator(Iterator iterator);
-
 }

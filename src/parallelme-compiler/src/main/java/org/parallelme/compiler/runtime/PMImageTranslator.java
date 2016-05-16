@@ -62,7 +62,7 @@ public abstract class PMImageTranslator extends PMTranslator implements
 	public String translateOutputBindCall(String className,
 			OutputBind outputBind) {
 		StringBuilder ret = new StringBuilder();
-		Variable variable = outputBind.getVariable();
+		Variable variable = outputBind.variable;
 		String jniJavaClassName = this.getJNIWrapperClassName(className);
 		if (variable.typeName.equals(BitmapImage.getName())
 				|| variable.typeName.equals(HDRImage.getName())) {

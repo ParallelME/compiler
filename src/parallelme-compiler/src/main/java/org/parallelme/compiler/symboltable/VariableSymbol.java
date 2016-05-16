@@ -21,8 +21,9 @@ public class VariableSymbol extends Symbol {
 
 	public VariableSymbol(String name, String typeName,
 			String typeParameterName, String modifier, Symbol enclosingScope,
-			TokenAddress tokenAddress, TokenAddress statementAddress) {
-		super(name, enclosingScope, tokenAddress);
+			TokenAddress tokenAddress, TokenAddress statementAddress,
+			int identifier) {
+		super(name, enclosingScope, tokenAddress, identifier);
 		this.typeName = typeName;
 		this.typeParameterName = typeParameterName;
 		this.modifier = modifier;

@@ -36,9 +36,4 @@ public class Literal implements Parameter {
 	public String toString() {
 		return this.value;
 	}
-
-	@Override
-	public int hashCode() {
-		return this.value.hashCode() * 3 + this.typeName.hashCode() * 7;
-	}
 }

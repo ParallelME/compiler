@@ -28,8 +28,9 @@ public class CreatorSymbol extends Symbol {
 	public CreatorSymbol(String name, String attributedObjectName,
 			String typeName, String typeParameterName,
 			Collection<Symbol> arguments, Symbol enclosingScope,
-			TokenAddress tokenAddress, TokenAddress statementAddress) {
-		super(name, enclosingScope, tokenAddress);
+			TokenAddress tokenAddress, TokenAddress statementAddress,
+			int identifier) {
+		super(name, enclosingScope, tokenAddress, identifier);
 		this.typeName = typeName;
 		this.attributedObjectName = attributedObjectName;
 		this.typeParameterName = typeParameterName;

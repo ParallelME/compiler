@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.antlr.v4.runtime.RuleContext;
-
 import org.parallelme.compiler.antlr.JavaBaseListener;
 import org.parallelme.compiler.antlr.JavaParser;
 import org.parallelme.compiler.antlr.JavaParser.*;
@@ -29,10 +28,7 @@ import org.parallelme.compiler.userlibrary.UserLibraryClassFactory;
  * @author Wilson de Carvalho
  */
 public class ScopeDrivenListener extends JavaBaseListener {
-	// Counts the number of anonymous objects created.
-	protected int anonymousObjectsCounter = 0;
-	// Counts the number of literals found.
-	protected int literalCounter = 0;
+	protected int symbolsCounter = 1;
 	// Current scope.
 	protected Symbol currentScope = null;
 	// Previos scope.
@@ -74,7 +70,8 @@ public class ScopeDrivenListener extends JavaBaseListener {
 			typeParameter = ctx.typeParameters().typeParameter(0).getText();
 		this.newScope(new ClassSymbol(name, typeParameter, this.currentScope,
 				new TokenAddress(ctx.getParent().start, ctx.getParent().stop),
-				new TokenAddress(ctx.classBody().start, ctx.classBody().stop)));
+				new TokenAddress(ctx.classBody().start, ctx.classBody().stop),
+				this.symbolsCounter++));
 
 	}
 
@@ -116,19 +113,21 @@ public class ScopeDrivenListener extends JavaBaseListener {
 							argumentName, typeName, typeParameter, modifier,
 							this.currentScope, new TokenAddress(
 									parameter.start, parameter.stop),
-							new TokenAddress(ctx.start, ctx.stop));
+							new TokenAddress(ctx.start, ctx.stop),
+							this.symbolsCounter++);
 				} else {
 					argumentSymbol = new VariableSymbol(argumentName, typeName,
 							typeParameter, modifier, this.currentScope,
 							new TokenAddress(parameter.start, parameter.stop),
-							new TokenAddress(ctx.start, ctx.stop));
+							new TokenAddress(ctx.start, ctx.stop),
+							this.symbolsCounter++);
 				}
 				arguments.add(argumentSymbol);
 			}
 		}
 		MethodSymbol methodSymbol = new MethodSymbol(name, returnType,
 				arguments, this.currentScope, new TokenAddress(ctx.start,
-						ctx.stop));
+						ctx.stop), this.symbolsCounter++);
 		this.newScope(methodSymbol);
 		// If this method declaration is inside a creator symbol, we must check
 		// if the creator intantiates a user library function and store its
@@ -146,7 +145,7 @@ public class ScopeDrivenListener extends JavaBaseListener {
 				methodBodySymbol = new MethodBodySymbol(ctx.methodBody()
 						.getText(), methodSymbol, new TokenAddress(ctx
 						.methodBody().block().start,
-						ctx.methodBody().block().stop));
+						ctx.methodBody().block().stop), this.symbolsCounter++);
 				methodSymbol.addSymbol(methodBodySymbol);
 			}
 		}
@@ -302,13 +301,14 @@ public class ScopeDrivenListener extends JavaBaseListener {
 			// someObject.method(new ClassName(p1, p2, ..., pn));
 			// OR
 			// someObject.method(new ClassName(p1, p2, ..., pn) { ... });
-			this.anonymousObjectsCounter += 1;
+			this.symbolsCounter++;
 			String[] ret = this.getTypeData(ctx.createdName());
 			this.newScope(new CreatorSymbol(
 					SymbolTableDefinitions.anonymousObjectPrefix
-							+ this.anonymousObjectsCounter, "", ret[0], ret[1],
+							+ this.symbolsCounter, "", ret[0], ret[1],
 					arguments, this.currentScope, new TokenAddress(ctx.start,
-							ctx.stop), this.getCurrentStatementAddress()));
+							ctx.stop), this.getCurrentStatementAddress(),
+					this.symbolsCounter));
 		}
 	}
 
@@ -353,13 +353,15 @@ public class ScopeDrivenListener extends JavaBaseListener {
 			this.newScope(new CreatorSymbol("$" + variableName + "Creator",
 					variableName, ret[0], ret[1], arguments, this.currentScope,
 					new TokenAddress(creatorCtx.start, creatorCtx.stop), this
-							.getCurrentStatementAddress()));
+							.getCurrentStatementAddress(),
+					this.symbolsCounter++));
 		} else {
 			this.newScope(new CreatorSymbol("$" + variableName + "Creator",
 					variableName, creatorCtx.createdName().getText(), "",
 					arguments, this.currentScope, new TokenAddress(
 							creatorCtx.start, creatorCtx.stop), this
-							.getCurrentStatementAddress()));
+							.getCurrentStatementAddress(),
+					this.symbolsCounter++));
 		}
 	}
 
@@ -387,11 +389,12 @@ public class ScopeDrivenListener extends JavaBaseListener {
 				String[] parameters = this.getTypeData(classCtx);
 				String className = parameters.length == 0 ? "" : parameters[0];
 				symbol = new ClassSymbol(className, "", this.currentScope,
-						new TokenAddress(classCtx.start, classCtx.stop), null);
+						new TokenAddress(classCtx.start, classCtx.stop), null,
+						this.symbolsCounter++);
 			} else if (!expression.expression().isEmpty()) {
 				symbol = new ExpressionSymbol(expressionText,
 						this.currentScope, new TokenAddress(expression.start,
-								expression.stop));
+								expression.stop), this.symbolsCounter++);
 			} else {
 				symbol = this.currentScope.getSymbolUnderScope(expressionText);
 			}
@@ -409,29 +412,32 @@ public class ScopeDrivenListener extends JavaBaseListener {
 	 */
 	private LiteralSymbol<?> createLiteralSymbol(LiteralContext ctx) {
 		LiteralSymbol<?> symbol = null;
-		this.literalCounter += 1;
+		this.symbolsCounter++;
 		if (ctx.IntegerLiteral() != null)
 			symbol = new LiteralIntegerSymbol(
-					SymbolTableDefinitions.literalPrefix + this.literalCounter,
-					null, Integer.parseInt(ctx.IntegerLiteral().getText()));
+					SymbolTableDefinitions.literalPrefix + this.symbolsCounter,
+					null, Integer.parseInt(ctx.IntegerLiteral().getText()),
+					this.symbolsCounter);
 		else if (ctx.BooleanLiteral() != null)
 			symbol = new LiteralBooleanSymbol(
-					SymbolTableDefinitions.literalPrefix + this.literalCounter,
-					null, Boolean.parseBoolean(ctx.BooleanLiteral().getText()));
+					SymbolTableDefinitions.literalPrefix + this.symbolsCounter,
+					null, Boolean.parseBoolean(ctx.BooleanLiteral().getText()),
+					this.symbolsCounter);
 		else if (ctx.FloatingPointLiteral() != null)
 			symbol = new LiteralFloatingPointSymbol(
-					SymbolTableDefinitions.literalPrefix + this.literalCounter,
+					SymbolTableDefinitions.literalPrefix + this.symbolsCounter,
 					null,
-					Float.parseFloat(ctx.FloatingPointLiteral().getText()));
+					Float.parseFloat(ctx.FloatingPointLiteral().getText()),
+					this.symbolsCounter);
 		else if (ctx.StringLiteral() != null)
 			symbol = new LiteralStringSymbol(
-					SymbolTableDefinitions.literalPrefix + this.literalCounter,
-					null, ctx.StringLiteral().getText());
+					SymbolTableDefinitions.literalPrefix + this.symbolsCounter,
+					null, ctx.StringLiteral().getText(), this.symbolsCounter);
 		else if (ctx.CharacterLiteral() != null)
 			symbol = new LiteralCharacterSymbol(
-					SymbolTableDefinitions.literalPrefix + this.literalCounter,
+					SymbolTableDefinitions.literalPrefix + this.symbolsCounter,
 					null, new Character(ctx.CharacterLiteral().getText()
-							.charAt(0)));
+							.charAt(0)), this.symbolsCounter);
 		return symbol;
 	}
 
@@ -472,9 +478,14 @@ public class ScopeDrivenListener extends JavaBaseListener {
 
 	@Override
 	public void enterFieldDeclaration(JavaParser.FieldDeclarationContext ctx) {
-		this.createVariable(ctx.variableDeclarators(), ctx.type(),
-				new ArrayList<VariableModifierContext>(), new TokenAddress(
-						ctx.start, ctx.stop));
+		if (ctx.parent.parent instanceof ClassBodyDeclarationContext) {
+			ClassBodyDeclarationContext cbdctx = (ClassBodyDeclarationContext)ctx.parent.parent;
+			this.createVariable(ctx.variableDeclarators(), ctx.type(),
+					new ArrayList<VariableModifierContext>(), new TokenAddress(
+							cbdctx.start, cbdctx.stop));			
+		} else {
+			throw new RuntimeException("Unsupported field declaration: " + ctx.getText());
+		}
 	}
 
 	/**
@@ -504,21 +515,19 @@ public class ScopeDrivenListener extends JavaBaseListener {
 				modifier = variableModifiers.get(0).getText();
 			}
 			if (UserLibraryClassFactory.isValidClass(variableType)) {
-				this.currentScope
-						.addSymbol(new UserLibraryVariableSymbol(variableName,
-								variableType, typeParameter, modifier,
-								this.currentScope, new TokenAddress(variable
-										.variableDeclaratorId().start, variable
-										.variableDeclaratorId().stop),
-								statementAddress));
+				this.currentScope.addSymbol(new UserLibraryVariableSymbol(
+						variableName, variableType, typeParameter, modifier,
+						this.currentScope, new TokenAddress(variable
+								.variableDeclaratorId().start, variable
+								.variableDeclaratorId().stop),
+						statementAddress, this.symbolsCounter++));
 			} else {
-				this.currentScope
-						.addSymbol(new VariableSymbol(variableName,
-								variableType, typeParameter, modifier,
-								this.currentScope, new TokenAddress(variable
-										.variableDeclaratorId().start, variable
-										.variableDeclaratorId().stop),
-								statementAddress));
+				this.currentScope.addSymbol(new VariableSymbol(variableName,
+						variableType, typeParameter, modifier,
+						this.currentScope, new TokenAddress(variable
+								.variableDeclaratorId().start, variable
+								.variableDeclaratorId().stop),
+						statementAddress, this.symbolsCounter++));
 			}
 		}
 	}

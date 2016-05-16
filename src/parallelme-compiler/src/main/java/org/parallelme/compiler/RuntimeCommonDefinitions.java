@@ -10,7 +10,13 @@ package org.parallelme.compiler;
 
 import java.io.File;
 
+import org.parallelme.compiler.RuntimeDefinition.TargetRuntime;
+import org.parallelme.compiler.exception.CompilationException;
 import org.parallelme.compiler.intermediate.*;
+import org.parallelme.compiler.intermediate.Iterator.IteratorType;
+import org.parallelme.compiler.userlibrary.UserLibraryClass;
+import org.parallelme.compiler.userlibrary.UserLibraryClassFactory;
+import org.stringtemplate.v4.ST;
 
 /**
  * Code useful for common runtime definitions.
@@ -18,6 +24,7 @@ import org.parallelme.compiler.intermediate.*;
  * @author Wilson de Carvalho
  */
 public class RuntimeCommonDefinitions {
+	private final String templateMethodSignature = "<modifier> <returnType> <name>(<params:{var|<var.type> <var.name>}; separator=\", \">)";
 	private final String inSuffix = "In";
 	private final String outSuffix = "Out";
 	private final String iteratorName = "iterator";
@@ -37,11 +44,11 @@ public class RuntimeCommonDefinitions {
 	}
 
 	public String getVariableInName(Variable variable) {
-		return prefix + variable.name + inSuffix;
+		return prefix + variable.name + variable.sequentialNumber + inSuffix;
 	}
 
 	public String getVariableOutName(Variable variable) {
-		return prefix + variable.name + outSuffix;
+		return prefix + variable.name + variable.sequentialNumber + outSuffix;
 	}
 
 	public String getPrefix() {
@@ -64,6 +71,13 @@ public class RuntimeCommonDefinitions {
 	 */
 	public String getIteratorName(Iterator iterator) {
 		return iteratorName + iterator.sequentialNumber;
+	}
+
+	/**
+	 * Return an unique method call name base on its sequential number.
+	 */
+	public String getMethodCallName(MethodCall methodCall) {
+		return methodCall.methodName + methodCall.sequentialNumber;
 	}
 
 	/**
@@ -98,7 +112,7 @@ public class RuntimeCommonDefinitions {
 	 * Return kernel that must be used in kernel object declarations.
 	 */
 	public String getKernelName(String className) {
-		return this.prefix + "kernel_" + className;
+		return this.prefix + "kernel";
 	}
 
 	/**
@@ -157,5 +171,125 @@ public class RuntimeCommonDefinitions {
 		return baseDestinationFolder + File.separator
 				+ packageName.replaceAll("\\.", "/") + File.separator + "rs"
 				+ File.separator;
+	}
+
+	/**
+	 * Return the Java wrapper interface name that must be created for a given
+	 * class.
+	 */
+	public String getJavaWrapperInterfaceName(String className) {
+		return "PMWrapper_" + className;
+	}
+
+	/**
+	 * Return a Java wrapper class name for a given target runtime.
+	 */
+	public String getJavaWrapperClassName(String className,
+			TargetRuntime targetRuntime) {
+		if (targetRuntime == TargetRuntime.ParallelME) {
+			return "PMWrapperImpl_" + className;
+		} else {
+			return "PMWrapperImpl_RS_" + className;
+		}
+	}
+
+	/**
+	 * Return the name of ParallelME object.
+	 */
+	public String getParallelMEObjectName() {
+		return this.getPrefix() + "parallelME";
+	}
+
+	/**
+	 * Creates a method's signature that can be used in both Java code.
+	 * 
+	 * @param modifier
+	 *            Method's modifier.
+	 * @param returnType
+	 *            Method's return type.
+	 * @param name
+	 *            Method's name
+	 * @param parameters
+	 *            Method's parameters (only Variable and Literal instances are
+	 *            accepted).
+	 * @param asArrayVariables
+	 *            If true, all NON-FINAL variables are declared as arrays in the
+	 *            method signature.
+	 * 
+	 * @throws CompilationException
+	 *             Exception thrown in case any of invalid parameter type.
+	 */
+	private String createJavaMethodSignature(String modifier,
+			String returnType, String name, Parameter[] parameters,
+			boolean asArrayVariables) {
+		ST st = new ST(templateMethodSignature);
+		st.add("modifier", modifier);
+		st.add("returnType", returnType);
+		st.add("name", name);
+		st.add("params", null);
+		int i = 0;
+		for (Parameter param : parameters) {
+			if (param instanceof Variable) {
+				Variable variable = (Variable) param;
+				if (asArrayVariables && !variable.isFinal()) {
+					st.addAggr("params.{type, name}", variable.typeName + "[]",
+							variable.name);
+				} else {
+					st.addAggr("params.{type, name}", variable.typeName,
+							variable.name);
+				}
+			} else if (param instanceof Literal) {
+				Literal literal = (Literal) param;
+				String literalName = "literal" + i++;
+				st.addAggr("params.{type, name}", literal.typeName, literalName);
+			} else {
+				throw new RuntimeException(
+						"Invalid parameter type for method signature creation.");
+			}
+		}
+		return st.render();
+	}
+
+	/**
+	 * Creates a Java method signature for a given input bind.
+	 */
+	public String createJavaMethodSignature(InputBind inputBind) {
+		return this.createJavaMethodSignature("public", "void",
+				this.getInputBindName(inputBind), inputBind.parameters, false);
+	}
+
+	/**
+	 * Creates a Java method signature for a given iterator.
+	 */
+	public String createJavaMethodSignature(Iterator iterator) {
+		if (iterator.getType() == IteratorType.Sequential) {
+			return this.createJavaMethodSignature("public", "void",
+					this.getIteratorName(iterator),
+					iterator.getExternalVariables(), true);
+		} else {
+			return this.createJavaMethodSignature("public", "void",
+					this.getIteratorName(iterator),
+					iterator.getExternalVariables(), false);
+		}
+	}
+
+	/**
+	 * Creates a Java method signature for a given output bind.
+	 */
+	public String createJavaMethodSignature(OutputBind outputBind) {
+		return this.createJavaMethodSignature("public", "void",
+				this.getOutputBindName(outputBind),
+				new Variable[] { outputBind.destinationObject }, false);
+	}
+
+	/**
+	 * Creates a Java method signature for a given method call.
+	 */
+	public String createJavaMethodSignature(MethodCall methodCall) {
+		UserLibraryClass userLibrary = UserLibraryClassFactory
+				.create(methodCall.variable.typeName);
+		return this.createJavaMethodSignature("public",
+				userLibrary.getReturnType(methodCall.methodName),
+				this.getMethodCallName(methodCall), new Variable[0], false);
 	}
 }

@@ -1,0 +1,6 @@
+"<introductoryMsg>\n"
+"package <packageName>;\n\n"
+"public interface ParallelME_<className> {\n"
+"	public boolean isValid();\n\n"
+"	<publicMethods:{var|public <var.returnType> <var.name>(<var.params>);}; separator=\"\\n\\n\">\n"
+"}\n"

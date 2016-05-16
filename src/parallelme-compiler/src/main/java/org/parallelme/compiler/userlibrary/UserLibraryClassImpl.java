@@ -8,7 +8,8 @@
 
 package org.parallelme.compiler.userlibrary;
 
-import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Several useful implementations for derived concrete classes that will
@@ -17,7 +18,7 @@ import java.util.HashSet;
  * @author Wilson de Carvalho
  */
 public abstract class UserLibraryClassImpl implements UserLibraryClass {
-	protected HashSet<String> validMethods;
+	protected Map<String, String> validMethods;
 
 	protected abstract void initValidMethodsSet();
 
@@ -25,8 +26,19 @@ public abstract class UserLibraryClassImpl implements UserLibraryClass {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public HashSet<String> getValidMethods() {
-		return this.validMethods;
+	public Set<String> getValidMethods() {
+		return this.validMethods.keySet();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getReturnType(String methodName) {
+		if (this.isValidMethod(methodName))
+			return this.validMethods.get(methodName);
+		else
+			return "";
 	}
 
 	/**
@@ -34,6 +46,6 @@ public abstract class UserLibraryClassImpl implements UserLibraryClass {
 	 */
 	@Override
 	public boolean isValidMethod(String methodName) {
-		return this.validMethods.contains(methodName);
+		return this.validMethods.containsKey(methodName);
 	}
 }

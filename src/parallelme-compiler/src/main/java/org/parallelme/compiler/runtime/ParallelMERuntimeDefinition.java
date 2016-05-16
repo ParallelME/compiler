@@ -9,6 +9,7 @@
 package org.parallelme.compiler.runtime;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -48,8 +49,26 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public String getInitializationString(String packageName, String className) {
-		return "";
+	public TargetRuntime getTargetRuntime() {
+		return TargetRuntime.ParallelME;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public List<String> getIsValidBody() {
+		ArrayList<String> ret = new ArrayList<>();
+		ret.add(this.commonDefinitions.getPrefix() + "runtimePointer != 0;");
+		return ret;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public List<String> getInitializationString(String packageName,
+			String className) {
+		return new ArrayList<>();
 	}
 
 	/**
@@ -60,7 +79,6 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 		StringBuffer ret = new StringBuffer();
 		ret.append("import org.parallelme.runtime.ParallelMERuntimeJNIWrapper;\n");
 		ret.append(this.getUserLibraryImports(iteratorsAndBinds));
-		ret.append("\n");
 		return ret.toString();
 	}
 
@@ -134,28 +152,27 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 		// 2. Translate input binds
 		Set<String> inputBindTypes = new HashSet<String>();
 		for (InputBind inputBind : inputBinds) {
-			if (!inputBindTypes.contains(inputBind.getVariable().typeName)) {
-				inputBindTypes.add(inputBind.getVariable().typeName);
+			if (!inputBindTypes.contains(inputBind.variable.typeName)) {
+				inputBindTypes.add(inputBind.variable.typeName);
 				String kernel = this.translators.get(
-						inputBind.getVariable().typeName).translateInputBind(
+						inputBind.variable.typeName).translateInputBind(
 						className, inputBind);
 				this.addKernelByLine(kernel, st);
 			}
 		}
 		// 3. Translate iterators
 		for (Iterator iterator : iterators) {
-			String kernel = this.translators.get(
-					iterator.getVariable().typeName).translateIterator(
-					className, iterator);
+			String kernel = this.translators.get(iterator.variable.typeName)
+					.translateIterator(className, iterator);
 			this.addKernelByLine(kernel, st);
 		}
 		// 4. Translate outputbinds
 		Set<String> outputBindTypes = new HashSet<String>();
 		for (OutputBind outputBind : outputBinds) {
-			if (!outputBindTypes.contains(outputBind.getVariable().typeName)) {
-				outputBindTypes.add(outputBind.getVariable().typeName);
+			if (!outputBindTypes.contains(outputBind.variable.typeName)) {
+				outputBindTypes.add(outputBind.variable.typeName);
 				String kernel = this.translators.get(
-						outputBind.getVariable().typeName).translateOutputBind(
+						outputBind.variable.typeName).translateOutputBind(
 						className, outputBind);
 				this.addKernelByLine(kernel, st);
 			}

@@ -18,13 +18,26 @@ public class Variable implements Parameter {
 	public final String typeName;
 	public final String typeParameterName;
 	public final String modifier;
+	// The sequential number is used to uniquely identify a variable in a class.
+	// This number will be used to handle variables inside the runtime wrapper
+	// class, avoiding possible name colisions that may be created in different
+	// scopes in the original user code.
+	public final int sequentialNumber;
 
 	public Variable(String name, String typeName, String typeParameter,
-			String modifier) {
+			String modifier, int sequentialNumber) {
 		this.name = name;
 		this.typeName = typeName;
 		this.typeParameterName = typeParameter;
 		this.modifier = modifier;
+		this.sequentialNumber = sequentialNumber;
+	}
+
+	/**
+	 * Return true if this variable was declared as final.
+	 */
+	public boolean isFinal() {
+		return modifier.equals("final");
 	}
 
 	@Override
@@ -41,12 +54,5 @@ public class Variable implements Parameter {
 	@Override
 	public String toString() {
 		return this.name;
-	}
-
-	@Override
-	public int hashCode() {
-		return this.name.hashCode() * 3 + this.typeName.hashCode() * 7
-				+ this.typeParameterName.hashCode() * 11
-				+ this.modifier.hashCode() * 13;
 	}
 }

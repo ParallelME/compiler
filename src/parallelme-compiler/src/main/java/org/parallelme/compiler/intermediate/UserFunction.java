@@ -21,9 +21,4 @@ public class UserFunction {
 		this.Code = Code;
 		this.variableArgument = variableArgument;
 	}
-
-	@Override
-	public int hashCode() {
-		return this.Code.hashCode() * 3 + this.variableArgument.hashCode() * 7;
-	}
 }

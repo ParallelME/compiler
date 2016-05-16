@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.parallelme.compiler.intermediate.InputBind;
+import org.parallelme.compiler.intermediate.MethodCall;
 import org.parallelme.compiler.intermediate.OutputBind;
 import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.translation.CTranslator;
@@ -71,16 +72,16 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 	@Override
 	public String translateInputBindObjCreation(String className,
 			InputBind inputBind) {
-		String inputObject = this.commonDefinitions.getVariableInName(inputBind
-				.getVariable());
+		String inputObject = this.commonDefinitions
+				.getVariableInName(inputBind.variable);
 		ST st = new ST(templateCreateAllocation);
-		// TODO Check if parameters array ahas size 3, otherwise throw an
+		// TODO Check if parameters array has size 3, otherwise throw an
 		// exception and abort translation.
-		st.add("inputArray", inputBind.getParameters()[0]);
-		st.add("allocationLength", inputBind.getParameters()[2]);
+		st.add("inputArray", inputBind.parameters[0]);
+		st.add("allocationLength", inputBind.parameters[2]);
 		st.add("allocation", inputObject);
-		st.add("elementType", parallelME2RSAllocationTypes.get(inputBind
-				.getVariable().typeParameterName));
+		st.add("elementType", parallelME2RSAllocationTypes
+				.get(inputBind.variable.typeParameterName));
 		return st.render();
 	}
 
@@ -90,7 +91,7 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 	@Override
 	public String translateInputBindObjDeclaration(InputBind inputBind) {
 		String inAllocation = this.commonDefinitions
-				.getVariableInName(inputBind.getVariable());
+				.getVariableInName(inputBind.variable);
 		return "Allocation " + inAllocation + ";\n";
 	}
 
@@ -109,7 +110,7 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 	public String translateOutputBindCall(String className,
 			OutputBind outputBind) {
 		StringBuilder ret = new StringBuilder();
-		Variable variable = outputBind.getVariable();
+		Variable variable = outputBind.variable;
 		String inputObject = this.commonDefinitions.getVariableInName(variable);
 		String destinationObject = outputBind.destinationObject.name;
 		// If it is an object declaration, must declare the destination
@@ -129,5 +130,12 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 		st.add("destinationObject", destinationObject);
 		ret.append(st.render());
 		return ret.toString();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public String translateMethodCall(String className, MethodCall methodCall) {
+		return "";
 	}
 }

@@ -9,6 +9,7 @@
 package org.parallelme.compiler.runtime;
 
 import org.parallelme.compiler.intermediate.InputBind;
+import org.parallelme.compiler.intermediate.MethodCall;
 import org.parallelme.compiler.intermediate.OutputBind;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.translation.userlibrary.HDRImageTranslator;
@@ -58,18 +59,16 @@ public class PMHDRImageTranslator extends PMImageTranslator implements
 	public String translateInputBindObjCreation(String className,
 			InputBind inputBind) {
 		String resourceData = this.commonDefinitions.getPrefix()
-				+ inputBind.getVariable() + "Buffer";
+				+ inputBind.variable + "Buffer";
 		ST st = new ST(templateCreateJavaAllocation);
 		st.add("resourceData", resourceData);
 		st.add("params", this.commonDefinitions
-				.toCommaSeparatedString(inputBind.getParameters()));
-		st.add("worksize", this.getWorksizeName(inputBind.getVariable()));
-		st.add("inputBufferId",
-				this.getInputBufferIdName(inputBind.getVariable()));
-		st.add("outputBufferId",
-				this.getOutputBufferIdName(inputBind.getVariable()));
+				.toCommaSeparatedString(inputBind.parameters));
+		st.add("worksize", this.getWorksizeName(inputBind.variable));
+		st.add("inputBufferId", this.getInputBufferIdName(inputBind.variable));
+		st.add("outputBufferId", this.getOutputBufferIdName(inputBind.variable));
 		st.add("outputDataBuffer",
-				this.getOutputBufferDataName(inputBind.getVariable()));
+				this.getOutputBufferDataName(inputBind.variable));
 		return st.render();
 	}
 
@@ -80,13 +79,11 @@ public class PMHDRImageTranslator extends PMImageTranslator implements
 	public String translateInputBindObjDeclaration(InputBind inputBind) {
 		StringBuilder ret = new StringBuilder();
 		ST st = new ST(templateCreateAllocation);
-		st.add("worksize", this.getWorksizeName(inputBind.getVariable()));
-		st.add("inputBufferId",
-				this.getInputBufferIdName(inputBind.getVariable()));
-		st.add("outputBufferId",
-				this.getOutputBufferIdName(inputBind.getVariable()));
+		st.add("worksize", this.getWorksizeName(inputBind.variable));
+		st.add("inputBufferId", this.getInputBufferIdName(inputBind.variable));
+		st.add("outputBufferId", this.getOutputBufferIdName(inputBind.variable));
 		st.add("outputDataBuffer",
-				this.getOutputBufferDataName(inputBind.getVariable()));
+				this.getOutputBufferDataName(inputBind.variable));
 		ret.append(st.render());
 		return ret.toString();
 	}
@@ -97,5 +94,12 @@ public class PMHDRImageTranslator extends PMImageTranslator implements
 	@Override
 	public String translateOutputBind(String className, OutputBind outputBind) {
 		return templateKernelToBitmap;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public String translateMethodCall(String className, MethodCall methodCall) {
+		return "";
 	}
 }

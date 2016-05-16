@@ -104,8 +104,8 @@ public abstract class PMTranslator extends BaseTranslator {
 		// BitmapImage and HDRImage types contains two for loops
 		String dataInDeclaration;
 		String dataOutReturn;
-		if (iterator.getVariable().typeName.equals(BitmapImage.getName())
-				|| iterator.getVariable().typeName.equals(HDRImage.getName())) {
+		if (iterator.variable.typeName.equals(BitmapImage.getName())
+				|| iterator.variable.typeName.equals(HDRImage.getName())) {
 			dataInDeclaration = this
 					.translateType(userFunctionVariable.typeName)
 					+ " "
@@ -172,9 +172,8 @@ public abstract class PMTranslator extends BaseTranslator {
 					this.commonDefinitions.getVariableOutName(variable));
 		}
 		if (iterator.getType() == IteratorType.Sequential) {
-			if (iterator.getVariable().typeName.equals(BitmapImage.getName())
-					|| iterator.getVariable().typeName.equals(HDRImage
-							.getName())) {
+			if (iterator.variable.typeName.equals(BitmapImage.getName())
+					|| iterator.variable.typeName.equals(HDRImage.getName())) {
 				st.addAggr("params.{type, name}", "int",
 						this.getHeightVariableName());
 				st.addAggr("params.{type, name}", "int",
@@ -234,22 +233,21 @@ public abstract class PMTranslator extends BaseTranslator {
 		stCall.add("functionName",
 				this.commonDefinitions.getIteratorName(iterator));
 		stCall.addAggr("params.{name}",
-				this.getOutputBufferIdName(iterator.getVariable()));
+				this.getOutputBufferIdName(iterator.variable));
 		stCall.addAggr("params.{name}",
-				this.getOutputBufferIdName(iterator.getVariable()));
-		stCall.addAggr("params.{name}",
-				this.getWorksizeName(iterator.getVariable()));
+				this.getOutputBufferIdName(iterator.variable));
+		stCall.addAggr("params.{name}", this.getWorksizeName(iterator.variable));
 		for (Variable variable : iterator.getExternalVariables()) {
 			stCall.addAggr("params.{name}", variable.name);
 		}
-		if (!iterator.getExternalVariables().isEmpty()) {
+		if (iterator.getExternalVariables().length > 0) {
 			ST stParams = new ST(templateIteratorCallParams);
 			ST stParamsReturn = new ST(templateIteratorCallParamsReturn);
 			stParams.add("externalVariables", null);
 			stParamsReturn.add("externalVariables", null);
 			for (Variable variable : iterator.getExternalVariables()) {
 				// Only non-final variables must have an allocation
-				if (!variable.modifier.equals("final")) {
+				if (!variable.isFinal()) {
 					stParams.addAggr(
 							"externalVariables.{type, name, bufferId}",
 							variable.typeName,
@@ -265,10 +263,8 @@ public abstract class PMTranslator extends BaseTranslator {
 			ret.append(stCall.render() + ";");
 			if (iterator.getType() == IteratorType.Sequential) {
 				stParams = new ST(templateRunWait);
-				stParams.add(
-						"bufferId",
-						this.getOutputBufferIdName(iterator
-								.getExternalVariables().iterator().next()));
+				stParams.add("bufferId", this.getOutputBufferIdName(iterator
+						.getExternalVariables()[0]));
 				ret.append(stParams.render());
 				ret.append(stParamsReturn.render());
 			}

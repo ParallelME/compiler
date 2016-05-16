@@ -8,7 +8,7 @@
 
 package org.parallelme.compiler.userlibrary.classes;
 
-import java.util.HashSet;
+import java.util.HashMap;
 
 import org.parallelme.compiler.userlibrary.UserLibraryCollectionClassImpl;
 
@@ -37,9 +37,9 @@ public class HDRImage extends UserLibraryCollectionClassImpl {
 	 */
 	@Override
 	protected void initValidMethodsSet() {
-		this.validMethods = new HashSet<>();
-		this.validMethods.add(getHeightName);
-		this.validMethods.add(getWidthMethodName);
+		this.validMethods = new HashMap<>();
+		this.validMethods.put(getHeightName, "int");
+		this.validMethods.put(getWidthMethodName, "int");
 	}
 
 	/**

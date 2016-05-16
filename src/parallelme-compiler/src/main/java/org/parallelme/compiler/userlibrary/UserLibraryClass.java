@@ -8,7 +8,7 @@
 
 package org.parallelme.compiler.userlibrary;
 
-import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Describes a User Library class.
@@ -33,9 +33,14 @@ public interface UserLibraryClass {
 	 * List all valid methods for this class, EXCEPT output bind and iterator
 	 * methods. These last methods names must be returned in specific methods.
 	 * 
-	 * @return A HashSet with valid method names.
+	 * @return A Set with valid method names.
 	 */
-	public HashSet<String> getValidMethods();
+	public Set<String> getValidMethods();
+
+	/**
+	 * Get the return type of a valid method (non-iterator and non-output bind).
+	 */
+	public String getReturnType(String methodName);
 
 	/**
 	 * Indicates if the method name provided is valid for this user library

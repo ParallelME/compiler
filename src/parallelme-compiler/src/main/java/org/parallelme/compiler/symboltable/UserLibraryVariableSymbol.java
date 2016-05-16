@@ -16,8 +16,9 @@ package org.parallelme.compiler.symboltable;
 public class UserLibraryVariableSymbol extends VariableSymbol {
 	public UserLibraryVariableSymbol(String name, String typeName,
 			String typeParameterName, String modifier, Symbol enclosingScope,
-			TokenAddress tokenAddress, TokenAddress expressionAddress) {
+			TokenAddress tokenAddress, TokenAddress expressionAddress,
+			int identifier) {
 		super(name, typeName, typeParameterName, modifier, enclosingScope,
-				tokenAddress, expressionAddress);
+				tokenAddress, expressionAddress, identifier);
 	}
 }

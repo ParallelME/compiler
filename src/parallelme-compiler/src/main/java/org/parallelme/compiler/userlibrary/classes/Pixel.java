@@ -8,7 +8,7 @@
 
 package org.parallelme.compiler.userlibrary.classes;
 
-import java.util.HashSet;
+import java.util.HashMap;
 
 import org.parallelme.compiler.userlibrary.UserLibraryClassImpl;
 
@@ -41,7 +41,7 @@ public class Pixel extends UserLibraryClassImpl {
 	 */
 	@Override
 	protected void initValidMethodsSet() {
-		this.validMethods = new HashSet<>();
+		this.validMethods = new HashMap<>();
 	}
 	
 	/**

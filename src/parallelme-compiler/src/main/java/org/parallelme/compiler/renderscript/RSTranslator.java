@@ -28,16 +28,15 @@ import org.stringtemplate.v4.ST;
  */
 public abstract class RSTranslator extends BaseTranslator {
 	private static final String templateIteratorParallelCall = "<externalVariables:{var|<var.kernelName>.set_<var.gVariableName>(<var.variableName>);\n}>"
-			+ "<kernelName>.forEach_<functionName>(<allocationName>, <allocationName>);\n";
-	private static final String templateIteratorSequentialCall = "<externalVariables:{var|<var.type>[] <var.arrName> = new <var.type>[1];\n"
+			+ "<kernelName>.forEach_<functionName>(<allocationName>, <allocationName>);";
+	private static final String templateIteratorSequentialCall = "<externalVariables:{var|"
 			+ "Allocation <var.allName> = Allocation.createSized($mRS, Element.<var.elementType>($mRS), 1);\n"
-			+ "<kernelName>.set_<var.gName>(<var.name>);\n"
+			+ "<kernelName>.set_<var.gName>(<var.name>[0]);\n"
 			+ "<kernelName>.set_<var.outputData>(<var.allName>);\n}>"
 			+ "<kernelName>.set_<inputData>(<allocationName>);\n"
 			+ "<inputSize:{var|<kernelName>.set_<var.name>(<allocationName>.getType().get<var.XYZ>());\n}>"
 			+ "<kernelName>.invoke_<functionName>();\n"
-			+ "<externalVariables:{var|<var.allName>.copyTo(<var.arrName>);\n"
-			+ "<var.name> = <var.arrName>[0];\n}>";
+			+ "<externalVariables:{var|<var.allName>.copyTo(<var.name>);}>";
 	private static final String templateIteratorSequentialFunction = "rs_allocation <inputData>;\n"
 			+ "<outVariable:{var|rs_allocation <var.name>;\n}>"
 			+ "int gInputXSize<iteratorName>;\n"
@@ -87,7 +86,7 @@ public abstract class RSTranslator extends BaseTranslator {
 			st.add("kernelName", kernelName);
 			st.add("functionName", functionName);
 			st.add("externalVariables", null);
-			if (!iterator.getExternalVariables().isEmpty()) {
+			if (iterator.getExternalVariables().length > 0) {
 				for (Variable variable : iterator.getExternalVariables()) {
 					String gVariable = this.getGlobalVariableName(
 							variable.name, iterator);
@@ -100,8 +99,8 @@ public abstract class RSTranslator extends BaseTranslator {
 			String inputData = this
 					.getGlobalVariableName(
 							"input"
-									+ this.upperCaseFirstLetter(iterator
-											.getVariable().name), iterator);
+									+ this.upperCaseFirstLetter(iterator.variable.name),
+							iterator);
 			String iteratorName = this.upperCaseFirstLetter(functionName);
 			st = new ST(templateIteratorSequentialCall);
 			st.add("kernelName", kernelName);
@@ -117,9 +116,8 @@ public abstract class RSTranslator extends BaseTranslator {
 						"output" + this.upperCaseFirstLetter(variable.name),
 						iterator);
 				st.addAggr(
-						"externalVariables.{type, arrName, name, gName, allName, elementType, outputData}",
-						variable.typeName, this.commonDefinitions.getPrefix()
-								+ variable.name, variable.name,
+						"externalVariables.{name, gName, allName, elementType, outputData}",
+						variable.name,
 						this.getGlobalVariableName(variable.name, iterator),
 						allocationName,
 						java2RSAllocationTypes.get(variable.typeName),
@@ -127,19 +125,18 @@ public abstract class RSTranslator extends BaseTranslator {
 			}
 			st.addAggr("inputSize.{name, XYZ}", "gInputXSize" + iteratorName,
 					"X");
-			if (iterator.getVariable().typeName.equals(BitmapImage.getName())
-					|| iterator.getVariable().typeName.equals(HDRImage
-							.getName())) {
+			if (iterator.variable.typeName.equals(BitmapImage.getName())
+					|| iterator.variable.typeName.equals(HDRImage.getName())) {
 				st.addAggr("inputSize.{name, XYZ}", "gInputYSize"
 						+ iteratorName, "Y");
 			}
 		}
-		if (iterator.getVariable().typeName.equals(Array.getName()))
-			st.add("allocationName", this.commonDefinitions
-					.getVariableInName(iterator.getVariable()));
+		if (iterator.variable.typeName.equals(Array.getName()))
+			st.add("allocationName",
+					this.commonDefinitions.getVariableInName(iterator.variable));
 		else
 			st.add("allocationName", this.commonDefinitions
-					.getVariableOutName(iterator.getVariable()));
+					.getVariableOutName(iterator.variable));
 		return st.render();
 	}
 
@@ -188,8 +185,7 @@ public abstract class RSTranslator extends BaseTranslator {
 		code2Translate = code2Translate.substring(
 				code2Translate.indexOf("{") + 1, code2Translate.length());
 		ST st = new ST(templateIteratorSequentialFunction);
-		String variableName = this
-				.upperCaseFirstLetter(iterator.getVariable().name);
+		String variableName = this.upperCaseFirstLetter(iterator.variable.name);
 		String gNameIn = this.getGlobalVariableName("input" + variableName,
 				iterator);
 		String iteratorName = this.upperCaseFirstLetter(this.commonDefinitions
@@ -225,8 +221,8 @@ public abstract class RSTranslator extends BaseTranslator {
 		stForBody.add("userCode", cCode);
 		stForBody.add("param", null);
 		// BitmapImage and HDRImage types contains two for loops
-		if (iterator.getVariable().typeName.equals(BitmapImage.getName())
-				|| iterator.getVariable().typeName.equals(HDRImage.getName())) {
+		if (iterator.variable.typeName.equals(BitmapImage.getName())
+				|| iterator.variable.typeName.equals(HDRImage.getName())) {
 			stForBody.addAggr("param.{name}", "y");
 			ST stFor2 = new ST(templateForLoop);
 			stFor2.add("varName", "y");
@@ -262,9 +258,8 @@ public abstract class RSTranslator extends BaseTranslator {
 			st.add("userFunctionName",
 					this.commonDefinitions.getIteratorName(iterator));
 			st.add("params", null);
-			if (iterator.getVariable().typeName.equals(BitmapImage.getName())
-					|| iterator.getVariable().typeName.equals(HDRImage
-							.getName())) {
+			if (iterator.variable.typeName.equals(BitmapImage.getName())
+					|| iterator.variable.typeName.equals(HDRImage.getName())) {
 				st.addAggr("params.{type, name}", "uint32_t", "y");
 			}
 			functionSignature = st.render();

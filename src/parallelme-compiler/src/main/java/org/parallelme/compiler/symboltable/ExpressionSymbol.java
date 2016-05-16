@@ -17,7 +17,7 @@ package org.parallelme.compiler.symboltable;
  */
 public class ExpressionSymbol extends Symbol {
 	public ExpressionSymbol(String name, Symbol enclosingScope,
-			TokenAddress tokenAddress) {
-		super(name, enclosingScope, tokenAddress);
+			TokenAddress tokenAddress, int identifier) {
+		super(name, enclosingScope, tokenAddress, identifier);
 	}
 }

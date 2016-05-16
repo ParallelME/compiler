@@ -14,7 +14,8 @@ package org.parallelme.compiler.symboltable;
  * @author Wilson de Carvalho
  */
 public class LiteralBooleanSymbol extends LiteralSymbol<Boolean> {
-	public LiteralBooleanSymbol(String name, Symbol enclosingScope, Boolean value) {
-		super(name, enclosingScope, value);
+	public LiteralBooleanSymbol(String name, Symbol enclosingScope,
+			Boolean value, int identifier) {
+		super(name, enclosingScope, value, identifier);
 	}
 }

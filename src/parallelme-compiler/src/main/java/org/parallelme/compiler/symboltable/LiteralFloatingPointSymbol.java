@@ -14,7 +14,8 @@ package org.parallelme.compiler.symboltable;
  * @author Wilson de Carvalho
  */
 public class LiteralFloatingPointSymbol extends LiteralSymbol<Float> {
-	public LiteralFloatingPointSymbol(String name, Symbol enclosingScope, Float value) {
-		super(name, enclosingScope, value);
+	public LiteralFloatingPointSymbol(String name, Symbol enclosingScope,
+			Float value, int identifier) {
+		super(name, enclosingScope, value, identifier);
 	}
 }

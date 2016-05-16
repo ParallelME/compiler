@@ -19,8 +19,8 @@ public class ClassSymbol extends Symbol {
 
 	public ClassSymbol(String name, String typeParameterName,
 			Symbol enclosingScope, TokenAddress tokenAddress,
-			TokenAddress bodyAddress) {
-		super(name, enclosingScope, tokenAddress);
+			TokenAddress bodyAddress, int identifier) {
+		super(name, enclosingScope, tokenAddress, identifier);
 		this.typeParameterName = typeParameterName;
 		this.bodyAddress = bodyAddress;
 	}

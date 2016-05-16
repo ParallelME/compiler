@@ -16,8 +16,9 @@ package org.parallelme.compiler.symboltable;
 public abstract class LiteralSymbol<T> extends Symbol {
 	public final T value;
 
-	public LiteralSymbol(String name, Symbol enclosingScope, T value) {
-		super(name, enclosingScope, null);
+	public LiteralSymbol(String name, Symbol enclosingScope, T value,
+			int identifier) {
+		super(name, enclosingScope, null, identifier);
 		this.value = value;
 	}
 

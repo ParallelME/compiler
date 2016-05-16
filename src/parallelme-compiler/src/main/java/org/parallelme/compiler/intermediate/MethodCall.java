@@ -16,21 +16,14 @@ import org.parallelme.compiler.symboltable.TokenAddress;
  * 
  * @author Wilson de Carvalho
  */
-public class MethodCall {
+public class MethodCall  extends UserLibraryData {
 	public final String methodName;
-	public final Variable variable;
 	public final TokenAddress expressionAddress;
 
 	public MethodCall(String methodName, Variable variable,
-			TokenAddress statementAddress) {
+			TokenAddress statementAddress, int sequentialNumber) {
+		super(variable, sequentialNumber);
 		this.methodName = methodName;
-		this.variable = variable;
 		this.expressionAddress = statementAddress;
-	}
-
-	@Override
-	public int hashCode() {
-		return this.methodName.hashCode() * 3 + this.variable.hashCode() * 7
-				+ this.expressionAddress.hashCode() * 11;
 	}
 }

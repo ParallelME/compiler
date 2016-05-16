@@ -46,9 +46,12 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 	private final ArrayList<UserLibraryData> iteratorsAndBinds;
 	// Token stream used to extract original code data.
 	private TokenStream tokenStream;
-	// Used to calculate the unique number of a iterator or bind during its
-	// creation.
-	private int lastFunctionCount;
+	// Used to calculate the unique number for iterators.
+	private int iteratorCount;
+	// Used to calculate the unique number for output binds.
+	private int outputBindCount;
+	// Used to calculate the unique number for method calls.
+	private int methodCallCount;
 	// Stores package name.
 	private String packageName;
 	// List of those tokens that must be removed from the output code.
@@ -63,17 +66,12 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 	 * @param tokenStream
 	 *            Token stream for the tree being visited. Used to extract
 	 *            original code data.
-	 * @param lastFunctionCount
-	 *            Used to calculate the unique number of iterators and binds
-	 *            during creation.
-	 * 
 	 */
-	public CompilerSecondPassListener(TokenStream tokenStream,
-			int lastFunctionCount) {
+	public CompilerSecondPassListener(TokenStream tokenStream) {
 		super(new RootSymbol());
 		this.iteratorsAndBinds = new ArrayList<>();
 		this.tokenStream = tokenStream;
-		this.lastFunctionCount = lastFunctionCount;
+		this.iteratorCount = this.outputBindCount = this.methodCallCount = 0;
 	}
 
 	/**
@@ -111,6 +109,20 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 	 */
 	public Collection<MethodCall> getMethodCalls() {
 		return this.methodCalls;
+	}
+
+	/**
+	 * Number of Iterator objects created during the parse walk.
+	 */
+	public int getIteratorCount() {
+		return this.iteratorCount;
+	}
+
+	/**
+	 * Number of OutputBind objects created during the parse walk.
+	 */
+	public int getOutputBindCount() {
+		return this.outputBindCount;
 	}
 
 	/**
@@ -200,7 +212,8 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 									argumentVariable.name,
 									argumentVariable.typeName,
 									argumentVariable.typeParameterName,
-									argumentVariable.modifier));
+									argumentVariable.modifier,
+									argumentVariable.identifier));
 					// Add all those external variables found on the iterator to
 					// be used in the second pass.
 					for (VariableSymbol variable : this.iteratorExternalVariables
@@ -209,7 +222,7 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 								.addExternalVariable(new Variable(
 										variable.name, variable.typeName,
 										variable.typeParameterName,
-										variable.modifier));
+										variable.modifier, variable.identifier));
 					}
 					this.currentIteratorData
 							.setUserFunctionData(userFunctionData);
@@ -314,10 +327,9 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 	private void getIteratorData(UserLibraryVariableSymbol variable) {
 		Variable variableParameter = new Variable(variable.name,
 				variable.typeName, variable.typeParameterName,
-				variable.modifier);
+				variable.modifier, variable.identifier);
 		this.currentIteratorData = new Iterator(variableParameter,
-				this.iteratorsAndBinds.size() + this.lastFunctionCount,
-				new TokenAddress(this.currentStatement.start,
+				++iteratorCount, new TokenAddress(this.currentStatement.start,
 						this.currentStatement.stop));
 	}
 
@@ -413,12 +425,14 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 						destinationVariableSymbol.name,
 						destinationVariableSymbol.typeName,
 						destinationVariableSymbol.typeParameterName,
-						destinationVariableSymbol.modifier);
+						destinationVariableSymbol.modifier,
+						destinationVariableSymbol.identifier);
 				Variable userLibraryVariable = new Variable(
 						userLibraryVariableSymbol.name,
 						userLibraryVariableSymbol.typeName,
 						userLibraryVariableSymbol.typeParameterName,
-						userLibraryVariableSymbol.modifier);
+						userLibraryVariableSymbol.modifier,
+						userLibraryVariableSymbol.identifier);
 				TokenAddress tokenAddress;
 				if (this.currentStatement != null)
 					tokenAddress = new TokenAddress(
@@ -429,9 +443,8 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 							this.currentVariableStatement.start,
 							this.currentVariableStatement.stop);
 				this.iteratorsAndBinds.add(new OutputBind(userLibraryVariable,
-						destinationVariable, this.iteratorsAndBinds.size()
-								+ lastFunctionCount, tokenAddress,
-						isObjectDeclaration));
+						destinationVariable, ++this.outputBindCount,
+						tokenAddress, isObjectDeclaration));
 			}
 		}
 	}
@@ -451,7 +464,8 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 				expression.length());
 		this.methodCalls.add(new MethodCall(methodName, new Variable(
 				variable.name, variable.typeName, variable.typeParameterName,
-				variable.modifier), new TokenAddress(expressionCtx.start,
-				expressionCtx.stop)));
+				variable.modifier, variable.identifier), new TokenAddress(
+				expressionCtx.start, expressionCtx.stop),
+				++this.methodCallCount));
 	}
 }
