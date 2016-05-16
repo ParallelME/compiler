@@ -13,6 +13,7 @@ import java.util.Map;
 
 import org.parallelme.compiler.intermediate.InputBind;
 import org.parallelme.compiler.intermediate.OutputBind;
+import org.parallelme.compiler.intermediate.Parameter;
 import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.translation.userlibrary.ArrayTranslator;
@@ -69,18 +70,16 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public String translateInputBindObjCreation(String className,
-			InputBind inputBind) {
-		String inputObject = this.commonDefinitions.getVariableInName(inputBind
-				.getVariable());
+	public String translateInputBindObjCreation(String className, InputBind inputBind) {
+		String inputObject = this.commonDefinitions.getVariableInName(inputBind.getVariable());
 		ST st = new ST(templateCreateAllocation);
-		// TODO Check if parameters array ahas size 3, otherwise throw an
+		// TODO Check if parameters array has size 2, otherwise throw an
 		// exception and abort translation.
-		st.add("inputArray", inputBind.getParameters()[0]);
-		st.add("allocationLength", inputBind.getParameters()[2]);
+		Parameter inputParam = inputBind.getParameters()[0];
+		st.add("inputArray", inputParam);
+		st.add("allocationLength", inputParam.toString() + ".length");
 		st.add("allocation", inputObject);
-		st.add("elementType", parallelME2RSAllocationTypes.get(inputBind
-				.getVariable().typeParameterName));
+		st.add("elementType", parallelME2RSAllocationTypes.get(inputBind.getVariable().typeParameterName));
 		return st.render();
 	}
 
@@ -89,8 +88,7 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 	 */
 	@Override
 	public String translateInputBindObjDeclaration(InputBind inputBind) {
-		String inAllocation = this.commonDefinitions
-				.getVariableInName(inputBind.getVariable());
+		String inAllocation = this.commonDefinitions.getVariableInName(inputBind.getVariable());
 		return "Allocation " + inAllocation + ";\n";
 	}
 
@@ -106,8 +104,7 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public String translateOutputBindCall(String className,
-			OutputBind outputBind) {
+	public String translateOutputBindCall(String className, OutputBind outputBind) {
 		StringBuilder ret = new StringBuilder();
 		Variable variable = outputBind.getVariable();
 		String inputObject = this.commonDefinitions.getVariableInName(variable);
@@ -118,8 +115,7 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 			ST st = new ST(templateCreateOutputAllocation);
 			st.add("type", outputBind.destinationObject.typeName);
 			st.add("name", outputBind.destinationObject.name);
-			String baseType = outputBind.destinationObject.typeName
-					.replaceAll("\\[", "").replaceAll("\\]", "").trim();
+			String baseType = outputBind.destinationObject.typeName.replaceAll("\\[", "").replaceAll("\\]", "").trim();
 			st.add("baseType", baseType);
 			st.add("inputAllocation", inputObject);
 			ret.append(st.render());
