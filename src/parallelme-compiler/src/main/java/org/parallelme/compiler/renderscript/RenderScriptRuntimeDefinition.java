@@ -64,7 +64,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	 */
 	public List<String> getIsValidBody() {
 		ArrayList<String> ret = new ArrayList<>();
-		ret.add("true;");
+		ret.add("return true;");
 		return ret;
 	}
 
@@ -95,18 +95,17 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public String getImports(List<UserLibraryData> iteratorsAndBinds) {
-		StringBuffer ret = new StringBuffer();
-		ret.append("import android.support.v8.renderscript.*;\n");
-		ret.append(this.getUserLibraryImports(iteratorsAndBinds));
-		return ret.toString();
+	public List<String> getImports() {
+		ArrayList<String> ret = new ArrayList<>();
+		ret.add("android.support.v8.renderscript.*");
+		return ret;
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
 	@Override
-	public boolean translateIteratorsAndBinds(String packageName,
+	public void translateIteratorsAndBinds(String packageName,
 			String className, List<Iterator> iterators,
 			List<InputBind> inputBinds, List<OutputBind> outputBinds) {
 		// 1. Add file header
@@ -140,9 +139,10 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 			}
 		}
 		// 5. Write translated file
-		FileWriter.writeFile(className + ".rs", this.outputDestinationFolder,
-				st.render());
-		return true;
+		FileWriter.writeFile(
+
+		className + ".rs", this.commonDefinitions.getRSDestinationFolder(
+				this.outputDestinationFolder, packageName), st.render());
 	}
 
 	/**

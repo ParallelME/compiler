@@ -14,6 +14,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 
 import org.antlr.v4.runtime.TokenStreamRewriter;
 import org.parallelme.compiler.exception.CompilationException;
@@ -44,13 +45,14 @@ public class CompilerCodeTranslator {
 	private final RuntimeDefinition pmRuntime;
 	private final String templateJavaInterface = "<introductoryMsg>\n"
 			+ "package <packageName>;\n\n"
+			+ "<imports:{var|import <var.statement>;\n}>\n"
 			+ "public interface <interfaceName> {\n"
 			+ "\tpublic boolean isValid();\n\n"
 			+ "\t<methods:{var|<var.signature>;}; separator=\"\\n\\n\">"
 			+ "\n}\n";
 	private final String templateJavaClass = "<introductoryMsg>\n"
 			+ "package <packageName>;\n\n"
-			+ "<imports>\n"
+			+ "<imports:{var|import <var.statement>;\n}>\n"
 			+ "public class <className> implements <interfaceName> {\n"
 			+ "\t<classDeclarations:{var|<var.line>\n}>\n"
 			+ "\tpublic boolean isValid() {\n\t\t<isValidBody>\n\t\\}\n\n"
@@ -105,35 +107,63 @@ public class CompilerCodeTranslator {
 					.getIteratorsAndOutputBinds(iteratorsAndBinds);
 			Collection<MethodCall> methodCalls = listener.getMethodCalls();
 			String className = classSymbol.name;
-			// 2. Creates the java interface tha will be used to implement each
+			// 2. Creates the java interface that will be used to implement each
 			// runtime code.
 			this.createJavaWrapperInterface(packageName, className,
 					iteratorsAndOutputBinds.left, inputBinds,
 					iteratorsAndOutputBinds.right, methodCalls);
-			// 3. Creates RenderScript implentation
-			this.createJavaWrapperImplementation(packageName, className,
+			// 3. Translate code to RenderScript
+			this.runtimeSpecificTranslation(packageName, className,
 					iteratorsAndOutputBinds.left, inputBinds,
 					iteratorsAndOutputBinds.right, methodCalls, this.rsRuntime);
-			// 4. Creates ParallelME implentation
-			this.createJavaWrapperImplementation(packageName, className,
-					iteratorsAndOutputBinds.left, inputBinds,
-					iteratorsAndOutputBinds.right, methodCalls, this.pmRuntime);
+			// 4. Translate code to ParallelME runtime
+			// this.runtimeSpecificTranslation(packageName, className,
+			// iteratorsAndOutputBinds.left, inputBinds,
+			// iteratorsAndOutputBinds.right, methodCalls, this.pmRuntime);
 			// 5. Translate the user code, calling the runtime wrapper
 			this.translateUserCode(packageName, className,
 					iteratorsAndOutputBinds.left, inputBinds,
 					iteratorsAndOutputBinds.right, methodCalls,
 					listener.getImportTokens(), tokenStreamRewriter);
-			// 6. Export internal library files for each target runtime
-			try {
-				this.rsRuntime.exportInternalLibrary("",
-						outputDestinationFolder);
-				this.pmRuntime.exportInternalLibrary("",
-						outputDestinationFolder);
-			} catch (IOException e) {
-				throw new CompilationException(
-						"Error exporting internal library files: "
-								+ e.getMessage());
-			}
+		}
+	}
+
+	/**
+	 * Perform runtime-specific translation.
+	 * 
+	 * @param packageName
+	 *            Name of the package of which current data (class, iterators
+	 *            and binds) belong.
+	 * @param className
+	 *            Name of the class of which current data (iterators and binds)
+	 *            belong.
+	 * @param iterators
+	 *            Iterator that must be translated.
+	 * @param inputBinds
+	 *            Input binds that must be translated.
+	 * @param outputBinds
+	 *            Output binds that must be translated.
+	 * @param methodCalls
+	 *            Set of method calls that must be replaced.
+	 * @throws CompilationException
+	 */
+	private void runtimeSpecificTranslation(String packageName,
+			String className, List<Iterator> iterators,
+			List<InputBind> inputBinds, List<OutputBind> outputBinds,
+			Collection<MethodCall> methodCalls, RuntimeDefinition targetRuntime)
+			throws CompilationException {
+		// 1. Creates Java wrapper implementation for interface created
+		this.createJavaWrapperImplementation(packageName, className, iterators,
+				inputBinds, outputBinds, methodCalls, targetRuntime);
+		// 2. Translate user code to C code compatible with the target runtime
+		targetRuntime.translateIteratorsAndBinds(packageName, className,
+				iterators, inputBinds, outputBinds);
+		// 3. Export internal library files for each target runtime
+		try {
+			targetRuntime.exportInternalLibrary("", outputDestinationFolder);
+		} catch (IOException e) {
+			throw new CompilationException(
+					"Error exporting internal library files: " + e.getMessage());
 		}
 	}
 
@@ -155,36 +185,91 @@ public class CompilerCodeTranslator {
 	 *            Output binds that must be translated.
 	 * @param methodCalls
 	 *            Set of method calls that must be replaced.
+	 * @throws CompilationException
 	 */
 	private void createJavaWrapperInterface(String packageName,
 			String className, List<Iterator> iterators,
 			List<InputBind> inputBinds, List<OutputBind> outputBinds,
-			Collection<MethodCall> methodCalls) {
+			Collection<MethodCall> methodCalls) throws CompilationException {
 		String interfaceName = this.commonDefinitions
 				.getJavaWrapperInterfaceName(className);
 		ST st = new ST(templateJavaInterface);
 		st.add("introductoryMsg", this.commonDefinitions.getHeaderComment());
 		st.add("packageName", packageName);
 		st.add("interfaceName", interfaceName);
+		Set<String> userLibraryClasses = new HashSet<String>();
 		for (InputBind inputBind : inputBinds) {
 			st.addAggr("methods.{signature}",
 					this.commonDefinitions.createJavaMethodSignature(inputBind));
+			userLibraryClasses.add(inputBind.variable.typeName);
 		}
 		for (Iterator iterator : iterators) {
 			st.addAggr("methods.{signature}",
 					this.commonDefinitions.createJavaMethodSignature(iterator));
+			userLibraryClasses.add(iterator.variable.typeName);
 		}
 		for (OutputBind outputBind : outputBinds) {
 			st.addAggr("methods.{signature}", this.commonDefinitions
 					.createJavaMethodSignature(outputBind));
+			userLibraryClasses.add(outputBind.variable.typeName);
 		}
 		for (MethodCall methodCall : methodCalls) {
 			st.addAggr("methods.{signature}", this.commonDefinitions
 					.createJavaMethodSignature(methodCall));
+			userLibraryClasses.add(methodCall.variable.typeName);
 		}
+		this.addImportStatements(userLibraryClasses, st, true);
 		FileWriter.writeFile(interfaceName + ".java", this.commonDefinitions
 				.getJavaDestinationFolder(this.outputDestinationFolder,
 						packageName), st.render());
+	}
+
+	/**
+	 * Add sorted import statements in Java code based on the informed user
+	 * library classes.
+	 * 
+	 * @param userLibraryClasses
+	 *            Set of user library classes.
+	 * @param st
+	 *            String template that will be used (must be able to used
+	 *            addAggr method with "imports.{statement}" variable).
+	 */
+	private void addImportStatements(Set<String> userLibraryClasses, ST st,
+			boolean isInterface) throws CompilationException {
+		// Using a TreeSet here in order to keep imports sorted
+		TreeSet<String> importStatements = new TreeSet<>();
+		for (String userLibraryClass : userLibraryClasses) {
+			// Add imports from both runtimes ir order to make sure all
+			// necessary imports are inserted
+			if (isInterface) {
+				importStatements.addAll(this.rsRuntime.getTranslator(
+						userLibraryClass).getJavaInterfaceImports());
+				importStatements.addAll(this.pmRuntime.getTranslator(
+						userLibraryClass).getJavaInterfaceImports());
+			} else {
+				importStatements.addAll(this.rsRuntime.getTranslator(
+						userLibraryClass).getJavaClassImports());
+				importStatements.addAll(this.pmRuntime.getTranslator(
+						userLibraryClass).getJavaClassImports());
+			}
+		}
+		this.addImportStatements(importStatements, st);
+	}
+
+	/**
+	 * Add import statements in Java code.
+	 * 
+	 * @param importStatements
+	 *            Collection with import statements.
+	 * @param st
+	 *            String template that will be used (must be able to used
+	 *            addAggr method with "imports.{statement}" variable).
+	 */
+	private void addImportStatements(Collection<String> importStatements, ST st) {
+		st.add("imports", null);
+		for (String statement : importStatements) {
+			st.addAggr("imports.{statement}", statement);
+		}
 	}
 
 	/**
@@ -223,12 +308,8 @@ public class CompilerCodeTranslator {
 		st.add("packageName", packageName);
 		st.add("interfaceName", interfaceName);
 		st.add("className", javaClassName);
-		List<UserLibraryData> iteratorsAndBinds = new ArrayList<>();
-		iteratorsAndBinds.addAll(inputBinds);
-		iteratorsAndBinds.addAll(iterators);
-		iteratorsAndBinds.addAll(outputBinds);
-		st.add("imports", targetRuntime.getImports(iteratorsAndBinds));
 		st.add("classDeclarations", null);
+		Set<String> userLibraryClasses = new HashSet<String>();
 		for (InputBind inputBind : inputBinds) {
 			UserLibraryTranslatorDefinition translator = targetRuntime
 					.getTranslator(inputBind.variable.typeName);
@@ -242,7 +323,7 @@ public class CompilerCodeTranslator {
 			String body = translator.translateInputBindObjCreation(
 					javaClassName, inputBind);
 			st.addAggr("methods.{signature, body}", methodSignature, body);
-
+			userLibraryClasses.add(inputBind.variable.typeName);
 		}
 		for (String line : targetRuntime.getIsValidBody()) {
 			st.add("isValidBody", line);
@@ -258,6 +339,7 @@ public class CompilerCodeTranslator {
 					iterator.variable.typeName).translateIteratorCall(
 					javaClassName, iterator);
 			st.addAggr("methods.{signature, body}", methodSignature, body);
+			userLibraryClasses.add(iterator.variable.typeName);
 		}
 		for (OutputBind outputBind : outputBinds) {
 			String methodSignature = this.commonDefinitions
@@ -266,6 +348,7 @@ public class CompilerCodeTranslator {
 					outputBind.variable.typeName).translateOutputBindCall(
 					javaClassName, outputBind);
 			st.addAggr("methods.{signature, body}", methodSignature, body);
+			userLibraryClasses.add(outputBind.variable.typeName);
 		}
 		for (MethodCall methodCall : methodCalls) {
 			String methodSignature = this.commonDefinitions
@@ -274,7 +357,11 @@ public class CompilerCodeTranslator {
 					methodCall.variable.typeName).translateMethodCall(
 					javaClassName, methodCall);
 			st.addAggr("methods.{signature, body}", methodSignature, body);
+			userLibraryClasses.add(methodCall.variable.typeName);
 		}
+		this.addImportStatements(userLibraryClasses, st, false);
+		this.addImportStatements(targetRuntime.getImports(), st);
+
 		FileWriter.writeFile(javaClassName + ".java", this.commonDefinitions
 				.getJavaDestinationFolder(this.outputDestinationFolder,
 						packageName), st.render());

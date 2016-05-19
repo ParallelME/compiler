@@ -8,6 +8,9 @@
 
 package org.parallelme.compiler.renderscript;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.parallelme.compiler.intermediate.InputBind;
 import org.parallelme.compiler.intermediate.OutputBind;
 import org.parallelme.compiler.translation.CTranslator;
@@ -81,5 +84,27 @@ public class RSHDRImageTranslator extends RSImageTranslator implements
 	@Override
 	public String translateOutputBind(String className, OutputBind outputBind) {
 		return "";
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public List<String> getJavaInterfaceImports() {
+		ArrayList<String> ret = new ArrayList<>();
+		ret.add("android.content.res.Resources");
+		ret.add("android.graphics.Bitmap");
+		return ret;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public List<String> getJavaClassImports() {
+		ArrayList<String> ret = (ArrayList<String>) this
+				.getJavaInterfaceImports();
+		ret.add("org.parallelme.userlibrary.image.RGBE");
+		return ret;
 	}
 }

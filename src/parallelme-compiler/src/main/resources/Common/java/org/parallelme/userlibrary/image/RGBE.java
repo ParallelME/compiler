@@ -1,4 +1,4 @@
-package org.parallelme.userlibrary;
+package org.parallelme.userlibrary.image;
 
 import android.content.res.Resources;
 import java.io.*;

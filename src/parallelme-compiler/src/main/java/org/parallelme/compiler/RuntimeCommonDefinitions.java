@@ -168,9 +168,8 @@ public class RuntimeCommonDefinitions {
 	 */
 	public String getRSDestinationFolder(String baseDestinationFolder,
 			String packageName) {
-		return baseDestinationFolder + File.separator
-				+ packageName.replaceAll("\\.", "/") + File.separator + "rs"
-				+ File.separator;
+		return baseDestinationFolder + File.separator + "rs" + File.separator
+				+ packageName.replaceAll("\\.", "/") + File.separator;
 	}
 
 	/**

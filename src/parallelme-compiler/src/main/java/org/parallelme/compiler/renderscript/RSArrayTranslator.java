@@ -8,7 +8,9 @@
 
 package org.parallelme.compiler.renderscript;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.parallelme.compiler.intermediate.InputBind;
@@ -137,5 +139,22 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 	 */
 	public String translateMethodCall(String className, MethodCall methodCall) {
 		return "";
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public List<String> getJavaInterfaceImports() {
+		ArrayList<String> ret = new ArrayList<>();
+		return ret;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public List<String> getJavaClassImports() {
+		return this.getJavaInterfaceImports();
 	}
 }

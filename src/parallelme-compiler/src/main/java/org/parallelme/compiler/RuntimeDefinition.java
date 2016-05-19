@@ -16,7 +16,6 @@ import org.parallelme.compiler.intermediate.InputBind;
 import org.parallelme.compiler.intermediate.Iterator;
 import org.parallelme.compiler.intermediate.MethodCall;
 import org.parallelme.compiler.intermediate.OutputBind;
-import org.parallelme.compiler.intermediate.UserLibraryData;
 import org.parallelme.compiler.translation.userlibrary.UserLibraryTranslatorDefinition;
 
 /**
@@ -56,17 +55,6 @@ public interface RuntimeDefinition {
 			String className) throws CompilationException;
 
 	/**
-	 * Get the necessary imports for this runtime.
-	 * 
-	 * @param iteratorsAndBinds
-	 *            List of all iterators and binds found in a given class.
-	 * 
-	 * @return String with the necessary imports.
-	 */
-	public String getImports(List<UserLibraryData> iteratorsAndBinds)
-			throws CompilationException;
-
-	/**
 	 * Translates a given method call to a runtime-variable equivalent
 	 * operation.
 	 * 
@@ -76,6 +64,13 @@ public interface RuntimeDefinition {
 	 */
 	public String translateMethodCall(MethodCall methodCall)
 			throws CompilationException;
+
+	/**
+	 * Get the necessary imports for this runtime.
+	 * 
+	 * @return A list where each element is a import statement.
+	 */
+	public List<String> getImports() throws CompilationException;
 
 	/**
 	 * Translates a list of iterators.
@@ -92,10 +87,8 @@ public interface RuntimeDefinition {
 	 *            Input binds that must be translated.
 	 * @param outputBinds
 	 *            Output binds that must be translated.
-	 * 
-	 * @return True if the translation was successful. False otherwise.
 	 */
-	public boolean translateIteratorsAndBinds(String packageName,
+	public void translateIteratorsAndBinds(String packageName,
 			String className, List<Iterator> iterators,
 			List<InputBind> inputBinds, List<OutputBind> outputBinds)
 			throws CompilationException;

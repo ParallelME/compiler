@@ -58,7 +58,8 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	 */
 	public List<String> getIsValidBody() {
 		ArrayList<String> ret = new ArrayList<>();
-		ret.add(this.commonDefinitions.getPrefix() + "runtimePointer != 0;");
+		ret.add("return " + this.commonDefinitions.getPrefix()
+				+ "runtimePointer != 0;");
 		return ret;
 	}
 
@@ -75,25 +76,23 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public String getImports(List<UserLibraryData> iteratorsAndBinds) {
-		StringBuffer ret = new StringBuffer();
-		ret.append("import org.parallelme.runtime.ParallelMERuntimeJNIWrapper;\n");
-		ret.append(this.getUserLibraryImports(iteratorsAndBinds));
-		return ret.toString();
+	public List<String> getImports() {
+		ArrayList<String> ret = new ArrayList<>();
+		ret.add("org.parallelme.runtime.ParallelMERuntimeJNIWrapper");
+		return ret;
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
 	@Override
-	public boolean translateIteratorsAndBinds(String packageName,
+	public void translateIteratorsAndBinds(String packageName,
 			String className, List<Iterator> iterators,
 			List<InputBind> inputBinds, List<OutputBind> outputBinds) {
 		this.createJNIFiles(packageName, className, inputBinds, iterators,
 				outputBinds);
 		this.createKernelFiles(packageName, className, inputBinds, iterators,
 				outputBinds);
-		return true;
 	}
 
 	/**

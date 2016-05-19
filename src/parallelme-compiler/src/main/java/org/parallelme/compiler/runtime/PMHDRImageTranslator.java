@@ -8,6 +8,9 @@
 
 package org.parallelme.compiler.runtime;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.parallelme.compiler.intermediate.InputBind;
 import org.parallelme.compiler.intermediate.MethodCall;
 import org.parallelme.compiler.intermediate.OutputBind;
@@ -101,5 +104,27 @@ public class PMHDRImageTranslator extends PMImageTranslator implements
 	 */
 	public String translateMethodCall(String className, MethodCall methodCall) {
 		return "";
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public List<String> getJavaInterfaceImports() {
+		ArrayList<String> ret = new ArrayList<>();
+		ret.add("android.content.res.Resources");
+		ret.add("android.graphics.Bitmap");
+		return ret;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public List<String> getJavaClassImports() {
+		ArrayList<String> ret = (ArrayList<String>) this
+				.getJavaInterfaceImports();
+		ret.add("org.parallelme.userlibrary.image.RGBE");
+		return ret;
 	}
 }

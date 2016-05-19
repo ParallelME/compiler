@@ -8,6 +8,9 @@
 
 package org.parallelme.compiler.renderscript;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.parallelme.compiler.intermediate.InputBind;
 import org.parallelme.compiler.intermediate.OutputBind;
 import org.parallelme.compiler.translation.CTranslator;
@@ -48,8 +51,8 @@ public class RSBitmapImageTranslator extends RSImageTranslator implements
 	@Override
 	public String translateInputBindObjCreation(String className,
 			InputBind inputBind) {
-		String inputObject = this.commonDefinitions.getVariableInName(inputBind
-				.variable);
+		String inputObject = this.commonDefinitions
+				.getVariableInName(inputBind.variable);
 		String outputObject = this.commonDefinitions
 				.getVariableOutName(inputBind.variable);
 		String dataTypeInputObject = this.commonDefinitions.getPrefix()
@@ -69,5 +72,23 @@ public class RSBitmapImageTranslator extends RSImageTranslator implements
 	@Override
 	public String translateOutputBind(String className, OutputBind outputBind) {
 		return "";
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public List<String> getJavaInterfaceImports() {
+		ArrayList<String> ret = new ArrayList<>();
+		ret.add("android.graphics.Bitmap");
+		return ret;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public List<String> getJavaClassImports() {
+		return this.getJavaInterfaceImports();
 	}
 }

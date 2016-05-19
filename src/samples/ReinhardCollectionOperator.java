@@ -1,4 +1,4 @@
-package org.parallelme.samples;
+package org.parallelme.samples.tonemapreinhard;
 
 import android.content.res.Resources;
 import android.graphics.Bitmap;
@@ -15,7 +15,6 @@ import org.parallelme.userlibrary.image.Image;
  */
 public class ReinhardCollectionOperator implements ReinhardOperator {
     private HDRImage image;
-    private HDRImage image2;
     private float sum = 0.0f;
     private float max = 0.0f;
 

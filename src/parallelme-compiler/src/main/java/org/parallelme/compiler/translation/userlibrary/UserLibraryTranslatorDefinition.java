@@ -8,6 +8,8 @@
 
 package org.parallelme.compiler.translation.userlibrary;
 
+import java.util.List;
+
 import org.parallelme.compiler.intermediate.InputBind;
 import org.parallelme.compiler.intermediate.Iterator;
 import org.parallelme.compiler.intermediate.MethodCall;
@@ -152,5 +154,19 @@ public interface UserLibraryTranslatorDefinition {
 	 * @return A string with the java code for replacement on the original user
 	 *         code written with the user library.
 	 */
-	public String translateMethodCall(String className, MethodCall methodCall);	
+	public String translateMethodCall(String className, MethodCall methodCall);
+
+	/**
+	 * Return imports that are necessary to create Java wrapper interfaces.
+	 * 
+	 * @return A list where each element is a import statement.
+	 */
+	public List<String> getJavaInterfaceImports();
+
+	/**
+	 * Return imports that are necessary to create Java wrapper implementation.
+	 * 
+	 * @return A list where each element is a import statement.
+	 */
+	public List<String> getJavaClassImports();
 }
