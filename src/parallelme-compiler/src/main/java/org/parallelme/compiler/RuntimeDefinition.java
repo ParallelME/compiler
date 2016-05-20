@@ -12,10 +12,8 @@ import java.io.IOException;
 import java.util.List;
 
 import org.parallelme.compiler.exception.CompilationException;
-import org.parallelme.compiler.intermediate.InputBind;
-import org.parallelme.compiler.intermediate.Iterator;
+import org.parallelme.compiler.intermediate.IteratorsAndBinds;
 import org.parallelme.compiler.intermediate.MethodCall;
-import org.parallelme.compiler.intermediate.OutputBind;
 import org.parallelme.compiler.translation.userlibrary.UserLibraryTranslatorDefinition;
 
 /**
@@ -81,16 +79,11 @@ public interface RuntimeDefinition {
 	 * @param className
 	 *            Name of the class of which current data (iterators and binds)
 	 *            belong.
-	 * @param iterators
-	 *            Iterator that must be translated.
-	 * @param inputBinds
-	 *            Input binds that must be translated.
-	 * @param outputBinds
-	 *            Output binds that must be translated.
+	 * @param iteratorsAndBinds
+	 *            Container with iterators and binds.
 	 */
 	public void translateIteratorsAndBinds(String packageName,
-			String className, List<Iterator> iterators,
-			List<InputBind> inputBinds, List<OutputBind> outputBinds)
+			String className, IteratorsAndBinds iteratorsAndBinds)
 			throws CompilationException;
 
 	/**

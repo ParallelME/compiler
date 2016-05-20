@@ -144,7 +144,8 @@ public abstract class BaseTranslator implements UserLibraryTranslatorDefinition 
 	protected String getGlobalVariableName(String variable, Iterator iterator) {
 		String iteratorName = this.commonDefinitions.getIteratorName(iterator);
 		String variableName = this.upperCaseFirstLetter(variable);
-		return "g" + variableName + this.upperCaseFirstLetter(iteratorName);
+		return this.commonDefinitions.getPrefix() + "g" + variableName
+				+ this.upperCaseFirstLetter(iteratorName);
 	}
 
 	/**

@@ -13,11 +13,13 @@ import java.util.*;
 import org.antlr.v4.runtime.TokenStream;
 import org.parallelme.compiler.antlr.JavaParser;
 import org.parallelme.compiler.antlr.JavaParser.ExpressionContext;
+import org.parallelme.compiler.antlr.JavaParser.StatementExpressionContext;
 import org.parallelme.compiler.antlr.JavaParser.VariableDeclaratorContext;
 import org.parallelme.compiler.antlr.JavaParser.VariableInitializerContext;
 import org.parallelme.compiler.intermediate.Iterator;
 import org.parallelme.compiler.intermediate.MethodCall;
 import org.parallelme.compiler.intermediate.OutputBind;
+import org.parallelme.compiler.intermediate.OutputBind.OutputBindType;
 import org.parallelme.compiler.intermediate.UserFunction;
 import org.parallelme.compiler.intermediate.UserLibraryData;
 import org.parallelme.compiler.intermediate.Variable;
@@ -383,42 +385,51 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 			UserLibraryVariableSymbol userLibraryVariableSymbol,
 			JavaParser.ExpressionContext ctx) {
 		String destinationVariableName = null;
-		// Will indicate if the output bind statement is also an object
-		// declaration
-		boolean isObjectDeclaration = false;
+		// Will indicate if the output bind statement is just an assignment or
+		// is also an object declaration.
+		OutputBindType outputBindType = OutputBindType.None;
+		ExpressionContext exp = (ExpressionContext) ctx.parent.parent;
 		// Type varName = var.method();
 		if (ctx.parent.parent.parent instanceof VariableInitializerContext) {
 			VariableDeclaratorContext foo = (VariableDeclaratorContext) ctx.parent.parent.parent.parent;
 			destinationVariableName = foo.variableDeclaratorId().getText();
-			isObjectDeclaration = true;
+			outputBindType = OutputBindType.DeclarativeAssignment;
 		} else if (ctx.parent.parent.parent instanceof ExpressionContext) {
 			ExpressionContext foo = (ExpressionContext) ctx.parent.parent.parent;
 			// varName = var.method();
 			if (!foo.expression().isEmpty()
 					&& foo.expression(0).primary() != null) {
 				destinationVariableName = foo.expression(0).primary().getText();
+				outputBindType = OutputBindType.Assignment;
 			} else if (foo.type() != null
 					&& foo.parent.parent instanceof VariableDeclaratorContext) {
 				// Type varName = (castType) var.method();
 				destinationVariableName = ((VariableDeclaratorContext) foo.parent.parent)
 						.variableDeclaratorId().getText();
-				isObjectDeclaration = true;
+				outputBindType = OutputBindType.DeclarativeAssignment;
 			} else {
 				// varName = (castType) var.method();
 				destinationVariableName = ((ExpressionContext) foo.parent)
 						.expression(0).primary().getText();
+				outputBindType = OutputBindType.Assignment;
 			}
+		} else if (ctx.parent instanceof ExpressionContext
+				&& ctx.parent.parent instanceof ExpressionContext
+				&& ctx.parent.parent.parent instanceof StatementExpressionContext
+				&& exp.expressionList() != null) {
+			destinationVariableName = exp.expressionList().getText();
 		} else {
 			String errorMsg = "Invalid output bind statement at line "
 					+ ctx.start.getLine()
 					+ ". Output bind statements must be of form "
-					+ "'variable = object.outputBindMethod();'";
+					+ "'variable = object.outputBindMethod();' or "
+					+ "'object.outputBindMethod(variable);'";
 			SimpleLogger.error(errorMsg);
 			throw new RuntimeException(errorMsg);
 		}
 		if (destinationVariableName != null) {
 			Symbol destinationSymbol = this.currentScope
-					.getInnerSymbol(destinationVariableName);
+					.getSymbolUnderScope(destinationVariableName);
 			if (destinationSymbol instanceof VariableSymbol) {
 				VariableSymbol destinationVariableSymbol = (VariableSymbol) destinationSymbol;
 				Variable destinationVariable = new Variable(
@@ -444,9 +455,17 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 							this.currentVariableStatement.stop);
 				this.iteratorsAndBinds.add(new OutputBind(userLibraryVariable,
 						destinationVariable, ++this.outputBindCount,
-						tokenAddress, isObjectDeclaration));
+						tokenAddress, outputBindType));
 			}
+		} else {
+			String errorMsg = "Invalid output bind statement at line "
+					+ ctx.start.getLine()
+					+ ". Output bind statements must be of form "
+					+ "'object.outputBindMethod(variableParam);'";
+			SimpleLogger.error(errorMsg);
+			throw new RuntimeException(errorMsg);
 		}
+
 	}
 
 	/**

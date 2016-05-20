@@ -20,7 +20,8 @@ public class ArrayTest {
 			}
 		});
 		System.out.println("=============================");
-		short[] ret = (short[]) array.toJavaArray();
+		short[] ret = new short[10];
+		array.toJavaArray(ret);
 		for (int x = 0; x < tmp.length; x++) {
 			System.out.println(x + " " + ret[x]);
 		}

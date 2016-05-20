@@ -1,58 +1,71 @@
+/**                                               _    __ ____
+ *   _ __  ___ _____   ___   __  __   ___ __     / |  / /  __/
+ *  |  _ \/ _ |  _  | / _ | / / / /  / __/ /    /  | / / /__
+ *  |  __/ __ |  ___|/ __ |/ /_/ /__/ __/ /__  / / v  / /__
+ *  |_| /_/ |_|_|\_\/_/ |_/____/___/___/____/ /_/  /_/____/
+ *
+ */
+
 package org.parallelme.samples.tonemapreinhard;
 
-import android.content.res.Resources;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 
-import org.parallelme.userlibrary.function.UserFunction;
+import org.parallelme.userlibrary.function.ForeachFunction;
 import org.parallelme.userlibrary.image.HDRImage;
 import org.parallelme.userlibrary.image.Pixel;
-import org.parallelme.samples.tonemapreinhard.formats.RGB;
-import org.parallelme.userlibrary.image.Image;
+import org.parallelme.userlibrary.image.RGBE;
 
 /**
- * @author Pedro Caldeira
+ * Implementation of the Tonemap Reinhard algorithm using the ParallelME user library.
+ *
+ * @author Pedro Caldeira, Renato Utsch
  */
 public class ReinhardCollectionOperator implements ReinhardOperator {
     private HDRImage image;
-    private float sum = 0.0f;
-    private float max = 0.0f;
+    private float sum;
+    private float max;
+    private float scaleFactor;
+    private float lmax2;
 
-    @Override
-    public Bitmap runOp(Resources res, int resource, float key, float gamma) {
-        image = new HDRImage(res, resource);
-		
+    public void runOp(RGBE.ResourceData resourceData, float key, float power, Bitmap bitmap) {
+        image = new HDRImage(resourceData);
+
         this.toYxy();
-        this.scaleToMidtone(key);
+        this.logAverage(key);
         this.tonemap();
         this.toRgb();
-        this.power(gamma);
-		Bitmap bitmap = image.toBitmap();
-        return bitmap;
+        this.clamp(power);
+        image.toBitmap(bitmap);
+
+        image = null;
     }
 
+    public void waitFinish() {
+        // Do nothing.
+    }
 
     private void toYxy(){
         image.par().foreach(new ForeachFunction<Pixel>() {
             @Override
             public void function(Pixel pixel) {
-                float result_0, result_1, result_2;
+                float result0, result1, result2;
                 float w;
-                result_0 = result_1 = result_2 = 0.0f;
-                result_0 += 0.5141364f * pixel.rgba.red;
-                result_0 += 0.3238786f * pixel.rgba.green;
-                result_0 += 0.16036376f * pixel.rgba.blue;
-                result_1 += 0.265068f * pixel.rgba.red;
-                result_1 += 0.67023428f * pixel.rgba.green;
-                result_1 += 0.06409157f * pixel.rgba.blue;
-                result_2 += 0.0241188f * pixel.rgba.red;
-                result_2 += 0.1228178f * pixel.rgba.green;
-                result_2 += 0.84442666f * pixel.rgba.blue;
-                w = result_0 + result_1 + result_2;
-                if (w > 0) {
-                    pixel.rgba.red = result_1;
-                    pixel.rgba.green = result_0 / w;
-                    pixel.rgba.blue = result_1 / w;
+
+                result0 = result1 = result2 = 0.0f;
+                result0 += 0.5141364f * pixel.rgba.red;
+                result0 += 0.3238786f * pixel.rgba.green;
+                result0 += 0.16036376f * pixel.rgba.blue;
+                result1 += 0.265068f * pixel.rgba.red;
+                result1 += 0.67023428f * pixel.rgba.green;
+                result1 += 0.06409157f * pixel.rgba.blue;
+                result2 += 0.0241188f * pixel.rgba.red;
+                result2 += 0.1228178f * pixel.rgba.green;
+                result2 += 0.84442666f * pixel.rgba.blue;
+                w = result0 + result1 + result2;
+                if (w > 0.0) {
+                    pixel.rgba.red = result1;
+                    pixel.rgba.green = result0 / w;
+                    pixel.rgba.blue = result1 / w;
                 } else {
                     pixel.rgba.red = pixel.rgba.green = pixel.rgba.blue = 0.0f;
                 }
@@ -61,49 +74,40 @@ public class ReinhardCollectionOperator implements ReinhardOperator {
     }
 
 
-    //This is a good example. We lack a way to return a single value from all kernel instances.
-    private float logAverage() {
-        sum = 0;
+    //This is a good example. We lack a way to return single/multiple values from all kernel instances.
+    private void logAverage(float key) {
+        sum = 0.0f;
+        max = 0.0f;
 
         image.par().foreach(new ForeachFunction<Pixel>() {
             @Override
             public void function(Pixel pixel) {
                 sum += Math.log(0.00001f + pixel.rgba.red);
+
+                if(pixel.rgba.red > max)
+                    max = pixel.rgba.red;
             }
         });
 
-        return (float)Math.exp(sum/(image.getHeight()*image.getWidth()));
-    }
+        // Calculate the scale factor.
+        float average = (float) Math.exp(sum / (float)(image.getHeight() * image.getWidth()));
+        scaleFactor = key * (1.0f / average);
 
-    private void scaleToMidtone(final float key) {
-        final float scaleFactor = 1.0f / this.logAverage();
-
-        image.par().foreach(new ForeachFunction<Pixel>() {
-            @Override
-            public void function(Pixel pixel) {
-                pixel.rgba.red *= scaleFactor * key;
-            }
-        });
-    }
-
-    private float getMaxValue() {
-        max = 0;
-        image.par().foreach(new ForeachFunction<Pixel>() {
-            @Override
-            public void function(Pixel pixel) {
-                if (pixel.rgba.red > max) max = pixel.rgba.red;
-            }
-        });
-
-        return max;
+        // lmax2.
+        lmax2 = (float) Math.pow(max * scaleFactor, 2);
     }
 
     private void tonemap() {
-        final float max2 = (float)Math.pow(getMaxValue(), 2);
+        final float fScaleFactor = scaleFactor;
+        final float fLmax2 = lmax2;
         image.par().foreach(new ForeachFunction<Pixel>() {
             @Override
             public void function(Pixel pixel) {
-                pixel.rgba.red *= (1.0f + pixel.rgba.red / max2) / (1.0f + pixel.rgba.red);
+                // Scale to midtone.
+                pixel.rgba.red *= fScaleFactor;
+
+                // Tonemap.
+                pixel.rgba.red *= (1.0f + pixel.rgba.red / fLmax2) / (1.0f + pixel.rgba.red);
             }
         });
     }
@@ -112,52 +116,46 @@ public class ReinhardCollectionOperator implements ReinhardOperator {
         image.par().foreach(new ForeachFunction<Pixel>() {
             @Override
             public void function(Pixel pixel) {
-				float val_r, val_g, val_b;
-				float result_r, result_g, result_b;
-				float out_r, out_g, out_b;
-                val_g = pixel.rgba.red;     // Y
-                result_g = pixel.rgba.green; // x
-                result_b = pixel.rgba.blue; // y
-                if (val_g > 0.0f && result_g > 0.0f && result_b > 0.0f) {
-                    val_r = result_g * val_g / result_b;
-                    val_b = val_r / result_g - val_r - val_g;
+                float _x, _y, _z, g, b;
+
+                _y = pixel.rgba.red;    // Y
+                g = pixel.rgba.green;   // x
+                b = pixel.rgba.blue;    // y
+
+                if (_y > 0.0f && g > 0.0f && b > 0.0f) {
+                    _x = g * _y / b;
+                    _z = _x / g - _x - _y;
                 } else {
-                    val_r = val_b = 0.0f;
+                    _x = _z = 0.0f;
                 }
+
                 // These constants are the conversion coefficients.
-                out_r = out_g = out_b = 0.0f;
-                out_r += 2.5651f * val_r;
-                out_r += -1.1665f * val_g;
-                out_r += -0.3986f * val_b;
-                out_g += -1.0217f * val_r;
-                out_g += 1.9777f * val_g;
-                out_g += 0.0439f * val_b;
-                out_b += 0.0753f * val_r;
-                out_b += -0.2543f * val_g;
-                out_b += 1.1892f * val_b;
-                pixel.rgba.red = out_r;
-                pixel.rgba.green = out_g;
-                pixel.rgba.blue = out_b;
+                pixel.rgba.red = pixel.rgba.green = pixel.rgba.blue = 0.0f;
+                pixel.rgba.red += 2.5651f * _x;
+                pixel.rgba.red += -1.1665f * _y;
+                pixel.rgba.red += -0.3986f * _z;
+                pixel.rgba.green += -1.0217f * _x;
+                pixel.rgba.green += 1.9777f * _y;
+                pixel.rgba.green += 0.0439f * _z;
+                pixel.rgba.blue += 0.0753f * _x;
+                pixel.rgba.blue += -0.2543f * _y;
+                pixel.rgba.blue += 1.1892f * _z;
             }
         });
     }
 
-    private void power(final float gamma) {
-        final float power = 1.0f / gamma;
+    private void clamp(final float power) {
         image.par().foreach(new ForeachFunction<Pixel>() {
             @Override
             public void function(Pixel pixel) {
                 // Clamp.
                 if (pixel.rgba.red > 1.0f) pixel.rgba.red = 1.0f;
-                if (pixel.rgba.red < 0.0f) pixel.rgba.red = 0.0f;
                 if (pixel.rgba.green > 1.0f) pixel.rgba.green = 1.0f;
-                if (pixel.rgba.green < 0.0f) pixel.rgba.green = 0.0f;
                 if (pixel.rgba.blue > 1.0f) pixel.rgba.blue = 1.0f;
-                if (pixel.rgba.blue < 0.0f) pixel.rgba.blue = 0.0f;
+
                 pixel.rgba.red = (float) Math.pow(pixel.rgba.red, power);
                 pixel.rgba.green = (float) Math.pow(pixel.rgba.green, power);
                 pixel.rgba.blue = (float) Math.pow(pixel.rgba.blue, power);
-                pixel.rgba.alpha = 255;
             }
         });
     }

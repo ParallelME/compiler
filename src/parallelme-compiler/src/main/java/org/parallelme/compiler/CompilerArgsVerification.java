@@ -11,8 +11,6 @@ package org.parallelme.compiler;
 import java.io.File;
 import java.util.ArrayList;
 
-import org.parallelme.compiler.RuntimeDefinition.TargetRuntime;
-
 /**
  * Class responsible for input argument verification.
  * 
@@ -21,34 +19,24 @@ import org.parallelme.compiler.RuntimeDefinition.TargetRuntime;
 public class CompilerArgsVerification {
 	public class CompilerParameters {
 		public String[] files;
-		public TargetRuntime targetRuntime;
 		public String destinationFolder;
 	}
 
 	public CompilerParameters checkArgs(String[] args) throws Exception {
 		CompilerParameters parameters = new CompilerParameters();
-		boolean filesFound, targetRuntimeFound, destinationFolderFound;
-		filesFound = targetRuntimeFound = destinationFolderFound = false;
+		boolean filesFound, destinationFolderFound;
+		filesFound = destinationFolderFound = false;
 
 		for (int i = 0; i < args.length; i++) {
-			if (args[i].equals("-pm")) {
-				if (targetRuntimeFound)
-					throw new Exception("Duplicated argument: -rs or -pm");
-				parameters.targetRuntime = TargetRuntime.ParallelME;
-				targetRuntimeFound = true;
-			}
-			if (args[i].equals("-rs")) {
-				if (targetRuntimeFound)
-					throw new Exception("Duplicated argument: -rs or -pm");
-				parameters.targetRuntime = TargetRuntime.RenderScript;
-				targetRuntimeFound = true;
-			}
 			if (args[i].equals("-f")) {
 				if (filesFound)
 					throw new Exception("Duplicated argument: -f");
 				if (i < args.length - 1) {
+					String filesParam = args[++i];
+					if (filesParam.startsWith("-"))
+						throw new Exception("Invalid file: " + filesParam);
 					// Remove quotes
-					String files = args[++i].replace('\"', ' ').trim();
+					String files = filesParam.replace('\"', ' ').trim();
 					parameters.files = checkInputFilesArg(files);
 					filesFound = true;
 				}
@@ -57,15 +45,18 @@ public class CompilerArgsVerification {
 				if (i < args.length - 1) {
 					if (destinationFolderFound)
 						throw new Exception("Duplicated argument: -o");
+					String filesParam = args[++i];
+					if (filesParam.startsWith("-"))
+						throw new Exception("Invalid file: " + filesParam);
 					// Remove quotes
-					String destinationFolder = args[++i].replace('\"', ' ')
+					String destinationFolder = filesParam.replace('\"', ' ')
 							.trim();
 					parameters.destinationFolder = checkOutputFilesArg(destinationFolder);
 					destinationFolderFound = true;
 				}
 			}
 		}
-		if (filesFound && targetRuntimeFound && destinationFolderFound)
+		if (filesFound && destinationFolderFound)
 			return parameters;
 		else
 			return null;

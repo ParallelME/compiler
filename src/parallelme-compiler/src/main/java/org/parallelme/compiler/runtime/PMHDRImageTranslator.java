@@ -112,8 +112,8 @@ public class PMHDRImageTranslator extends PMImageTranslator implements
 	@Override
 	public List<String> getJavaInterfaceImports() {
 		ArrayList<String> ret = new ArrayList<>();
-		ret.add("android.content.res.Resources");
 		ret.add("android.graphics.Bitmap");
+		ret.add("org.parallelme.userlibrary.image.RGBE");
 		return ret;
 	}
 

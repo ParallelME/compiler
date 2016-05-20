@@ -39,8 +39,8 @@ public abstract class RSTranslator extends BaseTranslator {
 			+ "<externalVariables:{var|<var.allName>.copyTo(<var.name>);}>";
 	private static final String templateIteratorSequentialFunction = "rs_allocation <inputData>;\n"
 			+ "<outVariable:{var|rs_allocation <var.name>;\n}>"
-			+ "int gInputXSize<iteratorName>;\n"
-			+ "int gInputYSize<iteratorName>;\n"
+			+ "int $gInputXSize<iteratorName>;\n"
+			+ "int $gInputYSize<iteratorName>;\n"
 			+ "<externalVariables:{var|<var.variableType> <var.variableName>;\n}>"
 			+ "\n<functionSignature>\n {\n"
 			+ "\t<userFunctionVarType> <userFunctionVarName>;\n"
@@ -49,9 +49,9 @@ public abstract class RSTranslator extends BaseTranslator {
 			+ "}";
 
 	private static final String templateForLoop = "for (int <varName> = 0; <varName> \\< <varMaxVal>; <varName>++) {\n\t<body>}\n";
-	private static final String templateForLoopSequentialBody = "<userFunctionVarName> = rsGetElementAt_<userFunctionVarType>(<inputData>, x<param:{var|, <var.name>}>);\n"
+	private static final String templateForLoopSequentialBody = "<userFunctionVarName> = rsGetElementAt_<userFunctionVarType>(<inputData>, $x<param:{var|, <var.name>}>);\n"
 			+ "<userCode>\n"
-			+ "rsSetElementAt_<userFunctionVarType>(<inputData>, <userFunctionVarName>, x<param:{var|, <var.name>}>);\n";
+			+ "rsSetElementAt_<userFunctionVarType>(<inputData>, <userFunctionVarName>, $x<param:{var|, <var.name>}>);\n";
 	private static final String templateIteratorParallelFunctionSignature = "<parameterTypeTranslated> __attribute__((kernel)) <userFunctionName>(<parameterTypeTranslated> <parameterName>, uint32_t x<params:{var|, <var.type> <var.name>}>)";
 	private static final String templateIteratorSequentialFunctionSignature = "void <functionName>()";
 
@@ -110,8 +110,7 @@ public abstract class RSTranslator extends BaseTranslator {
 			for (Variable variable : iterator.getExternalVariables()) {
 				String gName = this.getGlobalVariableName(variable.name,
 						iterator);
-				String allocationName = this.commonDefinitions.getPrefix()
-						+ gName + "_Allocation";
+				String allocationName = gName + "_Allocation";
 				String outputData = this.getGlobalVariableName(
 						"output" + this.upperCaseFirstLetter(variable.name),
 						iterator);
@@ -123,11 +122,12 @@ public abstract class RSTranslator extends BaseTranslator {
 						java2RSAllocationTypes.get(variable.typeName),
 						outputData);
 			}
-			st.addAggr("inputSize.{name, XYZ}", "gInputXSize" + iteratorName,
-					"X");
+			String prefix = this.commonDefinitions.getPrefix();
+			st.addAggr("inputSize.{name, XYZ}", prefix + "gInputXSize"
+					+ iteratorName, "X");
 			if (iterator.variable.typeName.equals(BitmapImage.getName())
 					|| iterator.variable.typeName.equals(HDRImage.getName())) {
-				st.addAggr("inputSize.{name, XYZ}", "gInputYSize"
+				st.addAggr("inputSize.{name, XYZ}", prefix + "gInputYSize"
 						+ iteratorName, "Y");
 			}
 		}
@@ -211,9 +211,10 @@ public abstract class RSTranslator extends BaseTranslator {
 					variable.typeName, gNameOut, gNameVar);
 			cCode = this.replaceAndEscapePrefix(cCode, gNameVar, variable.name);
 		}
+		String prefix = this.commonDefinitions.getPrefix();
 		ST stFor = new ST(templateForLoop);
-		stFor.add("varName", "x");
-		stFor.add("varMaxVal", "gInputXSize" + iteratorName);
+		stFor.add("varName", prefix + "x");
+		stFor.add("varMaxVal", prefix + "gInputXSize" + iteratorName);
 		ST stForBody = new ST(templateForLoopSequentialBody);
 		stForBody.add("inputData", gNameIn);
 		stForBody.add("userFunctionVarName", userFunctionVariable.name);
@@ -223,10 +224,10 @@ public abstract class RSTranslator extends BaseTranslator {
 		// BitmapImage and HDRImage types contains two for loops
 		if (iterator.variable.typeName.equals(BitmapImage.getName())
 				|| iterator.variable.typeName.equals(HDRImage.getName())) {
-			stForBody.addAggr("param.{name}", "y");
+			stForBody.addAggr("param.{name}", prefix + "y");
 			ST stFor2 = new ST(templateForLoop);
-			stFor2.add("varName", "y");
-			stFor2.add("varMaxVal", "gInputYSize" + iteratorName);
+			stFor2.add("varName", prefix + "y");
+			stFor2.add("varMaxVal", prefix + "gInputYSize" + iteratorName);
 			stFor2.add("body", stForBody.render());
 			stFor.add("body", stFor2.render());
 		} else {

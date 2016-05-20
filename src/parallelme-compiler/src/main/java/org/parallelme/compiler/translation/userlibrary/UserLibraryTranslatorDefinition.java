@@ -54,7 +54,7 @@ public interface UserLibraryTranslatorDefinition {
 	 * Creates the java code to create the input bind objects (allocations).
 	 * Input bind creation and declaration are separated because the declaration
 	 * must be placed on the user code at the same level of user library objects
-	 * were declared. Differently, input bind creation must be placed on the
+	 * were declared. Differently, input bind creation must be placed in the
 	 * same level where user library objects are instantiated.
 	 * 
 	 * @param className

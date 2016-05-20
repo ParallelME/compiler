@@ -16,17 +16,21 @@ import org.parallelme.compiler.symboltable.TokenAddress;
  * @author Wilson de Carvalho
  */
 public class OutputBind extends UserLibraryData {
+	public enum OutputBindType {
+		Assignment, DeclarativeAssignment, None;
+	}
+
 	public final Variable destinationObject;
 	public final TokenAddress statementAddress;
-	// Indicates if the output bind statement is also an object declaration
-	public final boolean isObjectDeclaration;
+	// Indicates if the output bind statement is also an object assignment
+	public final OutputBindType outputBindType;
 
 	public OutputBind(Variable variable, Variable destinationObject,
 			int sequentialNumber, TokenAddress statementAddress,
-			boolean isObjectDeclaration) {
+			OutputBindType outputBindType) {
 		super(variable, sequentialNumber);
 		this.statementAddress = statementAddress;
 		this.destinationObject = destinationObject;
-		this.isObjectDeclaration = isObjectDeclaration;
+		this.outputBindType = outputBindType;
 	}
 }

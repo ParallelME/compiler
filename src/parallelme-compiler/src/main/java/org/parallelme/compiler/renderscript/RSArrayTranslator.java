@@ -16,6 +16,7 @@ import java.util.Map;
 import org.parallelme.compiler.intermediate.InputBind;
 import org.parallelme.compiler.intermediate.MethodCall;
 import org.parallelme.compiler.intermediate.OutputBind;
+import org.parallelme.compiler.intermediate.OutputBind.OutputBindType;
 import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.translation.userlibrary.ArrayTranslator;
@@ -32,8 +33,8 @@ import org.stringtemplate.v4.ST;
 public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 	private static final String templateCreateAllocation = "<allocation> = Allocation.createSized($mRS, Element.<elementType>($mRS), <allocationLength>);\n"
 			+ "<allocation>.copyFrom(<inputArray>);";
-	private static final String templateCreateOutputAllocation = "<type> <name> = (<type>) java.lang.reflect.Array.newInstance(<baseType>.class, <inputAllocation>.getType().getX());\n";
-	private static final String templateAllocationCopyTo = "<inputObject>.copyTo(<destinationObject>);\n";
+	private static final String templateCreateOutputAllocation = "<name> = (<type>) java.lang.reflect.Array.newInstance(<baseType>.class, <inputAllocation>.getType().getX());\n";
+	private static final String templateAllocationCopyTo = "<inputObject>.copyTo(<destinationObject>);";
 
 	// Keeps a key-value map of equivalent types from ParallelME to RenderScript
 	// allocation.
@@ -115,9 +116,9 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 		Variable variable = outputBind.variable;
 		String inputObject = this.commonDefinitions.getVariableInName(variable);
 		String destinationObject = outputBind.destinationObject.name;
-		// If it is an object declaration, must declare the destination
+		// If it is an object assignment, must declare the destination
 		// object type and name.
-		if (outputBind.isObjectDeclaration) {
+		if (outputBind.outputBindType != OutputBindType.None) {
 			ST st = new ST(templateCreateOutputAllocation);
 			st.add("type", outputBind.destinationObject.typeName);
 			st.add("name", outputBind.destinationObject.name);

@@ -87,12 +87,9 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	 */
 	@Override
 	public void translateIteratorsAndBinds(String packageName,
-			String className, List<Iterator> iterators,
-			List<InputBind> inputBinds, List<OutputBind> outputBinds) {
-		this.createJNIFiles(packageName, className, inputBinds, iterators,
-				outputBinds);
-		this.createKernelFiles(packageName, className, inputBinds, iterators,
-				outputBinds);
+			String className, IteratorsAndBinds iteratorsAndBinds) {
+		this.createJNIFiles(packageName, className, iteratorsAndBinds);
+		this.createKernelFiles(packageName, className, iteratorsAndBinds);
 	}
 
 	/**
@@ -105,24 +102,23 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	 * order to reduce complexity and increase maintainability of compiler code.
 	 */
 	private void createJNIFiles(String packageName, String className,
-			List<InputBind> inputBinds, List<Iterator> iterators,
-			List<OutputBind> outputBinds) {
+			IteratorsAndBinds iteratorsAndBinds) {
 		String jniJavaClassName = this.getJNIWrapperClassName(className);
 		FileWriter.writeFile(jniJavaClassName + ".java", this.commonDefinitions
 				.getJavaDestinationFolder(this.outputDestinationFolder,
 						packageName), this.javaContentCreation
 				.getJavaJNIWrapperClass(packageName, jniJavaClassName,
-						iterators));
+						iteratorsAndBinds.iterators));
 		String jniCClassName = commonDefinitions.getCClassName(packageName,
 				jniJavaClassName);
 		FileWriter.writeFile(jniCClassName + ".cpp", this.commonDefinitions
 				.getJNIDestinationFolder(this.outputDestinationFolder),
 				this.cppHppContentCreation.getCppJNIWrapperClass(packageName,
-						jniJavaClassName, iterators));
+						jniJavaClassName, iteratorsAndBinds.iterators));
 		FileWriter.writeFile(jniCClassName + ".hpp", this.commonDefinitions
 				.getJNIDestinationFolder(this.outputDestinationFolder),
 				this.cppHppContentCreation.getHppJNIWrapperClass(packageName,
-						jniJavaClassName, iterators));
+						jniJavaClassName, iteratorsAndBinds.iterators));
 	}
 
 	private String getJNIWrapperClassName(String className) {
@@ -139,8 +135,7 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	 * order to reduce complexity and increase maintainability of compiler code.
 	 */
 	private void createKernelFiles(String packageName, String className,
-			List<InputBind> inputBinds, List<Iterator> iterators,
-			List<OutputBind> outputBinds) {
+			IteratorsAndBinds iteratorsAndBinds) {
 		String templateKernelFile = "<introductoryMsg>\n"
 				+ "#ifndef KERNELS_H\n" + "#define KERNELS_H\n\n"
 				+ "const char kernels[] =\n"
@@ -150,7 +145,7 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 		st.add("introductoryMsg", this.commonDefinitions.getHeaderComment());
 		// 2. Translate input binds
 		Set<String> inputBindTypes = new HashSet<String>();
-		for (InputBind inputBind : inputBinds) {
+		for (InputBind inputBind : iteratorsAndBinds.inputBinds) {
 			if (!inputBindTypes.contains(inputBind.variable.typeName)) {
 				inputBindTypes.add(inputBind.variable.typeName);
 				String kernel = this.translators.get(
@@ -160,14 +155,14 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 			}
 		}
 		// 3. Translate iterators
-		for (Iterator iterator : iterators) {
+		for (Iterator iterator : iteratorsAndBinds.iterators) {
 			String kernel = this.translators.get(iterator.variable.typeName)
 					.translateIterator(className, iterator);
 			this.addKernelByLine(kernel, st);
 		}
 		// 4. Translate outputbinds
 		Set<String> outputBindTypes = new HashSet<String>();
-		for (OutputBind outputBind : outputBinds) {
+		for (OutputBind outputBind : iteratorsAndBinds.outputBinds) {
 			if (!outputBindTypes.contains(outputBind.variable.typeName)) {
 				outputBindTypes.add(outputBind.variable.typeName);
 				String kernel = this.translators.get(

@@ -16,6 +16,7 @@ import org.parallelme.compiler.intermediate.*;
 import org.parallelme.compiler.intermediate.Iterator.IteratorType;
 import org.parallelme.compiler.userlibrary.UserLibraryClass;
 import org.parallelme.compiler.userlibrary.UserLibraryClassFactory;
+import org.parallelme.compiler.userlibrary.classes.Array;
 import org.stringtemplate.v4.ST;
 
 /**
@@ -177,7 +178,7 @@ public class RuntimeCommonDefinitions {
 	 * class.
 	 */
 	public String getJavaWrapperInterfaceName(String className) {
-		return "PMWrapper_" + className;
+		return className + "Wrapper";
 	}
 
 	/**
@@ -186,9 +187,9 @@ public class RuntimeCommonDefinitions {
 	public String getJavaWrapperClassName(String className,
 			TargetRuntime targetRuntime) {
 		if (targetRuntime == TargetRuntime.ParallelME) {
-			return "PMWrapperImpl_" + className;
+			return className + "WrapperImplPM";
 		} else {
-			return "PMWrapperImpl_RS_" + className;
+			return className + "WrapperImplRS";
 		}
 	}
 
@@ -200,7 +201,7 @@ public class RuntimeCommonDefinitions {
 	}
 
 	/**
-	 * Creates a method's signature that can be used in both Java code.
+	 * Creates a method's signature that can be used in Java code.
 	 * 
 	 * @param modifier
 	 *            Method's modifier.
@@ -252,9 +253,34 @@ public class RuntimeCommonDefinitions {
 	/**
 	 * Creates a Java method signature for a given input bind.
 	 */
-	public String createJavaMethodSignature(InputBind inputBind) {
-		return this.createJavaMethodSignature("public", "void",
-				this.getInputBindName(inputBind), inputBind.parameters, false);
+	public String createJavaMethodSignature(InputBind inputBind)
+			throws CompilationException {
+		if (inputBind.variable.typeName.equals(Array.getName())) {
+			Parameter[] foo = inputBind.parameters;
+			if (foo.length != 3)
+				throw new CompilationException(
+						"Array constructor must have 3 arguments: primitive type array, NumericalData class and arrray length.");
+			// Second element (NumericalData class) in original parameters is
+			// not used
+			Parameter[] parameters = new Parameter[2];
+			parameters[0] = foo[0];
+			// Checks if the array length parameter is a expression. In case
+			// positive, temporarily translates it to a literal integer in order
+			// to create a valid signature.
+			Parameter arrayLength = foo[2];
+			if (arrayLength instanceof Expression) {
+				Literal literal = new Literal("0", "int");
+				parameters[1] = literal;
+			} else {
+				parameters[1] = foo[2];
+			}
+			return this.createJavaMethodSignature("public", "void",
+					this.getInputBindName(inputBind), parameters, false);
+		} else {
+			return this.createJavaMethodSignature("public", "void",
+					this.getInputBindName(inputBind), inputBind.parameters,
+					false);
+		}
 	}
 
 	/**

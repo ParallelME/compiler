@@ -17,6 +17,7 @@ import org.parallelme.compiler.antlr.JavaParser;
 import org.parallelme.compiler.antlr.JavaParser.*;
 import org.parallelme.compiler.symboltable.*;
 import org.parallelme.compiler.userlibrary.UserLibraryClassFactory;
+import org.parallelme.compiler.util.StringUtil;
 
 /**
  * Scope-driven listener. It updates <b>currentScope</b> variable accordingly to
@@ -237,7 +238,10 @@ public class ScopeDrivenListener extends JavaBaseListener {
 		if (ctx instanceof TypeContext) {
 			TypeContext tpx = (TypeContext) ctx;
 			if (tpx.primitiveType() == null) {
-				ret[0] = tpx.classOrInterfaceType().Identifier(0).getText();
+				// In case the class type contains package description,
+				// concatenates it in a single string
+				ret[0] = StringUtil.mkString(tpx.classOrInterfaceType()
+						.Identifier().toArray(), ".");
 				ret[1] = "";
 				if (!tpx.classOrInterfaceType().typeArguments().isEmpty())
 					ret[1] = tpx.classOrInterfaceType().typeArguments(0)
@@ -479,12 +483,13 @@ public class ScopeDrivenListener extends JavaBaseListener {
 	@Override
 	public void enterFieldDeclaration(JavaParser.FieldDeclarationContext ctx) {
 		if (ctx.parent.parent instanceof ClassBodyDeclarationContext) {
-			ClassBodyDeclarationContext cbdctx = (ClassBodyDeclarationContext)ctx.parent.parent;
+			ClassBodyDeclarationContext cbdctx = (ClassBodyDeclarationContext) ctx.parent.parent;
 			this.createVariable(ctx.variableDeclarators(), ctx.type(),
 					new ArrayList<VariableModifierContext>(), new TokenAddress(
-							cbdctx.start, cbdctx.stop));			
+							cbdctx.start, cbdctx.stop));
 		} else {
-			throw new RuntimeException("Unsupported field declaration: " + ctx.getText());
+			throw new RuntimeException("Unsupported field declaration: "
+					+ ctx.getText());
 		}
 	}
 

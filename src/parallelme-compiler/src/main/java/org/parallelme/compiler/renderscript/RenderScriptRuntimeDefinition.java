@@ -30,8 +30,9 @@ import org.parallelme.compiler.util.FileWriter;
  */
 public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	private static final String templateRSFile = "<introductoryMsg>\n<header>\n<functions:{functionName|\n\n<functionName>}>";
-	private static final String templateKernels = "private ScriptC_<className> <kernelName>;\n\n";
-	private static final String templateConstructor = "public <className>(RenderScript $mRS) {\n\tthis.$mRS = $mRS;\n\tthis.<kernelName> = new ScriptC_<className>($mRS);\n\\}\n";
+	private static final String templateKernels = "private ScriptC_<originalClassName> <kernelName>;\n\n";
+	private static final String templateConstructor = "public <javaClassName>(RenderScript $mRS) {\n\tthis.$mRS = $mRS;\n"
+			+ "\tthis.<kernelName> = new ScriptC_<originalClassName>($mRS);\n\\}\n";
 
 	public RenderScriptRuntimeDefinition(CTranslator cCodeTranslator,
 			String outputDestinationFolder) {
@@ -78,9 +79,12 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 		init.append("private RenderScript $mRS;\n");
 		ST st1 = new ST(templateKernels);
 		ST st2 = new ST(templateConstructor);
-		st1.add("className", className);
+		String javaClassName = this.commonDefinitions.getJavaWrapperClassName(
+				className, this.getTargetRuntime());
+		st1.add("originalClassName", className);
 		st1.add("kernelName", this.commonDefinitions.getKernelName(className));
-		st2.add("className", className);
+		st2.add("javaClassName", javaClassName);
+		st2.add("originalClassName", className);
 		st2.add("kernelName", this.commonDefinitions.getKernelName(className));
 		init.append(st1.render());
 		init.append(st2.render());
@@ -106,8 +110,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	 */
 	@Override
 	public void translateIteratorsAndBinds(String packageName,
-			String className, List<Iterator> iterators,
-			List<InputBind> inputBinds, List<OutputBind> outputBinds) {
+			String className, IteratorsAndBinds iteratorsAndBinds) {
 		// 1. Add file header
 		ST st = new ST(templateRSFile);
 		st.add("introductoryMsg", this.commonDefinitions.getHeaderComment());
@@ -115,7 +118,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 				+ packageName + ")");
 		// 2. Translate input binds
 		Set<String> inputBindTypes = new HashSet<String>();
-		for (InputBind inputBind : inputBinds) {
+		for (InputBind inputBind : iteratorsAndBinds.inputBinds) {
 			if (!inputBindTypes.contains(inputBind.variable.typeName)) {
 				inputBindTypes.add(inputBind.variable.typeName);
 				st.add("functions",
@@ -124,13 +127,13 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 			}
 		}
 		// 3. Translate iterators
-		for (Iterator iterator : iterators)
+		for (Iterator iterator : iteratorsAndBinds.iterators)
 			st.add("functions",
 					this.translators.get(iterator.variable.typeName)
 							.translateIterator(className, iterator));
 		// 4. Translate outputbinds
 		Set<String> outputBindTypes = new HashSet<String>();
-		for (OutputBind outputBind : outputBinds) {
+		for (OutputBind outputBind : iteratorsAndBinds.outputBinds) {
 			if (!outputBindTypes.contains(outputBind.variable.typeName)) {
 				outputBindTypes.add(outputBind.variable.typeName);
 				st.add("functions",

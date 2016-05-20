@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.parallelme.compiler.intermediate.InputBind;
-import org.parallelme.compiler.intermediate.OutputBind;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.translation.userlibrary.BitmapImageTranslator;
 import org.stringtemplate.v4.ST;
@@ -24,17 +23,34 @@ import org.stringtemplate.v4.ST;
  */
 public class RSBitmapImageTranslator extends RSImageTranslator implements
 		BitmapImageTranslator {
-	private static final String templateCreateAllocation = "Type <dataTypeInputObject>;\n"
+	private static final String templateInputBindObjCreation = "Type <dataTypeInputObject>;\n"
 			+ "<inputObject> = Allocation.createFromBitmap($mRS, <param>, Allocation.MipmapControl.MIPMAP_NONE, Allocation.USAGE_SCRIPT | Allocation.USAGE_SHARED);\n"
 			+ "<dataTypeInputObject> = new Type.Builder($mRS, Element.F32_3($mRS))\n"
 			+ "\t.setX(<inputObject>.getType().getX())\n"
 			+ "\t.setY(<inputObject>.getType().getY())\n"
 			+ "\t.create();\n"
 			+ "<outputObject> = Allocation.createTyped($mRS, <dataTypeInputObject>);\n"
-			+ "<kernelName>.forEach_toFloat(<inputObject>, <outputObject>);";
+			+ "<kernelName>.forEach_toFloat<classType>(<inputObject>, <outputObject>);";
+	private static final String templateInputBind = "\nfloat3 __attribute__((kernel)) toFloat<classType>(uchar4 $in, uint32_t x, uint32_t y) {"
+			+ "\n\tfloat3 $out;"
+			+ "\n\t$out.s0 = (float) $in.r;"
+			+ "\n\t$out.s1 = (float) $in.g;"
+			+ "\n\t$out.s2 = (float) $in.b;"
+			+ "\n\treturn $out;"
+			+ "\n}";
 
 	public RSBitmapImageTranslator(CTranslator cCodeTranslator) {
 		super(cCodeTranslator);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String translateInputBind(String className, InputBind inputBind) {
+		ST st = new ST(templateInputBind);
+		st.add("classType", inputBind.variable.typeName);
+		return st.render();
 	}
 
 	/**
@@ -57,21 +73,14 @@ public class RSBitmapImageTranslator extends RSImageTranslator implements
 				.getVariableOutName(inputBind.variable);
 		String dataTypeInputObject = this.commonDefinitions.getPrefix()
 				+ inputBind.variable + "InDataType";
-		ST st = new ST(templateCreateAllocation);
+		ST st = new ST(templateInputBindObjCreation);
 		st.add("dataTypeInputObject", dataTypeInputObject);
 		st.add("inputObject", inputObject);
 		st.add("outputObject", outputObject);
 		st.add("param", inputBind.parameters[0]);
 		st.add("kernelName", this.commonDefinitions.getKernelName(className));
+		st.add("classType", inputBind.variable.typeName);
 		return st.render();
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String translateOutputBind(String className, OutputBind outputBind) {
-		return "";
 	}
 
 	/**

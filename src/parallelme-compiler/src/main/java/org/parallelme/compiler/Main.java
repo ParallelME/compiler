@@ -9,7 +9,6 @@
 package org.parallelme.compiler;
 
 import org.parallelme.compiler.CompilerArgsVerification.CompilerParameters;
-import org.parallelme.compiler.RuntimeDefinition.TargetRuntime;
 import org.parallelme.compiler.exception.CompilationException;
 
 /**
@@ -31,13 +30,8 @@ public class Main {
 				SimpleLogger.logError = true;
 				SimpleLogger.logInfo = true;
 				SimpleLogger.logWarn = true;
-				if (parameters.targetRuntime == TargetRuntime.ParallelME) {
-					(new Compiler()).compile(parameters.files,
-							parameters.destinationFolder);
-				} else {
-					(new Compiler()).compile(parameters.files,
-							parameters.destinationFolder);
-				}
+				(new Compiler()).compile(parameters.files,
+						parameters.destinationFolder);
 			} else {
 				printHelpMsg();
 			}
@@ -56,8 +50,5 @@ public class Main {
 		System.out
 				.println("\t\tuse a ; separated list of files or directories in the same quoted string.");
 		System.out.println("-o\t\tOutput directory path (quoted).");
-		System.out
-				.println("-rs or -pm\tRenderScript (-rs) or ParallelME (-pm) runtimes.");
-		System.out.println("\t\tOnly one runtime is allowed per call.");
 	}
 }

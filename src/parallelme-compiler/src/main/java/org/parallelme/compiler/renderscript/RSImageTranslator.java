@@ -11,6 +11,7 @@ package org.parallelme.compiler.renderscript;
 import org.parallelme.compiler.intermediate.InputBind;
 import org.parallelme.compiler.intermediate.MethodCall;
 import org.parallelme.compiler.intermediate.OutputBind;
+import org.parallelme.compiler.intermediate.OutputBind.OutputBindType;
 import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.translation.userlibrary.ImageTranslator;
@@ -25,34 +26,19 @@ import org.stringtemplate.v4.ST;
  */
 public abstract class RSImageTranslator extends RSTranslator implements
 		ImageTranslator {
-	private static final String templateCreateOutputAllocation = "<destinationObject> = Bitmap.createBitmap(<inputAllocation>.getType().getX(), <inputAllocation>.getType().getY(), Bitmap.Config.ARGB_8888);\n";
-	private static final String templateOutputAllocationCall = "<kernelName>.forEach_toBitmap(<outputObject>, <inputObject>);\n"
+	private static final String templateOutputBindCall1 = "<destinationObject> = Bitmap.createBitmap(<inputAllocation>.getType().getX(), <inputAllocation>.getType().getY(), Bitmap.Config.ARGB_8888);\n";
+	private static final String templateOutputBindCall2 = "<kernelName>.forEach_toBitmap<classType>(<outputObject>, <inputObject>);\n"
 			+ "<inputObject>.copyTo(<destinationObject>);";
-	private static final String templateCreateAllocationFunction = "\nfloat3 __attribute__((kernel)) toFloat(uchar4 in, uint32_t x, uint32_t y) {"
-			+ "\n\tfloat3 out;"
-			+ "\n\tout.s0 = (float) in.r;"
-			+ "\n\tout.s1 = (float) in.g;"
-			+ "\n\tout.s2 = (float) in.b;"
-			+ "\n\treturn out;" + "\n}";
-	private static final String templateOutputAllocationFunction = "\nuchar4 __attribute__((kernel)) toBitmap(<varType>"
-			+ " in, uint32_t x, uint32_t y) {"
-			+ "\n\tuchar4 out;"
-			+ "\n\tout.r = (uchar) (in.s0);"
-			+ "\n\tout.g = (uchar) (in.s1);"
-			+ "\n\tout.b = (uchar) (in.s2);"
-			+ "\n\tout.a = <alphaValue>;"
-			+ "\n\treturn out;\n}";
+	private static final String templateOutputBind = "\nuchar4 __attribute__((kernel)) toBitmap<classType>(<varType>"
+			+ " $in, uint32_t x, uint32_t y) {"
+			+ "\n\tuchar4 $out;"
+			+ "\n\t$out.r = (uchar) ($in.s0<multiplyBy>);"
+			+ "\n\t$out.g = (uchar) ($in.s1<multiplyBy>);"
+			+ "\n\t$out.b = (uchar) ($in.s2<multiplyBy>);"
+			+ "\n\t$out.a = 255;" + "\n\treturn $out;\n}";
 
 	public RSImageTranslator(CTranslator cCodeTranslator) {
 		super(cCodeTranslator);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String translateInputBind(String className, InputBind inputBind) {
-		return templateCreateAllocationFunction;
 	}
 
 	/**
@@ -79,16 +65,16 @@ public abstract class RSImageTranslator extends RSTranslator implements
 		String outputObject = this.commonDefinitions
 				.getVariableOutName(variable);
 		String destinationObject = outputBind.destinationObject.name;
-		// If it is an object declaration, must declare the destination
+		// If it is an object assignment, must declare the destination
 		// object type and name.
-		if (outputBind.isObjectDeclaration) {
-			ST st = new ST(templateCreateOutputAllocation);
+		if (outputBind.outputBindType != OutputBindType.None) {
+			ST st = new ST(templateOutputBindCall1);
 			st.add("inputAllocation", inputObject);
-			st.add("destinationObject", outputBind.destinationObject.typeName
-					+ " " + destinationObject);
+			st.add("destinationObject", destinationObject);
 			ret.append(st.render());
 		}
-		ST st = new ST(templateOutputAllocationCall);
+		ST st = new ST(templateOutputBindCall2);
+		st.add("classType", outputBind.variable.typeName);
 		st.add("kernelName", this.commonDefinitions.getKernelName(className));
 		st.add("outputObject", outputObject);
 		st.add("inputObject", inputObject);
@@ -108,12 +94,13 @@ public abstract class RSImageTranslator extends RSTranslator implements
 		if (typeName.equals(BitmapImage.getName())
 				|| typeName.equals(HDRImage.getName())) {
 			String varType;
-			ST st = new ST(templateOutputAllocationFunction);
+			ST st = new ST(templateOutputBind);
+			st.add("classType", outputBind.variable.typeName);
 			if (typeName.equals(HDRImage.getName())) {
-				st.add("alphaValue", "(uchar) (in.s3)");
+				st.add("multiplyBy", " * 255.0f");
 				varType = "float4";
 			} else {
-				st.add("alphaValue", "255");
+				st.add("multiplyBy", null);
 				varType = "float3";
 			}
 			st.add("varType", varType);
