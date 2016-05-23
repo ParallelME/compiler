@@ -6,56 +6,63 @@
  *
  */
 
-package org.parallelme.runtime;
+package org.parallelme;
 
 import android.graphics.Bitmap;
 
 /**
- * Wrapper class for JNI calls to ParallelME runtime. It is also
- * responsible for keeping the runtime pointer in memory so it
- * can be used in multiple calls to the low-level runtime without
- * recreating objects.
+ * Wrapper class for JNI calls to ParallelME runtime. It is also responsible for
+ * keeping the runtime pointer in memory so it can be used in multiple calls to
+ * the low-level runtime without recreating objects.
  *
  * @author Pedro Caldeira, Wilson de Carvalho
  */
-public final class ParallelMERuntime {
+public class ParallelMERuntime {
 	private static final ParallelMERuntime instance = new ParallelMERuntime();
-	public final long runtimePointer = init();
+	public final long runtimePointer;
 
 	public static ParallelMERuntime getInstance() {
-		return this.instance;
+		return instance;
 	}
 
-	private native long init();
-	private native void cleanUp(long runtimePointer);
-    private native long createHDRImage(long runtimePointer, byte[] data, int width, int height);
-    private native void toBitmapHDRImage(long runtimePointer, long imagePointer, Bitmap bitmap);
-    private native int getHeight(long imagePointer);
-    private native int getWidth(long imagePointer);
-	
+	private native long nativeInit();
+
+	private native void nativeCleanUp(long runtimePointer);
+
+	private native long nativeCreateHDRImage(long runtimePointer, byte[] data,
+			int width, int height);
+
+	private native void nativeToBitmapHDRImage(long runtimePointer,
+			long imagePointer, Bitmap bitmap);
+
+	private native int nativeGetHeight(long imagePointer);
+
+	private native int nativeGetWidth(long imagePointer);
+
+	private ParallelMERuntime() {
+		System.loadLibrary("ParallelME");
+		this.runtimePointer = nativeInit();
+	}
+
 	@Override
-	protected void finalize throws Throwable {
-		cleanUp(runtimePointer);
+	protected void finalize() throws Throwable {
+		nativeCleanUp(runtimePointer);
 		super.finalize();
 	}
 
-	static {
-		System.loadLibrary("ParallelME");
-	}
-
-	public int createHDRImage(byte[] data, int width, int heigth) {
-		return createHDRImage(runtimePointer, data, width, height);
+	public long createHDRImage(byte[] data, int width, int height) {
+		return nativeCreateHDRImage(runtimePointer, data, width, height);
 	}
 
 	public void toBitmapHDRImage(long imagePointer, Bitmap bitmap) {
-		toBitmapHDRImage(runtimePointer, imagePointer, bitmap);
+		nativeToBitmapHDRImage(runtimePointer, imagePointer, bitmap);
 	}
 
 	public int getHeight(long imagePointer) {
-		return getHeight(imagePointer);
+		return nativeGetHeight(imagePointer);
 	}
 
 	public int getWidth(long imagePointer) {
-		return getWidth(imagePointer);
+		return nativeGetWidth(imagePointer);
 	}
 }
