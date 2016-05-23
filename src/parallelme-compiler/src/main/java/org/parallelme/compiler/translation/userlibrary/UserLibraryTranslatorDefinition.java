@@ -36,21 +36,6 @@ public interface UserLibraryTranslatorDefinition {
 	public String translateInputBind(String className, InputBind inputBind);
 
 	/**
-	 * Translates a given input bind returning the Java code that will be used
-	 * to call a given runtime code.
-	 * 
-	 * @param className
-	 *            Name of the java class (user class) where the input bind was
-	 *            originally created.
-	 * @param inputBind
-	 *            Input bind information.
-	 * 
-	 * @return A string with the java code for replacement on the original user
-	 *         code written with the user library.
-	 */
-	public String translateInputBindCall(String className, InputBind inputBind);
-
-	/**
 	 * Creates the java code to create the input bind objects (allocations).
 	 * Input bind creation and declaration are separated because the declaration
 	 * must be placed on the user code at the same level of user library objects

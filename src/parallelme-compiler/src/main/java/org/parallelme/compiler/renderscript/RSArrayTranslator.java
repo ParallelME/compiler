@@ -65,14 +65,6 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public String translateInputBindCall(String className, InputBind inputBind) {
-		return "";
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
 	public String translateInputBindObjCreation(String className,
 			InputBind inputBind) {
 		String inputObject = this.commonDefinitions
@@ -95,7 +87,7 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 	public String translateInputBindObjDeclaration(InputBind inputBind) {
 		String inAllocation = this.commonDefinitions
 				.getVariableInName(inputBind.variable);
-		return "Allocation " + inAllocation + ";\n";
+		return String.format("private Allocation %s;", inAllocation);
 	}
 
 	/**

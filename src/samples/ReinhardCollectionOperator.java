@@ -28,7 +28,7 @@ public class ReinhardCollectionOperator implements ReinhardOperator {
     private float lmax2;
 
     public void runOp(RGBE.ResourceData resourceData, float key, float power, Bitmap bitmap) {
-        image = new HDRImage(resourceData);
+        image = new HDRImage(resourceData.data, resourceData.width, resourceData.height);
 
         this.toYxy();
         this.logAverage(key);

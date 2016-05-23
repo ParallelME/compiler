@@ -9,13 +9,11 @@
 package org.parallelme.compiler.renderscript;
 
 import org.parallelme.compiler.intermediate.InputBind;
-import org.parallelme.compiler.intermediate.MethodCall;
 import org.parallelme.compiler.intermediate.OutputBind;
 import org.parallelme.compiler.intermediate.OutputBind.OutputBindType;
 import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.translation.userlibrary.ImageTranslator;
-import org.parallelme.compiler.userlibrary.classes.BitmapImage;
 import org.parallelme.compiler.userlibrary.classes.HDRImage;
 import org.stringtemplate.v4.ST;
 
@@ -50,7 +48,8 @@ public abstract class RSImageTranslator extends RSTranslator implements
 				.getVariableInName(inputBind.variable);
 		String outAllocation = this.commonDefinitions
 				.getVariableOutName(inputBind.variable);
-		return "Allocation " + inAllocation + ", " + outAllocation + ";";
+		return String.format("private Allocation %s, %s;", inAllocation,
+				outAllocation);
 	}
 
 	/**
@@ -89,57 +88,17 @@ public abstract class RSImageTranslator extends RSTranslator implements
 	 */
 	@Override
 	public String translateOutputBind(String className, OutputBind outputBind) {
-		String ret = "";
-		String typeName = outputBind.variable.typeName;
-		if (typeName.equals(BitmapImage.getName())
-				|| typeName.equals(HDRImage.getName())) {
-			String varType;
-			ST st = new ST(templateOutputBind);
-			st.add("classType", outputBind.variable.typeName);
-			if (typeName.equals(HDRImage.getName())) {
-				st.add("multiplyBy", " * 255.0f");
-				varType = "float4";
-			} else {
-				st.add("multiplyBy", null);
-				varType = "float3";
-			}
-			st.add("varType", varType);
-			ret = st.render();
+		String varType;
+		ST st = new ST(templateOutputBind);
+		st.add("classType", outputBind.variable.typeName);
+		if (outputBind.variable.typeName.equals(HDRImage.getName())) {
+			st.add("multiplyBy", " * 255.0f");
+			varType = "float4";
+		} else {
+			st.add("multiplyBy", null);
+			varType = "float3";
 		}
-		return ret;
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	public String translateMethodCall(String className, MethodCall methodCall) {
-		// TODO Throw an exception whenever an non supported method is provided.
-		String ret = "return ";
-		if (methodCall.variable.typeName.equals(BitmapImage.getName())) {
-			if (methodCall.methodName.equals(BitmapImage.getInstance()
-					.getHeightMethodName())) {
-				ret += this.commonDefinitions
-						.getVariableInName(methodCall.variable)
-						+ ".getType().getY();";
-			} else if (methodCall.methodName.equals(BitmapImage.getInstance()
-					.getWidthMethodName())) {
-				ret += this.commonDefinitions
-						.getVariableInName(methodCall.variable)
-						+ ".getType().getX();";
-			}
-		} else if (methodCall.variable.typeName.equals(HDRImage.getName())) {
-			if (methodCall.methodName.equals(HDRImage.getInstance()
-					.getHeightMethodName())) {
-				ret += this.commonDefinitions
-						.getVariableInName(methodCall.variable)
-						+ ".getType().getY();";
-			} else if (methodCall.methodName.equals(HDRImage.getInstance()
-					.getWidthMethodName())) {
-				ret += this.commonDefinitions
-						.getVariableInName(methodCall.variable)
-						+ ".getType().getX();";
-			}
-		}
-		return ret;
+		st.add("varType", varType);
+		return st.render();
 	}
 }

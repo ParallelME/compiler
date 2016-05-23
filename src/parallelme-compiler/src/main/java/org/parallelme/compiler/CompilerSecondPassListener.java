@@ -100,7 +100,7 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 	 * 
 	 * @return A collection of token addresses.
 	 */
-	public Collection<TokenAddress> getImportTokens() {
+	public List<TokenAddress> getImportTokens() {
 		return this.importTokens;
 	}
 
@@ -109,7 +109,7 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 	 * 
 	 * @return A collection of non-iterator and non-output bind method calls.
 	 */
-	public Collection<MethodCall> getMethodCalls() {
+	public List<MethodCall> getMethodCalls() {
 		return this.methodCalls;
 	}
 

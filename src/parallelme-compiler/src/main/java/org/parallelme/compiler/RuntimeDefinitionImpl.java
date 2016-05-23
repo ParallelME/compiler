@@ -30,7 +30,6 @@ import org.parallelme.compiler.userlibrary.classes.HDRImage;
 public abstract class RuntimeDefinitionImpl implements RuntimeDefinition {
 	protected final CTranslator cCodeTranslator;
 	protected final String outputDestinationFolder;
-	protected final RuntimeCommonDefinitions commonDefinitions = new RuntimeCommonDefinitions();
 	// Keeps a key-value map of all user library translators that will be used
 	// to translate this runtime.
 	protected Map<String, UserLibraryTranslatorDefinition> translators = null;

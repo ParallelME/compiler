@@ -15,22 +15,22 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.parallelme.compiler.RuntimeCommonDefinitions;
 import org.parallelme.compiler.RuntimeDefinitionImpl;
+import org.parallelme.compiler.SimpleLogger;
+import org.parallelme.compiler.exception.CompilationException;
 import org.parallelme.compiler.intermediate.*;
+import org.parallelme.compiler.intermediate.Iterator.IteratorType;
 import org.parallelme.compiler.translation.CTranslator;
-import org.parallelme.compiler.userlibrary.classes.HDRImage;
-import org.parallelme.compiler.util.FileWriter;
+import org.parallelme.compiler.userlibrary.classes.*;
 import org.stringtemplate.v4.ST;
 
 /**
- * Definitions for ParallelME runtime.
+ * General definitions for ParallelME runtime.
  * 
  * @author Wilson de Carvalho
  */
 public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
-	private ParallelMERuntimeJavaFile javaContentCreation = new ParallelMERuntimeJavaFile();
-	private ParallelMERuntimeCppHppFile cppHppContentCreation = new ParallelMERuntimeCppHppFile();
-
 	public ParallelMERuntimeDefinition(CTranslator cCodeTranslator,
 			String outputDestinationFolder) {
 		super(cCodeTranslator, outputDestinationFolder);
@@ -41,7 +41,7 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 		if (super.translators == null) {
 			super.translators = new HashMap<>();
 			super.translators.put(HDRImage.getName(), new PMHDRImageTranslator(
-					this.cCodeTranslator));
+					cCodeTranslator));
 		}
 	}
 
@@ -58,8 +58,7 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	 */
 	public List<String> getIsValidBody() {
 		ArrayList<String> ret = new ArrayList<>();
-		ret.add("return " + this.commonDefinitions.getPrefix()
-				+ "runtimePointer != 0;");
+		ret.add("return ParallelMERuntime.getInstance().runtimePointer != 0;");
 		return ret;
 	}
 
@@ -67,9 +66,74 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public List<String> getInitializationString(String packageName,
-			String className) {
-		return new ArrayList<>();
+	public List<String> getInitializationString(String className,
+			IteratorsAndBinds iteratorsAndBinds, List<MethodCall> methodCalls)
+			throws CompilationException {
+		List<String> ret = new ArrayList<>();
+		ret.addAll(this.declarePointers(iteratorsAndBinds.inputBinds));
+		// Declare native functions to user JNI
+		ret.addAll(this.declareNativeIterators(iteratorsAndBinds.iterators));
+		return ret;
+	}
+
+	private List<String> declarePointers(List<InputBind> inputBinds)
+			throws CompilationException {
+		List<String> ret = new ArrayList<>();
+		Set<Variable> variables = new HashSet<>();
+		// Store variables in a set to avoid duplication if the user creates two
+		// input binds for the same variable
+		for (InputBind inputBind : inputBinds)
+			variables.add(inputBind.variable);
+		if (!variables.isEmpty()) {
+			ST st = new ST(
+					"private long <pointer:{var|<var.name>}; separator=\", \">;");
+			for (Variable variable : variables) {
+				st.addAggr("pointer.{name}", RuntimeCommonDefinitions
+						.getInstance().getPointerName(variable));
+			}
+			ret.add(st.render());
+		}
+		return ret;
+	}
+
+	private List<String> declareNativeIterators(List<Iterator> iterators)
+			throws CompilationException {
+		List<String> ret = new ArrayList<>();
+		Variable runtimePtr = new Variable("runtimePtr", "long", "", "", -1);
+		Variable variablePointer = new Variable("varPtr", "long", "", "", -1);
+		for (Iterator iterator : iterators) {
+			Parameter[] parameters;
+			// Sequential iterators must create an array for each variable. This
+			// array will be used to store the output value.
+			Variable[] externalVariables = iterator.getExternalVariables();
+			if (iterator.getType() == IteratorType.Sequential) {
+				parameters = new Parameter[externalVariables.length * 2 + 2];
+				parameters[0] = runtimePtr;
+				parameters[1] = variablePointer;
+				int j = 0;
+				for (int i = 2; i < parameters.length; i += 2) {
+					Variable foo = externalVariables[j];
+					parameters[i] = foo;
+					parameters[i + 1] = new Variable(RuntimeCommonDefinitions
+							.getInstance().getPrefix() + foo.name, foo.typeName
+							+ "[]", "", "", -1);
+					j++;
+				}
+			} else {
+				parameters = new Parameter[externalVariables.length + 2];
+				parameters[0] = runtimePtr;
+				parameters[1] = variablePointer;
+				System.arraycopy(externalVariables, 0, parameters, 2,
+						externalVariables.length);
+			}
+			String name = RuntimeCommonDefinitions.getInstance()
+					.getIteratorName(iterator);
+			ret.add(RuntimeCommonDefinitions.getInstance()
+					.createJavaMethodSignature("private native", "void", name,
+							parameters, false)
+					+ ";");
+		}
+		return ret;
 	}
 
 	/**
@@ -78,7 +142,6 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	@Override
 	public List<String> getImports() {
 		ArrayList<String> ret = new ArrayList<>();
-		ret.add("org.parallelme.runtime.ParallelMERuntimeJNIWrapper");
 		return ret;
 	}
 
@@ -88,108 +151,13 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	@Override
 	public void translateIteratorsAndBinds(String packageName,
 			String className, IteratorsAndBinds iteratorsAndBinds) {
-		this.createJNIFiles(packageName, className, iteratorsAndBinds);
-		this.createKernelFiles(packageName, className, iteratorsAndBinds);
-	}
-
-	/**
-	 * Create the JNI file that will be used to connect the Java environment
-	 * with ParallelME runtime.
-	 * 
-	 * In order to simplify the source code generation, CPP and H files are
-	 * created together in this method. Though method declaration in H files
-	 * does not need variable names, they are declared in the generated file in
-	 * order to reduce complexity and increase maintainability of compiler code.
-	 */
-	private void createJNIFiles(String packageName, String className,
-			IteratorsAndBinds iteratorsAndBinds) {
-		String jniJavaClassName = this.getJNIWrapperClassName(className);
-		FileWriter.writeFile(jniJavaClassName + ".java", this.commonDefinitions
-				.getJavaDestinationFolder(this.outputDestinationFolder,
-						packageName), this.javaContentCreation
-				.getJavaJNIWrapperClass(packageName, jniJavaClassName,
-						iteratorsAndBinds.iterators));
-		String jniCClassName = commonDefinitions.getCClassName(packageName,
-				jniJavaClassName);
-		FileWriter.writeFile(jniCClassName + ".cpp", this.commonDefinitions
-				.getJNIDestinationFolder(this.outputDestinationFolder),
-				this.cppHppContentCreation.getCppJNIWrapperClass(packageName,
-						jniJavaClassName, iteratorsAndBinds.iterators));
-		FileWriter.writeFile(jniCClassName + ".hpp", this.commonDefinitions
-				.getJNIDestinationFolder(this.outputDestinationFolder),
-				this.cppHppContentCreation.getHppJNIWrapperClass(packageName,
-						jniJavaClassName, iteratorsAndBinds.iterators));
-	}
-
-	private String getJNIWrapperClassName(String className) {
-		return className + "JNIWrapper";
-	}
-
-	/**
-	 * Create the kernel file that will be used to store the user code written
-	 * in the user library.
-	 * 
-	 * In order to simplify the source code generation, CPP and H files are
-	 * created together in this method. Though method declaration in H files
-	 * does not need variable names, they are declared in the generated file in
-	 * order to reduce complexity and increase maintainability of compiler code.
-	 */
-	private void createKernelFiles(String packageName, String className,
-			IteratorsAndBinds iteratorsAndBinds) {
-		String templateKernelFile = "<introductoryMsg>\n"
-				+ "#ifndef KERNELS_H\n" + "#define KERNELS_H\n\n"
-				+ "const char kernels[] =\n"
-				+ "\t<kernels:{var|\"<var.line>\"\n}>" + "#endif\n";
-		ST st = new ST(templateKernelFile);
-		// 1. Add header comment
-		st.add("introductoryMsg", this.commonDefinitions.getHeaderComment());
-		// 2. Translate input binds
-		Set<String> inputBindTypes = new HashSet<String>();
-		for (InputBind inputBind : iteratorsAndBinds.inputBinds) {
-			if (!inputBindTypes.contains(inputBind.variable.typeName)) {
-				inputBindTypes.add(inputBind.variable.typeName);
-				String kernel = this.translators.get(
-						inputBind.variable.typeName).translateInputBind(
-						className, inputBind);
-				this.addKernelByLine(kernel, st);
-			}
-		}
-		// 3. Translate iterators
-		for (Iterator iterator : iteratorsAndBinds.iterators) {
-			String kernel = this.translators.get(iterator.variable.typeName)
-					.translateIterator(className, iterator);
-			this.addKernelByLine(kernel, st);
-		}
-		// 4. Translate outputbinds
-		Set<String> outputBindTypes = new HashSet<String>();
-		for (OutputBind outputBind : iteratorsAndBinds.outputBinds) {
-			if (!outputBindTypes.contains(outputBind.variable.typeName)) {
-				outputBindTypes.add(outputBind.variable.typeName);
-				String kernel = this.translators.get(
-						outputBind.variable.typeName).translateOutputBind(
-						className, outputBind);
-				this.addKernelByLine(kernel, st);
-			}
-		}
-		FileWriter.writeFile("kernels.h", this.commonDefinitions
-				.getJNIDestinationFolder(this.outputDestinationFolder), st
-				.render());
-	}
-
-	/**
-	 * Add a given kernel line-by-line to the string template informed.
-	 * 
-	 * @param kernel
-	 *            Multi-line kernel function.
-	 * @param st
-	 *            String template with "kernes.line" parameter.
-	 */
-	private void addKernelByLine(String kernel, ST st) {
-		String[] lines = kernel.split("\n");
-		for (String line : lines) {
-			st.addAggr("kernels.{line}", line + "\\n");
-		}
-		st.addAggr("kernels.{line}", "\\n");
+		ParallelMERuntimeCTranslation cTranslation = new ParallelMERuntimeCTranslation();
+		cTranslation.createKernelFile(className, iteratorsAndBinds,
+				this.translators, this.outputDestinationFolder);
+		cTranslation.createCPPFile(packageName, className,
+				iteratorsAndBinds.iterators, this.outputDestinationFolder);
+		cTranslation.createHFile(packageName, className,
+				iteratorsAndBinds.iterators, this.outputDestinationFolder);
 	}
 
 	/**
@@ -198,17 +166,31 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	@Override
 	public void exportInternalLibrary(String packageName,
 			String destinationFolder) throws IOException {
-		// Copy all files and directories under ParallelME resource folder to
-		// the destination folder.
 		this.exportResource("ParallelME", destinationFolder);
-		this.exportResource("Common", destinationFolder);
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
+	@Override
 	public String translateMethodCall(MethodCall methodCall) {
 		String ret = "";
+		if (methodCall.variable.typeName.equals(BitmapImage.getName())
+				|| methodCall.variable.typeName.equals(HDRImage.getName())) {
+			if (methodCall.methodName.equals(BitmapImage.getInstance()
+					.getWidthMethodName())) {
+				ret = RuntimeCommonDefinitions.getInstance().getVariableInName(
+						methodCall.variable)
+						+ ".getType().getX()";
+			} else if (methodCall.methodName.equals(BitmapImage.getInstance()
+					.getHeightMethodName())) {
+				ret = RuntimeCommonDefinitions.getInstance().getVariableInName(
+						methodCall.variable)
+						+ ".getType().getY()";
+			}
+		} else {
+			SimpleLogger.error("");
+		}
 		return ret;
 	}
 }

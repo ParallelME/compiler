@@ -12,8 +12,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.parallelme.compiler.intermediate.InputBind;
+import org.parallelme.compiler.intermediate.MethodCall;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.translation.userlibrary.BitmapImageTranslator;
+import org.parallelme.compiler.userlibrary.classes.BitmapImage;
 import org.stringtemplate.v4.ST;
 
 /**
@@ -36,8 +38,7 @@ public class RSBitmapImageTranslator extends RSImageTranslator implements
 			+ "\n\t$out.s0 = (float) $in.r;"
 			+ "\n\t$out.s1 = (float) $in.g;"
 			+ "\n\t$out.s2 = (float) $in.b;"
-			+ "\n\treturn $out;"
-			+ "\n}";
+			+ "\n\treturn $out;" + "\n}";
 
 	public RSBitmapImageTranslator(CTranslator cCodeTranslator) {
 		super(cCodeTranslator);
@@ -51,14 +52,6 @@ public class RSBitmapImageTranslator extends RSImageTranslator implements
 		ST st = new ST(templateInputBind);
 		st.add("classType", inputBind.variable.typeName);
 		return st.render();
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String translateInputBindCall(String className, InputBind inputBind) {
-		return "";
 	}
 
 	/**
@@ -99,5 +92,27 @@ public class RSBitmapImageTranslator extends RSImageTranslator implements
 	@Override
 	public List<String> getJavaClassImports() {
 		return this.getJavaInterfaceImports();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public String translateMethodCall(String className, MethodCall methodCall) {
+		// TODO Throw an exception whenever a non supported method is provided.
+		String ret = "return ";
+		if (methodCall.variable.typeName.equals(BitmapImage.getName())) {
+			if (methodCall.methodName.equals(BitmapImage.getInstance()
+					.getHeightMethodName())) {
+				ret += this.commonDefinitions
+						.getVariableInName(methodCall.variable)
+						+ ".getType().getY();";
+			} else if (methodCall.methodName.equals(BitmapImage.getInstance()
+					.getWidthMethodName())) {
+				ret += this.commonDefinitions
+						.getVariableInName(methodCall.variable)
+						+ ".getType().getX();";
+			}
+		}
+		return ret;
 	}
 }

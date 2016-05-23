@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.stringtemplate.v4.ST;
+import org.parallelme.compiler.RuntimeCommonDefinitions;
 import org.parallelme.compiler.RuntimeDefinitionImpl;
 import org.parallelme.compiler.SimpleLogger;
 import org.parallelme.compiler.intermediate.*;
@@ -73,19 +74,20 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public List<String> getInitializationString(String packageName,
-			String className) {
+	public List<String> getInitializationString(String className,
+			IteratorsAndBinds iteratorsAndBinds,
+			List<MethodCall> methodCalls) {
 		StringBuilder init = new StringBuilder();
 		init.append("private RenderScript $mRS;\n");
 		ST st1 = new ST(templateKernels);
 		ST st2 = new ST(templateConstructor);
-		String javaClassName = this.commonDefinitions.getJavaWrapperClassName(
+		String javaClassName = RuntimeCommonDefinitions.getInstance().getJavaWrapperClassName(
 				className, this.getTargetRuntime());
 		st1.add("originalClassName", className);
-		st1.add("kernelName", this.commonDefinitions.getKernelName(className));
+		st1.add("kernelName", RuntimeCommonDefinitions.getInstance().getKernelName(className));
 		st2.add("javaClassName", javaClassName);
 		st2.add("originalClassName", className);
-		st2.add("kernelName", this.commonDefinitions.getKernelName(className));
+		st2.add("kernelName", RuntimeCommonDefinitions.getInstance().getKernelName(className));
 		init.append(st1.render());
 		init.append(st2.render());
 		ArrayList<String> ret = new ArrayList<String>();
@@ -113,7 +115,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 			String className, IteratorsAndBinds iteratorsAndBinds) {
 		// 1. Add file header
 		ST st = new ST(templateRSFile);
-		st.add("introductoryMsg", this.commonDefinitions.getHeaderComment());
+		st.add("introductoryMsg", RuntimeCommonDefinitions.getInstance().getHeaderComment());
 		st.add("header", "#pragma version(1)\n#pragma rs java_package_name("
 				+ packageName + ")");
 		// 2. Translate input binds
@@ -144,7 +146,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 		// 5. Write translated file
 		FileWriter.writeFile(
 
-		className + ".rs", this.commonDefinitions.getRSDestinationFolder(
+		className + ".rs", RuntimeCommonDefinitions.getInstance().getRSDestinationFolder(
 				this.outputDestinationFolder, packageName), st.render());
 	}
 
@@ -154,7 +156,6 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	@Override
 	public void exportInternalLibrary(String packageName,
 			String destinationFolder) throws IOException {
-		this.exportResource("Common", destinationFolder);
 	}
 
 	/**
@@ -167,12 +168,12 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 				|| methodCall.variable.typeName.equals(HDRImage.getName())) {
 			if (methodCall.methodName.equals(BitmapImage.getInstance()
 					.getWidthMethodName())) {
-				ret = this.commonDefinitions
+				ret = RuntimeCommonDefinitions.getInstance()
 						.getVariableInName(methodCall.variable)
 						+ ".getType().getX()";
 			} else if (methodCall.methodName.equals(BitmapImage.getInstance()
 					.getHeightMethodName())) {
-				ret = this.commonDefinitions
+				ret = RuntimeCommonDefinitions.getInstance()
 						.getVariableInName(methodCall.variable)
 						+ ".getType().getY()";
 			}

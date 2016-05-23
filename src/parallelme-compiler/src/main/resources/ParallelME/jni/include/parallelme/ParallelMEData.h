@@ -6,11 +6,20 @@
  *
  */
 
-struct ParallelMEData {
+struct ParallelMERuntimeData {
     std::shared_ptr<Runtime> runtime;
     std::shared_ptr<Program> program;
+};
+
+struct ImageData {
     std::shared_ptr<Buffer> inputBuffer, outputBuffer;
     jint width;
     jint height;
+    jint workSize;
+};
+
+struct ArrayData {
+    std::shared_ptr<Buffer> inputBuffer, outputBuffer;
+    jint length;
     jint workSize;
 };

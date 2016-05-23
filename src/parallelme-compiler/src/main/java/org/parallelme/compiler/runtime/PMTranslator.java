@@ -26,36 +26,13 @@ import org.stringtemplate.v4.ST;
 public abstract class PMTranslator extends BaseTranslator {
 	protected static final String templateCallJNIFunction = "<jniJavaClassName>.getInstance().<functionName>(<params:{var|<var.name>}; separator=\", \">)";
 	private static final String templateKernelDecl = "__kernel void <functionName>(<params:{var|<var.type> <var.name>}; separator=\", \">)";
-	private static final String templateForLoop = "for (int <varName> = 0; <varName> \\< <varMaxVal>; <varName>++) {\n\t<body>}\n";
-	protected static final String templateRunWait = "\n\nParallelMERuntimeJNIWrapper().getInstance().run(<bufferId>);\n"
-			+ "ParallelMERuntimeJNIWrapper().getInstance().waitFinish();\n";
-	// private static final
+	private static final String templateForLoop = "for (int <varName> = 0; <varName> \\< <varMaxVal>; ++<varName>) {\n\t<body>}\n";
+	private static final String templateIteratorCall = "<iteratorName>(<params:{var|<var.name>}; separator=\", \">);";
 
 	protected CTranslator cCodeTranslator;
 
 	public PMTranslator(CTranslator cCodeTranslator) {
 		this.cCodeTranslator = cCodeTranslator;
-	}
-
-	protected String getJNIWrapperClassName(String className) {
-		return className + "JNIWrapper";
-	}
-
-	protected String getInputBufferIdName(Variable variable) {
-		return this.commonDefinitions.getVariableInName(variable) + "BufferId";
-	}
-
-	protected String getOutputBufferIdName(Variable variable) {
-		return this.commonDefinitions.getVariableOutName(variable) + "BufferId";
-	}
-
-	protected String getOutputBufferDataName(Variable variable) {
-		return this.commonDefinitions.getVariableOutName(variable)
-				+ "DataBuffer";
-	}
-
-	protected String getWorksizeName(Variable variable) {
-		return this.commonDefinitions.getPrefix() + variable.name + "Worksize";
 	}
 
 	/**
@@ -67,18 +44,17 @@ public abstract class PMTranslator extends BaseTranslator {
 		String code2Translate = iterator.getUserFunctionData().Code.trim();
 		code2Translate = this.removeCurlyBraces(code2Translate);
 		String ret;
-		String dataInDeclaration = "\n\tint $gid = get_global_id(0);\n\t"
-				+ this.translateType(userFunctionVariable.typeName) + " "
-				+ userFunctionVariable.name + " = "
-				+ this.getDataInVariableName() + "[$gid];";
-		String dataOutReturn = this.getDataOutVariableName() + "[$gid] = "
-				+ userFunctionVariable.name + ";\n";
-		ret = this.getIteratorFunctionSignature(iterator)
-				+ " {"
-				+ dataInDeclaration
-				+ this.translateVariable(userFunctionVariable,
-						this.cCodeTranslator.translate(code2Translate))
-				+ dataOutReturn + "\n}";
+		String gidDeclaration = String.format("int $gid = get_global_id(0);\n"
+				+ "\t%s %s = %s[$gid];",
+				this.translateType(userFunctionVariable.typeName),
+				userFunctionVariable.name, this.getDataVariableName());
+		String dataOutReturn = String.format("%s[$gid] = %s;\n",
+				this.getDataVariableName(), userFunctionVariable.name);
+		ret = String.format("%s {\n\t%s %s %s\n}", this
+				.getIteratorFunctionSignature(iterator), gidDeclaration, this
+				.translateVariable(userFunctionVariable,
+						this.cCodeTranslator.translate(code2Translate)),
+				dataOutReturn);
 		return ret;
 	}
 
@@ -111,8 +87,8 @@ public abstract class PMTranslator extends BaseTranslator {
 					+ " "
 					+ userFunctionVariable.name
 					+ " = "
-					+ this.getDataInVariableName() + "[$y*$width+$x];\n";
-			dataOutReturn = this.getDataOutVariableName() + "[$y*$width+$x] = "
+					+ this.getDataVariableName() + "[$y*$width+$x];\n";
+			dataOutReturn = this.getDataVariableName() + "[$y*$width+$x] = "
 					+ userFunctionVariable.name + ";\n";
 			cCode = dataInDeclaration + cCode + "\n" + dataOutReturn;
 			ST stForX = new ST(templateForLoop);
@@ -126,8 +102,8 @@ public abstract class PMTranslator extends BaseTranslator {
 					+ " "
 					+ userFunctionVariable.name
 					+ " = "
-					+ this.getDataInVariableName() + "[$y];\n";
-			dataOutReturn = this.getDataOutVariableName() + "[$y] = "
+					+ this.getDataVariableName() + "[$y];\n";
+			dataOutReturn = this.getDataVariableName() + "[$y] = "
 					+ userFunctionVariable.name + ";\n";
 			cCode = dataInDeclaration + cCode + "\n" + dataOutReturn;
 			// Array types
@@ -160,50 +136,42 @@ public abstract class PMTranslator extends BaseTranslator {
 		st.add("return", "void");
 		st.add("functionName", this.commonDefinitions.getIteratorName(iterator));
 		st.addAggr("params.{type, name}", "__global float4",
-				"*" + this.getDataInVariableName());
-		st.addAggr("params.{type, name}", "__global float4",
-				"*" + this.getDataOutVariableName());
-		// External variables must be declared twice:
-		// 1: A global pointer which will take the processed value to the JVM
+				"*" + this.getDataVariableName());
+		// External variables must be declared twice in sequential iterators:
+		// 1: A C typed variable with the same name which will be used in
+		// the original user code.
+		// 2: A global pointer which will take the processed value to the JVM
 		// again;
 		for (Variable variable : iterator.getExternalVariables()) {
 			st.addAggr("params.{type, name}",
-					"__global *" + PrimitiveTypes.getCType(variable.typeName),
-					this.commonDefinitions.getVariableOutName(variable));
+					PrimitiveTypes.getCType(variable.typeName), variable.name);
+			if (iterator.getType() == IteratorType.Sequential) {
+				st.addAggr(
+						"params.{type, name}",
+						"__global *"
+								+ PrimitiveTypes.getCType(variable.typeName),
+						this.commonDefinitions.getPrefix() + variable);
+			}
 		}
 		if (iterator.getType() == IteratorType.Sequential) {
 			if (iterator.variable.typeName.equals(BitmapImage.getName())
 					|| iterator.variable.typeName.equals(HDRImage.getName())) {
 				st.addAggr("params.{type, name}", "int",
-						this.getHeightVariableName());
-				st.addAggr("params.{type, name}", "int",
 						this.getWidthVariableName());
+				st.addAggr("params.{type, name}", "int",
+						this.getHeightVariableName());
 			}
-		}
-		// ...and 2: A C typed variable with the same name which will be used in
-		// the original user code.
-		for (Variable variable : iterator.getExternalVariables()) {
-			st.addAggr("params.{type, name}",
-					PrimitiveTypes.getCType(variable.typeName), variable.name);
 		}
 
 		return st.render();
 	}
 
 	/**
-	 * Name for data input variable that is used to store user array or image
-	 * data in C kernel code.
+	 * Name for data variable that is used to write user array or image data in
+	 * C kernel code.
 	 */
-	protected String getDataInVariableName() {
-		return this.commonDefinitions.getPrefix() + "dataIn";
-	}
-
-	/**
-	 * Name for data output variable that is used to write user array or image
-	 * data in C kernel code.
-	 */
-	protected String getDataOutVariableName() {
-		return this.commonDefinitions.getPrefix() + "dataOut";
+	protected String getDataVariableName() {
+		return this.commonDefinitions.getPrefix() + "data";
 	}
 
 	/**
@@ -224,53 +192,22 @@ public abstract class PMTranslator extends BaseTranslator {
 	 * {@inheritDoc}
 	 */
 	public String translateIteratorCall(String className, Iterator iterator) {
-		StringBuilder ret = new StringBuilder();
-		String templateIteratorCallParams = "<externalVariables:{var|<var.type>[] <var.name> = new <var.type>[1];\n"
-				+ "int <var.bufferId> = ParallelMERuntimeJNIWrapper().getInstance().createAllocation(<var.name>, 1);\n}>";
-		String templateIteratorCallParamsReturn = "<externalVariables:{\n\tvar|<var.name> = <var.bufferData>[0];\n}>";
-		ST stCall = new ST(templateCallJNIFunction);
-		stCall.add("jniJavaClassName", this.getJNIWrapperClassName(className));
-		stCall.add("functionName",
-				this.commonDefinitions.getIteratorName(iterator));
-		stCall.addAggr("params.{name}",
-				this.getOutputBufferIdName(iterator.variable));
-		stCall.addAggr("params.{name}",
-				this.getOutputBufferIdName(iterator.variable));
-		stCall.addAggr("params.{name}", this.getWorksizeName(iterator.variable));
-		for (Variable variable : iterator.getExternalVariables()) {
-			stCall.addAggr("params.{name}", variable.name);
-		}
-		if (iterator.getExternalVariables().length > 0) {
-			ST stParams = new ST(templateIteratorCallParams);
-			ST stParamsReturn = new ST(templateIteratorCallParamsReturn);
-			stParams.add("externalVariables", null);
-			stParamsReturn.add("externalVariables", null);
+		ST st = new ST(templateIteratorCall);
+		st.add("iteratorName", this.commonDefinitions.getIteratorName(iterator));
+		st.addAggr("params.{name}",
+				this.commonDefinitions.getRuntimePointerName());
+		st.addAggr("params.{name}",
+				this.commonDefinitions.getPointerName(iterator.variable));
+		if (iterator.getType() == IteratorType.Sequential) {
 			for (Variable variable : iterator.getExternalVariables()) {
-				// Only non-final variables must have an allocation
-				if (!variable.isFinal()) {
-					stParams.addAggr(
-							"externalVariables.{type, name, bufferId}",
-							variable.typeName,
-							this.getOutputBufferDataName(variable),
-							this.getOutputBufferIdName(variable));
-					stParamsReturn.addAggr(
-							"externalVariables.{name, bufferData}",
-							variable.name,
-							this.getOutputBufferDataName(variable));
-				}
-			}
-			ret.append(stParams.render());
-			ret.append(stCall.render() + ";");
-			if (iterator.getType() == IteratorType.Sequential) {
-				stParams = new ST(templateRunWait);
-				stParams.add("bufferId", this.getOutputBufferIdName(iterator
-						.getExternalVariables()[0]));
-				ret.append(stParams.render());
-				ret.append(stParamsReturn.render());
+				st.addAggr("params.{name}", variable.name + "[0]");
+				st.addAggr("params.{name}", variable.name);
 			}
 		} else {
-			ret.append(stCall.render() + ";");
+			for (Variable variable : iterator.getExternalVariables()) {
+				st.addAggr("params.{name}", variable.name);
+			}
 		}
-		return ret.toString();
+		return st.render();
 	}
 }

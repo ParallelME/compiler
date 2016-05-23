@@ -17,6 +17,7 @@ import org.parallelme.compiler.intermediate.Iterator.IteratorType;
 import org.parallelme.compiler.userlibrary.UserLibraryClass;
 import org.parallelme.compiler.userlibrary.UserLibraryClassFactory;
 import org.parallelme.compiler.userlibrary.classes.Array;
+import org.parallelme.compiler.userlibrary.classes.HDRImage;
 import org.stringtemplate.v4.ST;
 
 /**
@@ -25,6 +26,7 @@ import org.stringtemplate.v4.ST;
  * @author Wilson de Carvalho
  */
 public class RuntimeCommonDefinitions {
+	private static RuntimeCommonDefinitions instance = new RuntimeCommonDefinitions();
 	private final String templateMethodSignature = "<modifier> <returnType> <name>(<params:{var|<var.type> <var.name>}; separator=\", \">)";
 	private final String inSuffix = "In";
 	private final String outSuffix = "Out";
@@ -41,7 +43,11 @@ public class RuntimeCommonDefinitions {
 			+ " * Code created automatically by ParallelME compiler.\n"
 			+ " */\n";
 
-	public RuntimeCommonDefinitions() {
+	private RuntimeCommonDefinitions() {
+	}
+	
+	public static RuntimeCommonDefinitions getInstance() {
+		return instance;
 	}
 
 	public String getVariableInName(Variable variable) {
@@ -137,7 +143,15 @@ public class RuntimeCommonDefinitions {
 	 * Gets a pointer name for a given variable.
 	 */
 	public String getPointerName(Variable variable) {
-		return this.getPrefix() + variable.name + "Ptr";
+		return this.getPrefix() + variable.name + variable.sequentialNumber
+				+ "Ptr";
+	}
+
+	/**
+	 * Gets the runtime pointer name.
+	 */
+	public String getRuntimePointerName() {
+		return this.getPrefix() + "runtimePtr";
 	}
 
 	/**
@@ -219,9 +233,8 @@ public class RuntimeCommonDefinitions {
 	 * @throws CompilationException
 	 *             Exception thrown in case any of invalid parameter type.
 	 */
-	private String createJavaMethodSignature(String modifier,
-			String returnType, String name, Parameter[] parameters,
-			boolean asArrayVariables) {
+	public String createJavaMethodSignature(String modifier, String returnType,
+			String name, Parameter[] parameters, boolean asArrayVariables) {
 		ST st = new ST(templateMethodSignature);
 		st.add("modifier", modifier);
 		st.add("returnType", returnType);
@@ -255,32 +268,41 @@ public class RuntimeCommonDefinitions {
 	 */
 	public String createJavaMethodSignature(InputBind inputBind)
 			throws CompilationException {
+		return this.createJavaMethodSignature("public", "void",
+				this.getInputBindName(inputBind),
+				this.createJavaImplParameters(inputBind), false);
+	}
+
+	/**
+	 * Creates a Java default list of parameters for a given input bind to be
+	 * used for method declaration in Java implementation classes.
+	 */
+	public Parameter[] createJavaImplParameters(InputBind inputBind)
+			throws CompilationException {
+		Parameter[] parameters = inputBind.parameters;
 		if (inputBind.variable.typeName.equals(Array.getName())) {
-			Parameter[] foo = inputBind.parameters;
-			if (foo.length != 3)
+			if (inputBind.parameters.length != 3)
 				throw new CompilationException(
 						"Array constructor must have 3 arguments: primitive type array, NumericalData class and arrray length.");
 			// Second element (NumericalData class) in original parameters is
 			// not used
-			Parameter[] parameters = new Parameter[2];
-			parameters[0] = foo[0];
+			parameters = new Parameter[2];
+			parameters[0] = inputBind.parameters[0];
 			// Checks if the array length parameter is a expression. In case
 			// positive, temporarily translates it to a literal integer in order
 			// to create a valid signature.
-			Parameter arrayLength = foo[2];
-			if (arrayLength instanceof Expression) {
-				Literal literal = new Literal("0", "int");
-				parameters[1] = literal;
-			} else {
-				parameters[1] = foo[2];
-			}
-			return this.createJavaMethodSignature("public", "void",
-					this.getInputBindName(inputBind), parameters, false);
-		} else {
-			return this.createJavaMethodSignature("public", "void",
-					this.getInputBindName(inputBind), inputBind.parameters,
-					false);
+			parameters[1] = inputBind.parameters[2] instanceof Expression ? new Literal(
+					"1", "int") : inputBind.parameters[2];
+		} else if (inputBind.variable.typeName.equals(HDRImage.getName())) {
+			if (inputBind.parameters.length != 3)
+				throw new CompilationException(
+						"Array constructor must have 3 arguments: byte array, width and height.");
+			parameters = new Parameter[3];
+			parameters[0] = new Variable("data", "byte[]", "", "", -1);
+			parameters[1] = new Variable("width", "int", "", "", -1);
+			parameters[2] = new Variable("height", "int", "", "", -1);
 		}
+		return parameters;
 	}
 
 	/**

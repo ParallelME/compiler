@@ -41,16 +41,19 @@ public interface RuntimeDefinition {
 	/**
 	 * Get the initialization string for this runtime.
 	 * 
-	 * @param packageName
-	 *            Current package name.
 	 * @param className
 	 *            Current class name.
+	 * @param iteratorsAndBinds
+	 *            Container with iterators and binds.
+	 * @param methodCalls
+	 *            List of method calls to user library objects.
 	 * 
 	 * @return List with initialization string (each line of the initialization
 	 *         string is an element on the list).
 	 */
-	public List<String> getInitializationString(String packageName,
-			String className) throws CompilationException;
+	public List<String> getInitializationString(String className,
+			IteratorsAndBinds iteratorsAndBinds,
+			List<MethodCall> methodCalls) throws CompilationException;
 
 	/**
 	 * Translates a given method call to a runtime-variable equivalent

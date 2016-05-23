@@ -16,22 +16,22 @@ import android.graphics.Bitmap;
  * can be used in multiple calls to the low-level runtime without
  * recreating objects.
  *
- * @author Wilson de Carvalho, Pedro Caldeira
+ * @author Pedro Caldeira, Wilson de Carvalho
  */
-public final class ParallelMERuntimeJNIWrapper implements ParallelMERuntimeDefinition {
-	private static final ParallelMERuntimeJNIWrapper instance = new ParallelMERuntimeJNIWrapper();
+public final class ParallelMERuntime {
+	private static final ParallelMERuntime instance = new ParallelMERuntime();
 	public final long runtimePointer = init();
 
-	public static ParallelMERuntimeJNIWrapper getInstance() {
+	public static ParallelMERuntime getInstance() {
 		return this.instance;
 	}
 
 	private native long init();
 	private native void cleanUp(long runtimePointer);
-    private native void createHDRImage(long runtimePointer, byte[] data, int width, int height);
-    private native void toBitmap(long runtimePointer, Bitmap bitmap);
-    private native int getHeight(long runtimePointer);
-    private native int getWidth(long runtimePointer);
+    private native long createHDRImage(long runtimePointer, byte[] data, int width, int height);
+    private native void toBitmapHDRImage(long runtimePointer, long imagePointer, Bitmap bitmap);
+    private native int getHeight(long imagePointer);
+    private native int getWidth(long imagePointer);
 	
 	@Override
 	protected void finalize throws Throwable {
@@ -43,19 +43,19 @@ public final class ParallelMERuntimeJNIWrapper implements ParallelMERuntimeDefin
 		System.loadLibrary("ParallelME");
 	}
 
-	public void createHDRImage(RGBE.ResourceData imageResourceData) {
-		createHDRImage(runtimePointer, imageResourceData.data, imageResourceData.width, imageResourceData.height);
+	public int createHDRImage(byte[] data, int width, int heigth) {
+		return createHDRImage(runtimePointer, data, width, height);
 	}
 
-	public void toBitmap(Bitmap bitmap) {
-		toBitmap(runtimePointer, bitmap);
+	public void toBitmapHDRImage(long imagePointer, Bitmap bitmap) {
+		toBitmapHDRImage(runtimePointer, imagePointer, bitmap);
 	}
 
-	public int getHeight() {
-		getHeight(runtimePointer);
+	public int getHeight(long imagePointer) {
+		return getHeight(imagePointer);
 	}
 
-	public int getWidth() {
-		getWidth(runtimePointer);
+	public int getWidth(long imagePointer) {
+		return getWidth(imagePointer);
 	}
 }

@@ -12,9 +12,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.parallelme.compiler.intermediate.InputBind;
-import org.parallelme.compiler.intermediate.Variable;
+import org.parallelme.compiler.intermediate.MethodCall;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.translation.userlibrary.HDRImageTranslator;
+import org.parallelme.compiler.userlibrary.classes.HDRImage;
 import org.stringtemplate.v4.ST;
 
 /**
@@ -25,16 +26,16 @@ import org.stringtemplate.v4.ST;
 public class RSHDRImageTranslator extends RSImageTranslator implements
 		HDRImageTranslator {
 	private static final String templateInputBindObjCreation = "Type <dataTypeInputObject> = new Type.Builder($mRS, Element.RGBA_8888($mRS))\n"
-			+ "\t.setX(<resourceData>.width)\n"
-			+ "\t.setY(<resourceData>.height)\n"
+			+ "\t.setX(width)\n"
+			+ "\t.setY(height)\n"
 			+ "\t.create();\n"
 			+ "Type <dataTypeOutputObject> = new Type.Builder($mRS, Element.F32_4($mRS))\n"
-			+ "\t.setX(<resourceData>.width)\n"
-			+ "\t.setY(<resourceData>.height)\n"
+			+ "\t.setX(width)\n"
+			+ "\t.setY(height)\n"
 			+ "\t.create();\n"
 			+ "<inputObject> = Allocation.createTyped($mRS, <dataTypeInputObject>, Allocation.MipmapControl.MIPMAP_NONE, Allocation.USAGE_SCRIPT);\n"
 			+ "<outputObject> = Allocation.createTyped($mRS, <dataTypeOutputObject>);\n"
-			+ "<inputObject>.copyFrom(<resourceData>.data);\n"
+			+ "<inputObject>.copyFrom(data);\n"
 			+ "<kernelName>.forEach_toFloat<classType>(<inputObject>, <outputObject>);";
 	private static final String templateInputBind = "\nfloat4 __attribute__((kernel)) toFloat<classType>(uchar4 $in, uint32_t x, uint32_t y) {"
 			+ "\n\tfloat4 $out;"
@@ -46,10 +47,7 @@ public class RSHDRImageTranslator extends RSImageTranslator implements
 			+ "\n\t} else {"
 			+ "\n\t\t$out.s0 = 0.0f;"
 			+ "\n\t\t$out.s1 = 0.0f;"
-			+ "\n\t\t$out.s2 = 0.0f;"
-			+ "\n\t}"
-			+ "\n\treturn $out;"
-			+ "\n}";
+			+ "\n\t\t$out.s2 = 0.0f;" + "\n\t}" + "\n\treturn $out;" + "\n}";
 
 	public RSHDRImageTranslator(CTranslator cCodeTranslator) {
 		super(cCodeTranslator);
@@ -69,14 +67,6 @@ public class RSHDRImageTranslator extends RSImageTranslator implements
 	 * {@inheritDoc}
 	 */
 	@Override
-	public String translateInputBindCall(String className, InputBind inputBind) {
-		return "";
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
 	public String translateInputBindObjCreation(String className,
 			InputBind inputBind) {
 		String inputObject = this.commonDefinitions
@@ -88,17 +78,6 @@ public class RSHDRImageTranslator extends RSImageTranslator implements
 		String dataTypeOutputObject = this.commonDefinitions.getPrefix()
 				+ inputBind.variable + "OutDataType";
 		ST st = new ST(templateInputBindObjCreation);
-		if (inputBind.parameters.length != 1
-				|| !(inputBind.parameters[0] instanceof Variable)) {
-			// TODO Throw exception here, once HDR must have 1 parameter
-		}
-		Variable variableParam = (Variable) inputBind.parameters[0];
-		if (!variableParam.typeName.equals("RGBE.ResourceData")
-				|| !variableParam.typeName.equals("ResourceData")) {
-			// TODO Throw exception here, once parameter must be of type
-			// ResourceData
-		}
-		st.add("resourceData", variableParam.name);
 		st.add("params", this.commonDefinitions
 				.toCommaSeparatedString(inputBind.parameters));
 		st.add("dataTypeInputObject", dataTypeInputObject);
@@ -117,7 +96,6 @@ public class RSHDRImageTranslator extends RSImageTranslator implements
 	public List<String> getJavaInterfaceImports() {
 		ArrayList<String> ret = new ArrayList<>();
 		ret.add("android.graphics.Bitmap");
-		ret.add("org.parallelme.userlibrary.image.RGBE");
 		return ret;
 	}
 
@@ -128,7 +106,28 @@ public class RSHDRImageTranslator extends RSImageTranslator implements
 	public List<String> getJavaClassImports() {
 		ArrayList<String> ret = (ArrayList<String>) this
 				.getJavaInterfaceImports();
-		ret.add("org.parallelme.userlibrary.image.RGBE");
+		return ret;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public String translateMethodCall(String className, MethodCall methodCall) {
+		// TODO Throw an exception whenever a non supported method is provided.
+		String ret = "return ";
+		if (methodCall.variable.typeName.equals(HDRImage.getName())) {
+			if (methodCall.methodName.equals(HDRImage.getInstance()
+					.getHeightMethodName())) {
+				ret += this.commonDefinitions
+						.getVariableInName(methodCall.variable)
+						+ ".getType().getY();";
+			} else if (methodCall.methodName.equals(HDRImage.getInstance()
+					.getWidthMethodName())) {
+				ret += this.commonDefinitions
+						.getVariableInName(methodCall.variable)
+						+ ".getType().getX();";
+			}
+		}
 		return ret;
 	}
 }

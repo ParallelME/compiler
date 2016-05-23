@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.parallelme.compiler.intermediate.InputBind;
-import org.parallelme.compiler.intermediate.MethodCall;
 import org.parallelme.compiler.intermediate.OutputBind;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.translation.userlibrary.HDRImageTranslator;
@@ -25,15 +24,35 @@ import org.stringtemplate.v4.ST;
  */
 public class PMHDRImageTranslator extends PMImageTranslator implements
 		HDRImageTranslator {
-	private static final String templateCreateJavaAllocation = "RGBE.ResourceData <resourceData> = RGBE.loadFromResource(<params>);\n"
-			+ "\t<worksize> = <resourceData>.width * <resourceData>.height;\n"
-			+ "\t<inputBufferId> = ParallelMERuntimeJNIWrapper().getInstance().createAllocation(<resourceData>.data, 4 * <worksize>);\n"
-			+ "\t<outputDataBuffer> = new float[<worksize>];\n"
-			+ "\t<outputBufferId> = ParallelMERuntimeJNIWrapper().getInstance().createAllocation(<outputDataBuffer>, <worksize>);\n"
-			+ "\tParallelMERuntimeJNIWrapper().getInstance().toFloat(<inputBufferId>, <outputBufferId>, <worksize>);\n";
-	private static final String templateCreateAllocation = "int <worksize>, <inputBufferId>, <outputBufferId>;\n"
-			+ "\tfloat[] <outputDataBuffer>;";
-
+	private static final String templateInputBindCreation = "<imagePointer> = ParallelMERuntime().getInstance().createHDRImage(data, width, height);";
+	private static final String templateToBitmap = "ParallelMERuntime().getInstance().toBitmapHDRImage(<imagePointer>, bitmap);";
+	private static final String templateKernelToFloat = "__kernel void toFloat(__global uchar4 *$dataIn, __global float4 *$dataOut) {\n"
+			+ "\tint $gid = get_global_id(0);\n"
+			+ "\tuchar4 $in = $dataIn[$gid];\n"
+			+ "\tfloat4 $out;\n"
+			+ "\tfloat $f;\n"
+			+ "\tif($in.s3 != 0) {\n"
+			+ "\t\t$f = ldexp(1.0f, ($in.s3 & 0xFF) - (128 + 8));\n"
+			+ "\t\t$out.s0 = ($in.s0 & 0xFF) * $f;\n"
+			+ "\t\t$out.s1 = ($in.s1 & 0xFF) * $f;\n"
+			+ "\t\t$out.s2 = ($in.s2 & 0xFF) * $f;\n"
+			+ "\t} else {\n"
+			+ "\t\t$out.s0 = 0.0f;\n"
+			+ "\t\t$out.s1 = 0.0f;\n"
+			+ "\t\t$out.s2 = 0.0f;\n"
+			+ "\t}\n"
+			+ "\t$dataOut[$gid] = $out;\n"
+			+ "}\n";
+	private static final String templateKernelToBitmap = "__kernel void toBitmapHDRImage(__global float4 *$dataIn, __global uchar4 *$dataOut) {\n"
+			+ "\tint $gid = get_global_id(0);\n"
+			+ "\tfloat4 $in = $dataIn[$gid];\n"
+			+ "\tuchar4 $out;\n"
+			+ "\t$out.x = (uchar) (255.0f * $in.s0);\n"
+			+ "\t$out.y = (uchar) (255.0f * $in.s1);\n"
+			+ "\t$out.z = (uchar) (255.0f * $in.s2);\n"
+			+ "\t$out.w = 255;\n"
+			+ "\t$dataOut[$gid] = $out;\n" + "}\n";
+	
 	public PMHDRImageTranslator(CTranslator cCodeTranslator) {
 		super(cCodeTranslator);
 	}
@@ -50,28 +69,11 @@ public class PMHDRImageTranslator extends PMImageTranslator implements
 	 * {@inheritDoc}
 	 */
 	@Override
-	public String translateInputBindCall(String className, InputBind inputBind) {
-		// TODO Auto-generated method stub
-		return "";
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
 	public String translateInputBindObjCreation(String className,
 			InputBind inputBind) {
-		String resourceData = this.commonDefinitions.getPrefix()
-				+ inputBind.variable + "Buffer";
-		ST st = new ST(templateCreateJavaAllocation);
-		st.add("resourceData", resourceData);
-		st.add("params", this.commonDefinitions
-				.toCommaSeparatedString(inputBind.parameters));
-		st.add("worksize", this.getWorksizeName(inputBind.variable));
-		st.add("inputBufferId", this.getInputBufferIdName(inputBind.variable));
-		st.add("outputBufferId", this.getOutputBufferIdName(inputBind.variable));
-		st.add("outputDataBuffer",
-				this.getOutputBufferDataName(inputBind.variable));
+		ST st = new ST(templateInputBindCreation);
+		st.add("imagePointer",
+				this.commonDefinitions.getPointerName(inputBind.variable));
 		return st.render();
 	}
 
@@ -80,15 +82,7 @@ public class PMHDRImageTranslator extends PMImageTranslator implements
 	 */
 	@Override
 	public String translateInputBindObjDeclaration(InputBind inputBind) {
-		StringBuilder ret = new StringBuilder();
-		ST st = new ST(templateCreateAllocation);
-		st.add("worksize", this.getWorksizeName(inputBind.variable));
-		st.add("inputBufferId", this.getInputBufferIdName(inputBind.variable));
-		st.add("outputBufferId", this.getOutputBufferIdName(inputBind.variable));
-		st.add("outputDataBuffer",
-				this.getOutputBufferDataName(inputBind.variable));
-		ret.append(st.render());
-		return ret.toString();
+		return "";
 	}
 
 	/**
@@ -102,8 +96,13 @@ public class PMHDRImageTranslator extends PMImageTranslator implements
 	/**
 	 * {@inheritDoc}
 	 */
-	public String translateMethodCall(String className, MethodCall methodCall) {
-		return "";
+	@Override
+	public String translateOutputBindCall(String className,
+			OutputBind outputBind) {
+		ST st = new ST(templateToBitmap);
+		st.add("imagePointer",
+				this.commonDefinitions.getPointerName(outputBind.variable));
+		return st.render();
 	}
 
 	/**
@@ -113,7 +112,6 @@ public class PMHDRImageTranslator extends PMImageTranslator implements
 	public List<String> getJavaInterfaceImports() {
 		ArrayList<String> ret = new ArrayList<>();
 		ret.add("android.graphics.Bitmap");
-		ret.add("org.parallelme.userlibrary.image.RGBE");
 		return ret;
 	}
 
@@ -124,7 +122,6 @@ public class PMHDRImageTranslator extends PMImageTranslator implements
 	public List<String> getJavaClassImports() {
 		ArrayList<String> ret = (ArrayList<String>) this
 				.getJavaInterfaceImports();
-		ret.add("org.parallelme.userlibrary.image.RGBE");
 		return ret;
 	}
 }

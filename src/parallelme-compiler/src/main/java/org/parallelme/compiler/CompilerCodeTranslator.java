@@ -41,17 +41,16 @@ import org.stringtemplate.v4.ST;
  */
 public class CompilerCodeTranslator {
 	private final String outputDestinationFolder;
-	private final RuntimeCommonDefinitions commonDefinitions;
 	private final RuntimeDefinition rsRuntime;
 	private final RuntimeDefinition pmRuntime;
-	private final String templateJavaInterface = "<introductoryMsg>\n"
+	private final static String templateJavaInterface = "<introductoryMsg>\n"
 			+ "package <packageName>;\n\n"
 			+ "<imports:{var|import <var.statement>;\n}>\n"
 			+ "public interface <interfaceName> {\n"
 			+ "\tpublic boolean isValid();\n\n"
 			+ "\t<methods:{var|<var.signature>;}; separator=\"\\n\\n\">"
 			+ "\n}\n";
-	private final String templateJavaClass = "<introductoryMsg>\n"
+	private final static String templateJavaClass = "<introductoryMsg>\n"
 			+ "package <packageName>;\n\n"
 			+ "<imports:{var|import <var.statement>;\n}>\n"
 			+ "public class <className> implements <interfaceName> {\n"
@@ -71,7 +70,6 @@ public class CompilerCodeTranslator {
 	public CompilerCodeTranslator(String outputDestinationFolder,
 			CTranslator cTranslator) {
 		this.outputDestinationFolder = outputDestinationFolder;
-		this.commonDefinitions = new RuntimeCommonDefinitions();
 		this.rsRuntime = new RenderScriptRuntimeDefinition(cTranslator,
 				outputDestinationFolder);
 		this.pmRuntime = new ParallelMERuntimeDefinition(cTranslator,
@@ -102,7 +100,7 @@ public class CompilerCodeTranslator {
 					ClassSymbol.class).get(0);
 			IteratorsAndBinds iteratorsAndBinds = this.getIteratorsAndBinds(
 					listener.getIteratorsAndBinds(), classSymbol);
-			Collection<MethodCall> methodCalls = listener.getMethodCalls();
+			List<MethodCall> methodCalls = listener.getMethodCalls();
 			String className = classSymbol.name;
 			// 2. Creates the java interface that will be used to implement each
 			// runtime code.
@@ -112,9 +110,8 @@ public class CompilerCodeTranslator {
 			this.runtimeSpecificTranslation(packageName, className,
 					iteratorsAndBinds, methodCalls, this.rsRuntime);
 			// 4. Translate code to ParallelME runtime
-			// this.runtimeSpecificTranslation(packageName, className,
-			// iteratorsAndOutputBinds.left, inputBinds,
-			// iteratorsAndOutputBinds.right, methodCalls, this.pmRuntime);
+			this.runtimeSpecificTranslation(packageName, className,
+					iteratorsAndBinds, methodCalls, this.pmRuntime);
 			// 5. Translate the user code, calling the runtime wrapper
 			this.translateUserCode(packageName, className, classSymbol,
 					iteratorsAndBinds, methodCalls, listener.getImportTokens(),
@@ -134,12 +131,12 @@ public class CompilerCodeTranslator {
 	 * @param iteratorsAndBinds
 	 *            Container with iterators and binds.
 	 * @param methodCalls
-	 *            Set of method calls that must be replaced.
+	 *            List of method calls that must be replaced.
 	 * @throws CompilationException
 	 */
 	private void runtimeSpecificTranslation(String packageName,
 			String className, IteratorsAndBinds iteratorsAndBinds,
-			Collection<MethodCall> methodCalls, RuntimeDefinition targetRuntime)
+			List<MethodCall> methodCalls, RuntimeDefinition targetRuntime)
 			throws CompilationException {
 		// 1. Creates Java wrapper implementation for interface created
 		this.createJavaWrapperImplementation(packageName, className,
@@ -169,75 +166,79 @@ public class CompilerCodeTranslator {
 	 * @param iteratorsAndBinds
 	 *            Container with iterators and binds.
 	 * @param methodCalls
-	 *            Set of method calls that must be replaced.
+	 *            List of method calls that must be replaced.
 	 * @throws CompilationException
 	 */
 	private void createJavaWrapperInterface(String packageName,
 			String className, IteratorsAndBinds iteratorsAndBinds,
-			Collection<MethodCall> methodCalls) throws CompilationException {
-		String interfaceName = this.commonDefinitions
+			List<MethodCall> methodCalls) throws CompilationException {
+		String interfaceName = RuntimeCommonDefinitions.getInstance()
 				.getJavaWrapperInterfaceName(className);
 		ST st = new ST(templateJavaInterface);
-		st.add("introductoryMsg", this.commonDefinitions.getHeaderComment());
+		st.add("introductoryMsg", RuntimeCommonDefinitions.getInstance()
+				.getHeaderComment());
 		st.add("packageName", packageName);
 		st.add("interfaceName", interfaceName);
 		Set<String> userLibraryClasses = new HashSet<String>();
 		for (InputBind inputBind : iteratorsAndBinds.inputBinds) {
-			st.addAggr("methods.{signature}",
-					this.commonDefinitions.createJavaMethodSignature(inputBind));
+			st.addAggr("methods.{signature}", RuntimeCommonDefinitions
+					.getInstance().createJavaMethodSignature(inputBind));
 			userLibraryClasses.add(inputBind.variable.typeName);
 		}
 		for (Iterator iterator : iteratorsAndBinds.iterators) {
-			st.addAggr("methods.{signature}",
-					this.commonDefinitions.createJavaMethodSignature(iterator));
+			st.addAggr("methods.{signature}", RuntimeCommonDefinitions
+					.getInstance().createJavaMethodSignature(iterator));
 			userLibraryClasses.add(iterator.variable.typeName);
 		}
 		for (OutputBind outputBind : iteratorsAndBinds.outputBinds) {
-			st.addAggr("methods.{signature}", this.commonDefinitions
-					.createJavaMethodSignature(outputBind));
+			st.addAggr("methods.{signature}", RuntimeCommonDefinitions
+					.getInstance().createJavaMethodSignature(outputBind));
 			userLibraryClasses.add(outputBind.variable.typeName);
 		}
 		for (MethodCall methodCall : methodCalls) {
-			st.addAggr("methods.{signature}", this.commonDefinitions
-					.createJavaMethodSignature(methodCall));
+			st.addAggr("methods.{signature}", RuntimeCommonDefinitions
+					.getInstance().createJavaMethodSignature(methodCall));
 			userLibraryClasses.add(methodCall.variable.typeName);
 		}
-		this.addImportStatements(userLibraryClasses, st, true);
-		FileWriter.writeFile(interfaceName + ".java", this.commonDefinitions
-				.getJavaDestinationFolder(this.outputDestinationFolder,
-						packageName), st.render());
+		Set<String> imports = this.getImports(userLibraryClasses,
+				this.rsRuntime, true);
+		imports.addAll(this
+				.getImports(userLibraryClasses, this.pmRuntime, true));
+		this.addImportStatements(imports, st);
+		FileWriter.writeFile(
+				interfaceName + ".java",
+				RuntimeCommonDefinitions.getInstance()
+						.getJavaDestinationFolder(this.outputDestinationFolder,
+								packageName), st.render());
 	}
 
 	/**
-	 * Add sorted import statements in Java code based on the informed user
-	 * library classes.
+	 * Get import statements from a given set of user library classes to be
+	 * added in Java code.
 	 * 
 	 * @param userLibraryClasses
 	 *            Set of user library classes.
-	 * @param st
-	 *            String template that will be used (must be able to used
-	 *            addAggr method with "imports.{statement}" variable).
+	 * @param targetRuntime
+	 *            A target runtime to get imports.
+	 * @param isInterface
+	 *            Specifies if imports will be inserted in an interface (true)
+	 *            or a class (false).
 	 */
-	private void addImportStatements(Set<String> userLibraryClasses, ST st,
-			boolean isInterface) throws CompilationException {
+	private Set<String> getImports(Set<String> userLibraryClasses,
+			RuntimeDefinition targetRuntime, boolean isInterface)
+			throws CompilationException {
 		// Using a TreeSet here in order to keep imports sorted
 		TreeSet<String> importStatements = new TreeSet<>();
 		for (String userLibraryClass : userLibraryClasses) {
-			// Add imports from both runtimes ir order to make sure all
-			// necessary imports are inserted
 			if (isInterface) {
-				importStatements.addAll(this.rsRuntime.getTranslator(
+				importStatements.addAll(targetRuntime.getTranslator(
 						userLibraryClass).getJavaInterfaceImports());
-				// importStatements.addAll(this.pmRuntime.getTranslator(
-				// userLibraryClass).getJavaInterfaceImports());
 			} else {
-				importStatements.addAll(this.rsRuntime.getTranslator(
+				importStatements.addAll(targetRuntime.getTranslator(
 						userLibraryClass).getJavaClassImports());
-				// importStatements.addAll(this.pmRuntime.getTranslator(
-				// userLibraryClass).getJavaClassImports());
 			}
 		}
-		this.addImportStatements(importStatements, st);
+		return importStatements;
 	}
 
 	/**
@@ -276,14 +277,16 @@ public class CompilerCodeTranslator {
 	 */
 	private void createJavaWrapperImplementation(String packageName,
 			String className, IteratorsAndBinds iteratorsAndBinds,
-			Collection<MethodCall> methodCalls, RuntimeDefinition targetRuntime)
+			List<MethodCall> methodCalls, RuntimeDefinition targetRuntime)
 			throws CompilationException {
-		String interfaceName = this.commonDefinitions
+		String interfaceName = RuntimeCommonDefinitions.getInstance()
 				.getJavaWrapperInterfaceName(className);
-		String javaClassName = this.commonDefinitions.getJavaWrapperClassName(
-				className, targetRuntime.getTargetRuntime());
+		String javaClassName = RuntimeCommonDefinitions.getInstance()
+				.getJavaWrapperClassName(className,
+						targetRuntime.getTargetRuntime());
 		ST st = new ST(templateJavaClass);
-		st.add("introductoryMsg", this.commonDefinitions.getHeaderComment());
+		st.add("introductoryMsg", RuntimeCommonDefinitions.getInstance()
+				.getHeaderComment());
 		st.add("packageName", packageName);
 		st.add("interfaceName", interfaceName);
 		st.add("className", javaClassName);
@@ -292,12 +295,9 @@ public class CompilerCodeTranslator {
 		for (InputBind inputBind : iteratorsAndBinds.inputBinds) {
 			UserLibraryTranslatorDefinition translator = targetRuntime
 					.getTranslator(inputBind.variable.typeName);
-			st.addAggr(
-					"classDeclarations.{line}",
-					"private "
-							+ translator
-									.translateInputBindObjDeclaration(inputBind));
-			String methodSignature = this.commonDefinitions
+			st.addAggr("classDeclarations.{line}",
+					translator.translateInputBindObjDeclaration(inputBind));
+			String methodSignature = RuntimeCommonDefinitions.getInstance()
 					.createJavaMethodSignature(inputBind);
 			String body = translator.translateInputBindObjCreation(
 					javaClassName, inputBind);
@@ -307,12 +307,12 @@ public class CompilerCodeTranslator {
 		for (String line : targetRuntime.getIsValidBody()) {
 			st.add("isValidBody", line);
 		}
-		for (String line : targetRuntime.getInitializationString(packageName,
-				className)) {
+		for (String line : targetRuntime.getInitializationString(className,
+				iteratorsAndBinds, methodCalls)) {
 			st.addAggr("classDeclarations.{line}", line);
 		}
 		for (Iterator iterator : iteratorsAndBinds.iterators) {
-			String methodSignature = this.commonDefinitions
+			String methodSignature = RuntimeCommonDefinitions.getInstance()
 					.createJavaMethodSignature(iterator);
 			String body = targetRuntime.getTranslator(
 					iterator.variable.typeName).translateIteratorCall(
@@ -321,7 +321,7 @@ public class CompilerCodeTranslator {
 			userLibraryClasses.add(iterator.variable.typeName);
 		}
 		for (OutputBind outputBind : iteratorsAndBinds.outputBinds) {
-			String methodSignature = this.commonDefinitions
+			String methodSignature = RuntimeCommonDefinitions.getInstance()
 					.createJavaMethodSignature(outputBind);
 			String body = targetRuntime.getTranslator(
 					outputBind.variable.typeName).translateOutputBindCall(
@@ -330,7 +330,7 @@ public class CompilerCodeTranslator {
 			userLibraryClasses.add(outputBind.variable.typeName);
 		}
 		for (MethodCall methodCall : methodCalls) {
-			String methodSignature = this.commonDefinitions
+			String methodSignature = RuntimeCommonDefinitions.getInstance()
 					.createJavaMethodSignature(methodCall);
 			String body = targetRuntime.getTranslator(
 					methodCall.variable.typeName).translateMethodCall(
@@ -338,12 +338,15 @@ public class CompilerCodeTranslator {
 			st.addAggr("methods.{signature, body}", methodSignature, body);
 			userLibraryClasses.add(methodCall.variable.typeName);
 		}
-		this.addImportStatements(userLibraryClasses, st, false);
+		this.addImportStatements(
+				this.getImports(userLibraryClasses, targetRuntime, false), st);
 		this.addImportStatements(targetRuntime.getImports(), st);
 
-		FileWriter.writeFile(javaClassName + ".java", this.commonDefinitions
-				.getJavaDestinationFolder(this.outputDestinationFolder,
-						packageName), st.render());
+		FileWriter.writeFile(
+				javaClassName + ".java",
+				RuntimeCommonDefinitions.getInstance()
+						.getJavaDestinationFolder(this.outputDestinationFolder,
+								packageName), st.render());
 	}
 
 	/**
@@ -369,7 +372,8 @@ public class CompilerCodeTranslator {
 			ClassSymbol classSymbol, IteratorsAndBinds iteratorsAndBinds,
 			Collection<MethodCall> methodCalls,
 			Collection<TokenAddress> importTokens,
-			TokenStreamRewriter tokenStreamRewriter) throws CompilationException {
+			TokenStreamRewriter tokenStreamRewriter)
+			throws CompilationException {
 		// Must find a better way to remove imports removing only those unused
 		// imports, once some user library imports may still be in use.
 		// this.removeUserLibraryImports(tokenStreamRewriter, importTokens);
@@ -382,9 +386,11 @@ public class CompilerCodeTranslator {
 		this.translateOutputBinds(tokenStreamRewriter,
 				iteratorsAndBinds.outputBinds);
 		this.translateMethodCalls(tokenStreamRewriter, methodCalls);
-		FileWriter.writeFile(className + ".java", this.commonDefinitions
-				.getJavaDestinationFolder(this.outputDestinationFolder,
-						packageName), tokenStreamRewriter.getText());
+		FileWriter.writeFile(
+				className + ".java",
+				RuntimeCommonDefinitions.getInstance()
+						.getJavaDestinationFolder(this.outputDestinationFolder,
+								packageName), tokenStreamRewriter.getText());
 	}
 
 	/**
@@ -394,14 +400,15 @@ public class CompilerCodeTranslator {
 	 *            Current class' symbol.
 	 * @param tokenStreamRewriter
 	 *            Token stream that will be used to rewrite user code.
-	 * @throws CompilationException 
+	 * @throws CompilationException
 	 */
 	private void insertRenderScriptImports(ClassSymbol classSymbol,
-			TokenStreamRewriter tokenStreamRewriter) throws CompilationException {
+			TokenStreamRewriter tokenStreamRewriter)
+			throws CompilationException {
 		ST st = new ST("<imports:{var|import <var.statement>;\n}>\n)");
 		this.addImportStatements(this.rsRuntime.getImports(), st);
 		tokenStreamRewriter.insertBefore(classSymbol.tokenAddress.start,
-				st.render());		
+				st.render());
 	}
 
 	/**
@@ -418,7 +425,7 @@ public class CompilerCodeTranslator {
 	 */
 	private void createRuntimeInstance(ClassSymbol classSymbol,
 			TokenStreamRewriter tokenStreamRewriter, String className) {
-		String interfaceName = this.commonDefinitions
+		String interfaceName = RuntimeCommonDefinitions.getInstance()
 				.getJavaWrapperInterfaceName(className);
 		String templateInitialization = "\n\n\tprivate <interfaceName> <objectName>;\n\n"
 				+ "\tpublic <className>(RenderScript $mRS) {\n"
@@ -428,11 +435,12 @@ public class CompilerCodeTranslator {
 				+ "\t}\n";
 		ST st = new ST(templateInitialization);
 		st.add("interfaceName", interfaceName);
-		st.add("objectName", this.commonDefinitions.getParallelMEObjectName());
+		st.add("objectName", RuntimeCommonDefinitions.getInstance()
+				.getParallelMEObjectName());
 		st.add("className", className);
-		st.add("openCLClassName", this.commonDefinitions
+		st.add("openCLClassName", RuntimeCommonDefinitions.getInstance()
 				.getJavaWrapperClassName(className, TargetRuntime.ParallelME));
-		st.add("renderScriptClassName", this.commonDefinitions
+		st.add("renderScriptClassName", RuntimeCommonDefinitions.getInstance()
 				.getJavaWrapperClassName(className, TargetRuntime.RenderScript));
 		tokenStreamRewriter.insertAfter(classSymbol.bodyAddress.start,
 				st.render());
@@ -452,12 +460,13 @@ public class CompilerCodeTranslator {
 	 */
 	private void translateInputBinds(TokenStreamRewriter tokenStreamRewriter,
 			String className, List<InputBind> inputBinds) {
-		String objectName = this.commonDefinitions.getParallelMEObjectName();
+		String objectName = RuntimeCommonDefinitions.getInstance()
+				.getParallelMEObjectName();
 		for (InputBind inputBind : inputBinds) {
 			String translatedStatement = String.format("%s.%s(%s);",
-					objectName, this.commonDefinitions
+					objectName, RuntimeCommonDefinitions.getInstance()
 							.getInputBindName(inputBind),
-					this.commonDefinitions
+					RuntimeCommonDefinitions.getInstance()
 							.toCommaSeparatedString(inputBind.parameters));
 			tokenStreamRewriter.replace(
 					inputBind.creationStatementAddress.start,
@@ -477,7 +486,8 @@ public class CompilerCodeTranslator {
 	 */
 	private void translateIterators(TokenStreamRewriter tokenStreamRewriter,
 			List<Iterator> iterators) {
-		String objectName = this.commonDefinitions.getParallelMEObjectName();
+		String objectName = RuntimeCommonDefinitions.getInstance()
+				.getParallelMEObjectName();
 		for (Iterator iterator : iterators) {
 			String translatedStatement;
 			// Sequential iterators must create arrays to store variables
@@ -488,12 +498,12 @@ public class CompilerCodeTranslator {
 						+ "\n<recoverParams:{var|<var.varName> = <var.arrName>[0];}>";
 				ST st = new ST(templateSequentialIterator);
 				st.add("paralleMEObject", objectName);
-				st.add("iteratorName",
-						this.commonDefinitions.getIteratorName(iterator));
+				st.add("iteratorName", RuntimeCommonDefinitions.getInstance()
+						.getIteratorName(iterator));
 				for (Variable variable : iterator.getExternalVariables()) {
 					if (!variable.isFinal()) {
-						String arrName = this.commonDefinitions.getPrefix()
-								+ variable.name;
+						String arrName = RuntimeCommonDefinitions.getInstance()
+								.getPrefix() + variable.name;
 						st.addAggr("declParams.{type, arrName, varName}",
 								variable.typeName, arrName, variable.name);
 						st.addAggr("recoverParams.{arrName, varName}", arrName,
@@ -505,10 +515,14 @@ public class CompilerCodeTranslator {
 				}
 				translatedStatement = st.render();
 			} else {
-				translatedStatement = String.format("%s.%s(%s);", objectName,
-						this.commonDefinitions.getIteratorName(iterator),
-						this.commonDefinitions.toCommaSeparatedString(iterator
-								.getExternalVariables()));
+				translatedStatement = String.format(
+						"%s.%s(%s);",
+						objectName,
+						RuntimeCommonDefinitions.getInstance().getIteratorName(
+								iterator),
+						RuntimeCommonDefinitions.getInstance()
+								.toCommaSeparatedString(
+										iterator.getExternalVariables()));
 			}
 			tokenStreamRewriter.replace(iterator.statementAddress.start,
 					iterator.statementAddress.stop, translatedStatement);
@@ -526,18 +540,21 @@ public class CompilerCodeTranslator {
 	 */
 	private void translateOutputBinds(TokenStreamRewriter tokenStreamRewriter,
 			List<OutputBind> outputBinds) {
-		String objectName = this.commonDefinitions.getParallelMEObjectName();
+		String objectName = RuntimeCommonDefinitions.getInstance()
+				.getParallelMEObjectName();
 		for (OutputBind outputBind : outputBinds) {
 			String translatedStatement;
 			if (outputBind.outputBindType == OutputBindType.DeclarativeAssignment) {
 				translatedStatement = String.format("%s %s;\n%s.%s(%s);",
 						outputBind.destinationObject.typeName,
 						outputBind.destinationObject.name, objectName,
-						this.commonDefinitions.getOutputBindName(outputBind),
+						RuntimeCommonDefinitions.getInstance()
+								.getOutputBindName(outputBind),
 						outputBind.destinationObject.name);
 			} else {
 				translatedStatement = String.format("%s.%s(%s);", objectName,
-						this.commonDefinitions.getOutputBindName(outputBind),
+						RuntimeCommonDefinitions.getInstance()
+								.getOutputBindName(outputBind),
 						outputBind.destinationObject.name);
 			}
 			tokenStreamRewriter.replace(outputBind.statementAddress.start,
@@ -555,10 +572,14 @@ public class CompilerCodeTranslator {
 	 */
 	private void translateMethodCalls(TokenStreamRewriter tokenStreamRewriter,
 			Collection<MethodCall> methodCalls) {
-		String objectName = this.commonDefinitions.getParallelMEObjectName();
+		String objectName = RuntimeCommonDefinitions.getInstance()
+				.getParallelMEObjectName();
 		for (MethodCall methodCall : methodCalls) {
-			String translatedStatement = String.format("%s.%s()", objectName,
-					this.commonDefinitions.getMethodCallName(methodCall));
+			String translatedStatement = String.format(
+					"%s.%s()",
+					objectName,
+					RuntimeCommonDefinitions.getInstance().getMethodCallName(
+							methodCall));
 			tokenStreamRewriter.replace(methodCall.expressionAddress.start,
 					methodCall.expressionAddress.stop, translatedStatement);
 		}
