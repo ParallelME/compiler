@@ -354,13 +354,13 @@ public class ScopeDrivenListener extends JavaBaseListener {
 			String variableName, List<Symbol> arguments) {
 		if (!creatorCtx.createdName().typeArgumentsOrDiamond().isEmpty()) {
 			String[] ret = this.getTypeData(creatorCtx.createdName());
-			this.newScope(new CreatorSymbol("$" + variableName + "Creator",
+			this.newScope(new CreatorSymbol("PM_" + variableName + "Creator",
 					variableName, ret[0], ret[1], arguments, this.currentScope,
 					new TokenAddress(creatorCtx.start, creatorCtx.stop), this
 							.getCurrentStatementAddress(),
 					this.symbolsCounter++));
 		} else {
-			this.newScope(new CreatorSymbol("$" + variableName + "Creator",
+			this.newScope(new CreatorSymbol("PM_" + variableName + "Creator",
 					variableName, creatorCtx.createdName().getText(), "",
 					arguments, this.currentScope, new TokenAddress(
 							creatorCtx.start, creatorCtx.stop), this

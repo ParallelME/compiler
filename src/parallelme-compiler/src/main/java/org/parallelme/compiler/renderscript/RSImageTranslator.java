@@ -28,12 +28,12 @@ public abstract class RSImageTranslator extends RSTranslator implements
 	private static final String templateOutputBindCall2 = "<kernelName>.forEach_toBitmap<classType>(<outputObject>, <inputObject>);\n"
 			+ "<inputObject>.copyTo(<destinationObject>);";
 	private static final String templateOutputBind = "\nuchar4 __attribute__((kernel)) toBitmap<classType>(<varType>"
-			+ " $in, uint32_t x, uint32_t y) {"
-			+ "\n\tuchar4 $out;"
-			+ "\n\t$out.r = (uchar) ($in.s0<multiplyBy>);"
-			+ "\n\t$out.g = (uchar) ($in.s1<multiplyBy>);"
-			+ "\n\t$out.b = (uchar) ($in.s2<multiplyBy>);"
-			+ "\n\t$out.a = 255;" + "\n\treturn $out;\n}";
+			+ " PM_in, uint32_t x, uint32_t y) {"
+			+ "\n\tuchar4 PM_out;"
+			+ "\n\tPM_out.r = (uchar) (PM_in.s0<multiplyBy>);"
+			+ "\n\tPM_out.g = (uchar) (PM_in.s1<multiplyBy>);"
+			+ "\n\tPM_out.b = (uchar) (PM_in.s2<multiplyBy>);"
+			+ "\n\tPM_out.a = 255;" + "\n\treturn PM_out;\n}";
 
 	public RSImageTranslator(CTranslator cCodeTranslator) {
 		super(cCodeTranslator);

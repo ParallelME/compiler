@@ -30,7 +30,7 @@ public abstract class RSTranslator extends BaseTranslator {
 	private static final String templateIteratorParallelCall = "<externalVariables:{var|<var.kernelName>.set_<var.gVariableName>(<var.variableName>);\n}>"
 			+ "<kernelName>.forEach_<functionName>(<allocationName>, <allocationName>);";
 	private static final String templateIteratorSequentialCall = "<externalVariables:{var|"
-			+ "Allocation <var.allName> = Allocation.createSized($mRS, Element.<var.elementType>($mRS), 1);\n"
+			+ "Allocation <var.allName> = Allocation.createSized(PM_mRS, Element.<var.elementType>(PM_mRS), 1);\n"
 			+ "<kernelName>.set_<var.gName>(<var.name>[0]);\n"
 			+ "<kernelName>.set_<var.outputData>(<var.allName>);\n}>"
 			+ "<kernelName>.set_<inputData>(<allocationName>);\n"
@@ -39,8 +39,8 @@ public abstract class RSTranslator extends BaseTranslator {
 			+ "<externalVariables:{var|<var.allName>.copyTo(<var.name>);}>";
 	private static final String templateIteratorSequentialFunction = "rs_allocation <inputData>;\n"
 			+ "<outVariable:{var|rs_allocation <var.name>;\n}>"
-			+ "int $gInputXSize<iteratorName>;\n"
-			+ "int $gInputYSize<iteratorName>;\n"
+			+ "int PM_gInputXSize<iteratorName>;\n"
+			+ "int PM_gInputYSize<iteratorName>;\n"
 			+ "<externalVariables:{var|<var.variableType> <var.variableName>;\n}>"
 			+ "\n<functionSignature>\n {\n"
 			+ "\t<userFunctionVarType> <userFunctionVarName>;\n"
@@ -49,9 +49,9 @@ public abstract class RSTranslator extends BaseTranslator {
 			+ "}";
 
 	private static final String templateForLoop = "for (int <varName> = 0; <varName> \\< <varMaxVal>; <varName>++) {\n\t<body>}\n";
-	private static final String templateForLoopSequentialBody = "<userFunctionVarName> = rsGetElementAt_<userFunctionVarType>(<inputData>, $x<param:{var|, <var.name>}>);\n"
+	private static final String templateForLoopSequentialBody = "<userFunctionVarName> = rsGetElementAt_<userFunctionVarType>(<inputData>, PM_x<param:{var|, <var.name>}>);\n"
 			+ "<userCode>\n"
-			+ "rsSetElementAt_<userFunctionVarType>(<inputData>, <userFunctionVarName>, $x<param:{var|, <var.name>}>);\n";
+			+ "rsSetElementAt_<userFunctionVarType>(<inputData>, <userFunctionVarName>, PM_x<param:{var|, <var.name>}>);\n";
 	private static final String templateIteratorParallelFunctionSignature = "<parameterTypeTranslated> __attribute__((kernel)) <userFunctionName>(<parameterTypeTranslated> <parameterName>, uint32_t x<params:{var|, <var.type> <var.name>}>)";
 	private static final String templateIteratorSequentialFunctionSignature = "void <functionName>()";
 

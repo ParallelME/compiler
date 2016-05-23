@@ -158,14 +158,14 @@ public abstract class BaseTranslator implements UserLibraryTranslatorDefinition 
 
 	/**
 	 * Replace all instances of a given oldName by a newName, checking if this
-	 * newName contains a $ sign, which is reserved in regex. In case a $
+	 * newName contains a PM_ sign, which is reserved in regex. In case a PM_
 	 * exists, it will be escaped during replacement.
 	 */
 	protected String replaceAndEscapePrefix(String string, String newName,
 			String oldName) {
-		if (newName.contains("$")) {
-			int idx = newName.indexOf("$");
-			newName = newName.substring(0, idx) + "\\$"
+		if (newName.contains("PM_")) {
+			int idx = newName.indexOf("PM_");
+			newName = newName.substring(0, idx) + "\\PM_"
 					+ newName.substring(idx + 1, newName.length());
 			return string.replaceAll(oldName, newName);
 		} else {

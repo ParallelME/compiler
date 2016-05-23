@@ -15,8 +15,8 @@ package org.parallelme.compiler.symboltable;
  */
 public class SymbolTableDefinitions {
 	// Anonymous object prefix.
-	public static String anonymousObjectPrefix = "$anonObject";
+	public static String anonymousObjectPrefix = "PM_anonObject";
 	// Literal prefix.
-	public static String literalPrefix = "$literal";
+	public static String literalPrefix = "PM_literal";
 
 }

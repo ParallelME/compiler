@@ -25,29 +25,29 @@ import org.stringtemplate.v4.ST;
  */
 public class RSHDRImageTranslator extends RSImageTranslator implements
 		HDRImageTranslator {
-	private static final String templateInputBindObjCreation = "Type <dataTypeInputObject> = new Type.Builder($mRS, Element.RGBA_8888($mRS))\n"
+	private static final String templateInputBindObjCreation = "Type <dataTypeInputObject> = new Type.Builder(PM_mRS, Element.RGBA_8888(PM_mRS))\n"
 			+ "\t.setX(width)\n"
 			+ "\t.setY(height)\n"
 			+ "\t.create();\n"
-			+ "Type <dataTypeOutputObject> = new Type.Builder($mRS, Element.F32_4($mRS))\n"
+			+ "Type <dataTypeOutputObject> = new Type.Builder(PM_mRS, Element.F32_4(PM_mRS))\n"
 			+ "\t.setX(width)\n"
 			+ "\t.setY(height)\n"
 			+ "\t.create();\n"
-			+ "<inputObject> = Allocation.createTyped($mRS, <dataTypeInputObject>, Allocation.MipmapControl.MIPMAP_NONE, Allocation.USAGE_SCRIPT);\n"
-			+ "<outputObject> = Allocation.createTyped($mRS, <dataTypeOutputObject>);\n"
+			+ "<inputObject> = Allocation.createTyped(PM_mRS, <dataTypeInputObject>, Allocation.MipmapControl.MIPMAP_NONE, Allocation.USAGE_SCRIPT);\n"
+			+ "<outputObject> = Allocation.createTyped(PM_mRS, <dataTypeOutputObject>);\n"
 			+ "<inputObject>.copyFrom(data);\n"
 			+ "<kernelName>.forEach_toFloat<classType>(<inputObject>, <outputObject>);";
-	private static final String templateInputBind = "\nfloat4 __attribute__((kernel)) toFloat<classType>(uchar4 $in, uint32_t x, uint32_t y) {"
-			+ "\n\tfloat4 $out;"
-			+ "\n\tif ($in.s3 != 0) {"
-			+ "\n\t\tfloat f = ldexp(1.0f, ($in.s3 & 0xFF) - (128 + 8));"
-			+ "\n\t\t$out.s0 = ($in.s0 & 0xFF) * f;"
-			+ "\n\t\t$out.s1 = ($in.s1 & 0xFF) * f;"
-			+ "\n\t\t$out.s2 = ($in.s2 & 0xFF) * f;"
+	private static final String templateInputBind = "\nfloat4 __attribute__((kernel)) toFloat<classType>(uchar4 PM_in, uint32_t x, uint32_t y) {"
+			+ "\n\tfloat4 PM_out;"
+			+ "\n\tif (PM_in.s3 != 0) {"
+			+ "\n\t\tfloat f = ldexp(1.0f, (PM_in.s3 & 0xFF) - (128 + 8));"
+			+ "\n\t\tPM_out.s0 = (PM_in.s0 & 0xFF) * f;"
+			+ "\n\t\tPM_out.s1 = (PM_in.s1 & 0xFF) * f;"
+			+ "\n\t\tPM_out.s2 = (PM_in.s2 & 0xFF) * f;"
 			+ "\n\t} else {"
-			+ "\n\t\t$out.s0 = 0.0f;"
-			+ "\n\t\t$out.s1 = 0.0f;"
-			+ "\n\t\t$out.s2 = 0.0f;" + "\n\t}" + "\n\treturn $out;" + "\n}";
+			+ "\n\t\tPM_out.s0 = 0.0f;"
+			+ "\n\t\tPM_out.s1 = 0.0f;"
+			+ "\n\t\tPM_out.s2 = 0.0f;" + "\n\t}" + "\n\treturn PM_out;" + "\n}";
 
 	public RSHDRImageTranslator(CTranslator cCodeTranslator) {
 		super(cCodeTranslator);

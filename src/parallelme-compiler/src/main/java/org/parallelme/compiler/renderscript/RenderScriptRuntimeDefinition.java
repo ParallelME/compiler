@@ -32,8 +32,8 @@ import org.parallelme.compiler.util.FileWriter;
 public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	private static final String templateRSFile = "<introductoryMsg>\n<header>\n<functions:{functionName|\n\n<functionName>}>";
 	private static final String templateKernels = "private ScriptC_<originalClassName> <kernelName>;\n\n";
-	private static final String templateConstructor = "public <javaClassName>(RenderScript $mRS) {\n\tthis.$mRS = $mRS;\n"
-			+ "\tthis.<kernelName> = new ScriptC_<originalClassName>($mRS);\n\\}\n";
+	private static final String templateConstructor = "public <javaClassName>(RenderScript PM_mRS) {\n\tthis.PM_mRS = PM_mRS;\n"
+			+ "\tthis.<kernelName> = new ScriptC_<originalClassName>(PM_mRS);\n\\}\n";
 
 	public RenderScriptRuntimeDefinition(CTranslator cCodeTranslator,
 			String outputDestinationFolder) {
@@ -78,7 +78,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 			IteratorsAndBinds iteratorsAndBinds,
 			List<MethodCall> methodCalls) {
 		StringBuilder init = new StringBuilder();
-		init.append("private RenderScript $mRS;\n");
+		init.append("private RenderScript PM_mRS;\n");
 		ST st1 = new ST(templateKernels);
 		ST st2 = new ST(templateConstructor);
 		String javaClassName = RuntimeCommonDefinitions.getInstance().getJavaWrapperClassName(

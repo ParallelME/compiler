@@ -33,7 +33,7 @@ public class RuntimeCommonDefinitions {
 	private final String iteratorName = "iterator";
 	private final String inputBindName = "inputBind";
 	private final String outputBindName = "outputBind";
-	private final String prefix = "$";
+	private final String prefix = "PM_";
 	private final String headerComment = "/**                                               _    __ ____\n"
 			+ " *   _ __  ___ _____   ___   __  __   ___ __     / |  / /  __/\n"
 			+ " *  |  _ \\/ _ |  _  | / _ | / / / /  / __/ /    /  | / / /__\n"

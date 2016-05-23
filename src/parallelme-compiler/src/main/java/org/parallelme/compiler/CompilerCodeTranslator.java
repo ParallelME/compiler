@@ -428,10 +428,10 @@ public class CompilerCodeTranslator {
 		String interfaceName = RuntimeCommonDefinitions.getInstance()
 				.getJavaWrapperInterfaceName(className);
 		String templateInitialization = "\n\n\tprivate <interfaceName> <objectName>;\n\n"
-				+ "\tpublic <className>(RenderScript $mRS) {\n"
+				+ "\tpublic <className>(RenderScript PM_mRS) {\n"
 				+ "\t\tthis.<objectName> = new <openCLClassName>();\n"
 				+ "\t\tif (this.<objectName>.isValid())\n"
-				+ "\t\t\tthis.<objectName> = new <renderScriptClassName>($mRS);\n"
+				+ "\t\t\tthis.<objectName> = new <renderScriptClassName>(PM_mRS);\n"
 				+ "\t}\n";
 		ST st = new ST(templateInitialization);
 		st.add("interfaceName", interfaceName);
@@ -468,6 +468,9 @@ public class CompilerCodeTranslator {
 							.getInputBindName(inputBind),
 					RuntimeCommonDefinitions.getInstance()
 							.toCommaSeparatedString(inputBind.parameters));
+			tokenStreamRewriter.delete(
+					inputBind.declarationStatementAddress.start,
+					inputBind.declarationStatementAddress.stop);
 			tokenStreamRewriter.replace(
 					inputBind.creationStatementAddress.start,
 					inputBind.creationStatementAddress.stop,

@@ -44,11 +44,11 @@ public abstract class PMTranslator extends BaseTranslator {
 		String code2Translate = iterator.getUserFunctionData().Code.trim();
 		code2Translate = this.removeCurlyBraces(code2Translate);
 		String ret;
-		String gidDeclaration = String.format("int $gid = get_global_id(0);\n"
-				+ "\t%s %s = %s[$gid];",
+		String gidDeclaration = String.format(
+				"int PM_gid = get_global_id(0);\n" + "\t%s %s = %s[PM_gid];",
 				this.translateType(userFunctionVariable.typeName),
 				userFunctionVariable.name, this.getDataVariableName());
-		String dataOutReturn = String.format("%s[$gid] = %s;\n",
+		String dataOutReturn = String.format("%s[PM_gid] = %s;\n",
 				this.getDataVariableName(), userFunctionVariable.name);
 		ret = String.format("%s {\n\t%s %s %s\n}", this
 				.getIteratorFunctionSignature(iterator), gidDeclaration, this
@@ -75,7 +75,7 @@ public abstract class PMTranslator extends BaseTranslator {
 		String cCode = this.translateVariable(userFunctionVariable,
 				this.cCodeTranslator.translate(code2Translate)).trim();
 		ST stForY = new ST(templateForLoop);
-		stForY.add("varName", "$y");
+		stForY.add("varName", "PM_y");
 		stForY.add("varMaxVal", this.getHeightVariableName());
 		// BitmapImage and HDRImage types contains two for loops
 		String dataInDeclaration;
@@ -87,12 +87,13 @@ public abstract class PMTranslator extends BaseTranslator {
 					+ " "
 					+ userFunctionVariable.name
 					+ " = "
-					+ this.getDataVariableName() + "[$y*$width+$x];\n";
-			dataOutReturn = this.getDataVariableName() + "[$y*$width+$x] = "
-					+ userFunctionVariable.name + ";\n";
+					+ this.getDataVariableName() + "[PM_y*PM_width+PM_x];\n";
+			dataOutReturn = this.getDataVariableName()
+					+ "[PM_y*PM_width+PM_x] = " + userFunctionVariable.name
+					+ ";\n";
 			cCode = dataInDeclaration + cCode + "\n" + dataOutReturn;
 			ST stForX = new ST(templateForLoop);
-			stForX.add("varName", "$x");
+			stForX.add("varName", "PM_x");
 			stForX.add("varMaxVal", this.getWidthVariableName());
 			stForX.add("body", cCode);
 			stForY.add("body", stForX.render());
@@ -102,8 +103,8 @@ public abstract class PMTranslator extends BaseTranslator {
 					+ " "
 					+ userFunctionVariable.name
 					+ " = "
-					+ this.getDataVariableName() + "[$y];\n";
-			dataOutReturn = this.getDataVariableName() + "[$y] = "
+					+ this.getDataVariableName() + "[PM_y];\n";
+			dataOutReturn = this.getDataVariableName() + "[PM_y] = "
 					+ userFunctionVariable.name + ";\n";
 			cCode = dataInDeclaration + cCode + "\n" + dataOutReturn;
 			// Array types
@@ -114,7 +115,7 @@ public abstract class PMTranslator extends BaseTranslator {
 		// variable so its value can be taken back to JVM.
 		for (Variable variable : iterator.getExternalVariables()) {
 			st.addAggr("externalVariables.{outVariableName, variableName}",
-					this.commonDefinitions.getVariableOutName(variable),
+					this.commonDefinitions.getPrefix() + variable.name,
 					variable.name);
 		}
 		return st.render();
@@ -148,8 +149,8 @@ public abstract class PMTranslator extends BaseTranslator {
 			if (iterator.getType() == IteratorType.Sequential) {
 				st.addAggr(
 						"params.{type, name}",
-						"__global *"
-								+ PrimitiveTypes.getCType(variable.typeName),
+						"__global "
+								+ PrimitiveTypes.getCType(variable.typeName) + "*",
 						this.commonDefinitions.getPrefix() + variable);
 			}
 		}
@@ -195,7 +196,7 @@ public abstract class PMTranslator extends BaseTranslator {
 		ST st = new ST(templateIteratorCall);
 		st.add("iteratorName", this.commonDefinitions.getIteratorName(iterator));
 		st.addAggr("params.{name}",
-				this.commonDefinitions.getRuntimePointerName());
+				"ParallelMERuntime.getInstance().runtimePointer");
 		st.addAggr("params.{name}",
 				this.commonDefinitions.getPointerName(iterator.variable));
 		if (iterator.getType() == IteratorType.Sequential) {

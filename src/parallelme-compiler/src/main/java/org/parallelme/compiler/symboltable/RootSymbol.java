@@ -15,6 +15,6 @@ package org.parallelme.compiler.symboltable;
  */
 public class RootSymbol extends Symbol {
 	public RootSymbol() {
-		super("$", null, null, Integer.MIN_VALUE);
+		super("PM_", null, null, Integer.MIN_VALUE);
 	}
 }

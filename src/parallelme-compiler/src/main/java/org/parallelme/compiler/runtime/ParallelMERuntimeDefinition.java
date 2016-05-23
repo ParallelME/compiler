@@ -142,6 +142,7 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	@Override
 	public List<String> getImports() {
 		ArrayList<String> ret = new ArrayList<>();
+		ret.add("org.parallelme.ParallelMERuntime");
 		return ret;
 	}
 
@@ -154,9 +155,11 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 		ParallelMERuntimeCTranslation cTranslation = new ParallelMERuntimeCTranslation();
 		cTranslation.createKernelFile(className, iteratorsAndBinds,
 				this.translators, this.outputDestinationFolder);
-		cTranslation.createCPPFile(packageName, className,
+		String cClassName = RuntimeCommonDefinitions.getInstance()
+				.getJavaWrapperClassName(className, TargetRuntime.ParallelME);
+		cTranslation.createCPPFile(packageName, cClassName,
 				iteratorsAndBinds.iterators, this.outputDestinationFolder);
-		cTranslation.createHFile(packageName, className,
+		cTranslation.createHFile(packageName, cClassName,
 				iteratorsAndBinds.iterators, this.outputDestinationFolder);
 	}
 

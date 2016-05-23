@@ -33,13 +33,21 @@ import org.stringtemplate.v4.ST;
  */
 public class ParallelMERuntimeCTranslation {
 	private static final String templateCPPFile = "<introductoryMsg>\n"
-			+ "#include <cClassName>.h\n\n" + "#include \\<memory>\n"
+			+ "#include \"<cClassName>.h\"\n\n" + "#include \\<memory>\n"
 			+ "#include \\<stdexcept>\n" + "#include \\<android/log.h>\n"
 			+ "#include \\<parallelme/ParallelME.hpp>\n"
-			+ "#include \\<parallelme/SchedulerHEFT.hpp>\n\n"
+			+ "#include \\<parallelme/SchedulerHEFT.hpp>\n"
+			+ "#include \"ParallelMEData.hpp\"\n\n"
 			+ "using namespace parallelme;\n\n"
 			+ "<iterator:{var|<var.body>}; separator=\"\n\n\">";
-	private static final String templateIteratorFunctionDecl = "JNIEXPORT void JNICALL Java_<cClassName>_<iteratorName>(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr<params:{var|, <var.type> <var.name>}>)";
+	private static final String templateHFile = "<introductoryMsg>\n"
+			+ "#include \\<jni.h>\n\n" + "#ifndef _Included_<cClassName>\n"
+			+ "#define _Included_<cClassName>\n" + "#ifdef __cplusplus\n"
+			+ "extern \"C\" {\n" + "#endif\n\n"
+			+ "<iterator:{var|<var.decl>;}; separator=\"\n\n\">"
+			+ "\n\n#ifdef __cplusplus\n" + "}\n" + "#endif\n" + "#endif\n";
+	private static final String templateIteratorFunctionDecl = "JNIEXPORT void JNICALL Java_<cClassName>_<iteratorName>\n"
+			+ "\t\t(JNIEnv *<varName:{var|env}>, jobject <varName:{var|self}>, jlong <varName:{var|rtmPtr}>, jlong <varName:{var|varPtr}><params:{var|, <var.decl>}>)";
 	private static final String templateParallelIterator = "<functionDecl> {\n"
 			+ "\tauto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
 			+ "\tauto variablePtr = (<objectType> *) varPtr;\n"
@@ -48,19 +56,20 @@ public class ParallelMERuntimeCTranslation {
 			+ "\ttask->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
 			+ "\t\tkernelHash[\"<iteratorName>\"]\n"
 			+ "\t\t\t->setArg(0, variablePtr->outputBuffer)\n"
+			+ "<setArgs:{var|\t\t\t\t->setArg(<var.index>, <var.name>)\n}>"
 			+ "\t\t\t->setWorkSize(variablePtr->workSize);\n" + "\t\\});\n"
 			+ "\truntimePtr->runtime->submitTask(std::move(task));\n"
 			+ "\truntimePtr->runtime->finish();\n" + "\\}";
 	private static final String templateSequentialIterator = "<functionDecl> {\n"
 			+ "\tauto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
 			+ "\tauto variablePtr = (<objectType> *) varPtr;\n"
-			+ "\t<buffers:{var|auto <var.name>Buffer = std::make_shared\\<Buffer>(sizeof(<var.name>);\n}>"
+			+ "\t<buffers:{var|auto <var.name>Buffer = std::make_shared\\<Buffer>(sizeof(<var.name>));\n}>"
 			+ "\tauto task = std::make_unique\\<Task>(runtimePtr->program, Task::Score(1.0f, 2.0f));\n"
 			+ "\ttask->addKernel(\"<iteratorName>\");\n"
 			+ "\ttask->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
 			+ "\t\tkernelHash[\"<iteratorName>\"]\n"
 			+ "\t\t\t->setArg(0, variablePtr->outputBuffer)\n"
-			+ "<setArgs:{var|\t\t\t\t->setArg(<var.index>, <var.name>);\n}>"
+			+ "<setArgs:{var|\t\t\t\t->setArg(<var.index>, <var.name>)\n}>"
 			+ "\t\t\t->setWorkSize(1);\n"
 			+ "\t\\});\n"
 			+ "\truntimePtr->runtime->submitTask(std::move(task));\n"
@@ -77,9 +86,9 @@ public class ParallelMERuntimeCTranslation {
 			Map<String, UserLibraryTranslatorDefinition> translators,
 			String outputDestinationFolder) {
 		String templateKernelFile = "<introductoryMsg>\n"
-				+ "#ifndef USERKERNELS_H\n" + "#define USERKERNELS_H\n\n"
+				+ "#ifndef USERKERNELS_HPP\n" + "#define USERKERNELS_HPP\n\n"
 				+ "const char userKernels[] =\n"
-				+ "\t<kernels:{var|\"<var.line>\"\n}>" + "#endif\n";
+				+ "\t<kernels:{var|\"<var.line>\"}; separator=\"\n\">;\n" + "#endif\n";
 		ST st = new ST(templateKernelFile);
 		// 1. Add header comment
 		st.add("introductoryMsg", RuntimeCommonDefinitions.getInstance()
@@ -111,7 +120,7 @@ public class ParallelMERuntimeCTranslation {
 			}
 		}
 		FileWriter.writeFile(
-				"userKernels.h",
+				"userKernels.hpp",
 				RuntimeCommonDefinitions.getInstance().getJNIDestinationFolder(
 						outputDestinationFolder), st.render());
 	}
@@ -172,11 +181,16 @@ public class ParallelMERuntimeCTranslation {
 			String cClassName) {
 		ST st = new ST(templateParallelIterator);
 		st.add("functionDecl",
-				this.createIteratorSignature(iterator, cClassName));
+				this.createIteratorSignature(iterator, cClassName, true));
 		st.add("cClassName", cClassName);
 		st.add("iteratorName", RuntimeCommonDefinitions.getInstance()
 				.getIteratorName(iterator));
 		st.add("objectType", this.getObjectType(iterator));
+		st.add("setArgs", null);
+		int i = 0;
+		for (Variable variable : iterator.getExternalVariables()) {
+			st.addAggr("setArgs.{index, name}", ++i, variable.name);
+		}
 		return st.render();
 	}
 
@@ -184,11 +198,12 @@ public class ParallelMERuntimeCTranslation {
 			String cClassName) {
 		ST st = new ST(templateSequentialIterator);
 		st.add("functionDecl",
-				this.createIteratorSignature(iterator, cClassName));
+				this.createIteratorSignature(iterator, cClassName, true));
 		st.add("cClassName", cClassName);
 		st.add("iteratorName", RuntimeCommonDefinitions.getInstance()
 				.getIteratorName(iterator));
 		st.add("objectType", this.getObjectType(iterator));
+		st.add("setArgs", null);
 		int i = 0;
 		for (Variable variable : iterator.getExternalVariables()) {
 			String prefixedVarName = RuntimeCommonDefinitions.getInstance()
@@ -232,12 +247,6 @@ public class ParallelMERuntimeCTranslation {
 	 */
 	public void createHFile(String packageName, String className,
 			List<Iterator> iterators, String outputDestinationFolder) {
-		String templateHFile = "<introductoryMsg>\n" + "#include \\<jni.h>\n\n"
-				+ "#ifndef _Included_<cClassName>\n"
-				+ "#define _Included_<cClassName>\n" + "#ifdef __cplusplus\n"
-				+ "extern \"C\" {\n" + "#endif\n\n"
-				+ "<iterator:{var|<var.decl>;}; separator=\"\n\n\">"
-				+ "#ifdef __cplusplus\n" + "}\n" + "#endif\n" + "#endif\n";
 		ST st = new ST(templateHFile);
 		st.add("introductoryMsg", RuntimeCommonDefinitions.getInstance()
 				.getHeaderComment());
@@ -247,7 +256,7 @@ public class ParallelMERuntimeCTranslation {
 		st.add("iterator", null);
 		for (Iterator iterator : iterators) {
 			st.addAggr("iterator.{decl}",
-					this.createIteratorSignature(iterator, cClassName));
+					this.createIteratorSignature(iterator, cClassName, false));
 		}
 		FileWriter.writeFile(
 				cClassName + ".h",
@@ -255,19 +264,29 @@ public class ParallelMERuntimeCTranslation {
 						outputDestinationFolder), st.render());
 	}
 
-	private String createIteratorSignature(Iterator iterator, String cClassName) {
+	private String createIteratorSignature(Iterator iterator,
+			String cClassName, boolean declareVarNames) {
 		ST st = new ST(templateIteratorFunctionDecl);
 		st.add("cClassName", cClassName);
 		st.add("iteratorName", RuntimeCommonDefinitions.getInstance()
 				.getIteratorName(iterator));
 		st.add("params", null);
+		if (!declareVarNames)
+			st.add("varName", null);
+		else
+			st.add("varName", " ");
 		for (Variable variable : iterator.getExternalVariables()) {
-			st.addAggr("params.{type, name}", variable.typeName, variable.name);
+			String decl = variable.typeName;
+			if (declareVarNames)
+				decl += " " + variable.name;
+			st.addAggr("params.{decl}", decl);
 			if (iterator.getType() == IteratorType.Sequential) {
-				st.addAggr("params.{type, name}",
-						String.format("j%sArray", variable.typeName),
-						RuntimeCommonDefinitions.getInstance().getPrefix()
-								+ variable.name);
+				decl = String.format("j%sArray", variable.typeName);
+				if (declareVarNames)
+					decl += " "
+							+ RuntimeCommonDefinitions.getInstance()
+									.getPrefix() + variable.name;
+				st.addAggr("params.{decl}", decl);
 			}
 		}
 		return st.render();

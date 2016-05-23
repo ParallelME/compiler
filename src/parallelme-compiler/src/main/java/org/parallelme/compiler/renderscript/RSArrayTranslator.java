@@ -31,7 +31,7 @@ import org.stringtemplate.v4.ST;
  * @author Wilson de Carvalho
  */
 public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
-	private static final String templateCreateAllocation = "<allocation> = Allocation.createSized($mRS, Element.<elementType>($mRS), <allocationLength>);\n"
+	private static final String templateCreateAllocation = "<allocation> = Allocation.createSized(PM_mRS, Element.<elementType>(PM_mRS), <allocationLength>);\n"
 			+ "<allocation>.copyFrom(<inputArray>);";
 	private static final String templateCreateOutputAllocation = "<name> = (<type>) java.lang.reflect.Array.newInstance(<baseType>.class, <inputAllocation>.getType().getX());\n";
 	private static final String templateAllocationCopyTo = "<inputObject>.copyTo(<destinationObject>);";

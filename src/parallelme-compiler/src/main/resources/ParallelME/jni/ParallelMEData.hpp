@@ -6,20 +6,27 @@
  *
  */
 
+#ifndef PARALLELMEDATA_HPP
+#define PARALLELMEDATA_HPP
+
+#include <parallelme/ParallelME.hpp>
+
 struct ParallelMERuntimeData {
-    std::shared_ptr<Runtime> runtime;
-    std::shared_ptr<Program> program;
+    std::shared_ptr<parallelme::Runtime> runtime;
+    std::shared_ptr<parallelme::Program> program;
 };
 
 struct ImageData {
-    std::shared_ptr<Buffer> inputBuffer, outputBuffer;
+    std::shared_ptr<parallelme::Buffer> inputBuffer, outputBuffer;
     jint width;
     jint height;
     jint workSize;
 };
 
 struct ArrayData {
-    std::shared_ptr<Buffer> inputBuffer, outputBuffer;
+    std::shared_ptr<parallelme::Buffer> inputBuffer, outputBuffer;
     jint length;
     jint workSize;
 };
+
+#endif // !PARALLELMEDATA_HPP

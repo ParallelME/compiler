@@ -125,7 +125,7 @@ public class CompilerArgsVerificationTest {
 	@Test(expected = Exception.class)
 	public void checkInvalidInputFile() throws Exception {
 		String args[] = new String[4];
-		String file = "../NotAValidFileName$.java";
+		String file = "../NotAValidFileNamePM_.java";
 		String destinationFolder = "./";
 		args[0] = "-f";
 		args[1] = file;
@@ -141,7 +141,7 @@ public class CompilerArgsVerificationTest {
 	public void checkInvalidOutputFolder() throws Exception {
 		String args[] = new String[4];
 		String file = "../samples/BitmapLoaderTest.java";
-		String destinationFolder = "./NotAValidFolderName$";
+		String destinationFolder = "./NotAValidFolderNamePM_";
 		args[0] = "-f";
 		args[1] = file;
 		args[2] = "-o";

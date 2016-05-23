@@ -26,19 +26,19 @@ import org.stringtemplate.v4.ST;
 public class RSBitmapImageTranslator extends RSImageTranslator implements
 		BitmapImageTranslator {
 	private static final String templateInputBindObjCreation = "Type <dataTypeInputObject>;\n"
-			+ "<inputObject> = Allocation.createFromBitmap($mRS, <param>, Allocation.MipmapControl.MIPMAP_NONE, Allocation.USAGE_SCRIPT | Allocation.USAGE_SHARED);\n"
-			+ "<dataTypeInputObject> = new Type.Builder($mRS, Element.F32_3($mRS))\n"
+			+ "<inputObject> = Allocation.createFromBitmap(PM_mRS, <param>, Allocation.MipmapControl.MIPMAP_NONE, Allocation.USAGE_SCRIPT | Allocation.USAGE_SHARED);\n"
+			+ "<dataTypeInputObject> = new Type.Builder(PM_mRS, Element.F32_3(PM_mRS))\n"
 			+ "\t.setX(<inputObject>.getType().getX())\n"
 			+ "\t.setY(<inputObject>.getType().getY())\n"
 			+ "\t.create();\n"
-			+ "<outputObject> = Allocation.createTyped($mRS, <dataTypeInputObject>);\n"
+			+ "<outputObject> = Allocation.createTyped(PM_mRS, <dataTypeInputObject>);\n"
 			+ "<kernelName>.forEach_toFloat<classType>(<inputObject>, <outputObject>);";
-	private static final String templateInputBind = "\nfloat3 __attribute__((kernel)) toFloat<classType>(uchar4 $in, uint32_t x, uint32_t y) {"
-			+ "\n\tfloat3 $out;"
-			+ "\n\t$out.s0 = (float) $in.r;"
-			+ "\n\t$out.s1 = (float) $in.g;"
-			+ "\n\t$out.s2 = (float) $in.b;"
-			+ "\n\treturn $out;" + "\n}";
+	private static final String templateInputBind = "\nfloat3 __attribute__((kernel)) toFloat<classType>(uchar4 PM_in, uint32_t x, uint32_t y) {"
+			+ "\n\tfloat3 PM_out;"
+			+ "\n\tPM_out.s0 = (float) PM_in.r;"
+			+ "\n\tPM_out.s1 = (float) PM_in.g;"
+			+ "\n\tPM_out.s2 = (float) PM_in.b;"
+			+ "\n\treturn PM_out;" + "\n}";
 
 	public RSBitmapImageTranslator(CTranslator cCodeTranslator) {
 		super(cCodeTranslator);
