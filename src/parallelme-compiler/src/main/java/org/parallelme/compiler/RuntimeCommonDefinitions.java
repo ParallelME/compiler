@@ -180,7 +180,7 @@ public class RuntimeCommonDefinitions {
 	 */
 	public String getJNIDestinationFolder(String baseDestinationFolder) {
 		return baseDestinationFolder + File.separator + "jni" + File.separator
-				+ "ParallelME" + File.separator + "compiled" + File.separator;
+				+ "ParallelME" + File.separator + "generated" + File.separator;
 	}
 
 	/**

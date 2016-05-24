@@ -734,7 +734,7 @@ public class CompilerCodeTranslator {
 		String templateAndroidMKFile = "<introductoryMsg>\n\n"
 				+ "LOCAL_PATH := $(call my-dir)\n"
 				+ "include $(CLEAR_VARS)\n"
-				+ "LOCAL_MODULE := libParallelMECompiled\n"
+				+ "LOCAL_MODULE := libParallelMEGenerated\n"
 				+ "LOCAL_ARM_MODE := arm\n"
 				+ "LOCAL_C_INCLUDES := $(LOCAL_PATH)/../runtime/include\n"
 				+ "LOCAL_CFLAGS := -O3 -Wall -Wextra -Werror -Wno-unused-parameter -Wno-extern-c-compat\n"
@@ -742,15 +742,18 @@ public class CompilerCodeTranslator {
 				+ "LOCAL_CPP_FEATURES += exceptions\n"
 				+ "LOCAL_LDLIBS := -llog -ljnigraphics\n"
 				+ "LOCAL_SHARED_LIBRARIES := libParallelMERuntime\n"
-				+ "LOCAL_SRC_FILES := <files:{var|<var.name>}; separator=\" \\\n\">\n"
+				+ "LOCAL_SRC_FILES := <files:{var|<var.name>}; separator=\" \\\\\n\t\">\n"
 				+ "include $(BUILD_SHARED_LIBRARY)\n";
 		ST st = new ST(templateAndroidMKFile);
 		st.add("introductoryMsg", RuntimeCommonDefinitions.getInstance()
 				.getAndroidMKHeaderComment());
-		st.add("files", null);
+		st.addAggr("files.{name}", "org_parallelme_ParallelMERuntime.cpp");
 		for (Pair<String, String> pair : compiledClasses) {
+			String className = RuntimeCommonDefinitions.getInstance()
+					.getJavaWrapperClassName(pair.right,
+							TargetRuntime.ParallelME);
 			st.addAggr("files.{name}", RuntimeCommonDefinitions.getInstance()
-					.getCClassName(pair.left, pair.right) + ".cpp");
+					.getCClassName(pair.left, className) + ".cpp");
 		}
 		FileWriter.writeFile(
 				"Android.mk",

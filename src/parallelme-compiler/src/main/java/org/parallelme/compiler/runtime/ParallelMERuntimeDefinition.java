@@ -152,12 +152,12 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 			if (variable.typeName.equals(HDRImage.getName())
 					|| variable.typeName.equals(BitmapImage.getName()))
 				ret.add(String.format(
-						"\tnativeCleanUpImage(%s);",
+						"\tParallelMERuntime.getInstance().cleanUpImage(%s);",
 						RuntimeCommonDefinitions.getInstance().getPointerName(
 								variable)));
 			else if (variable.typeName.equals(Array.getName()))
 				ret.add(String.format(
-						"\tnativeCleanUpArray(%s);",
+						"\tParallelMERuntime.getInstance().cleanUpArray(%s);",
 						RuntimeCommonDefinitions.getInstance().getPointerName(
 								variable)));
 		}
@@ -170,7 +170,7 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	private List<String> initializeParallelME() {
 		ArrayList<String> ret = new ArrayList<>();
 		ret.add("static {");
-		ret.add("\tSystem.loadLibrary(\"ParallelMECompiled\");");
+		ret.add("\tSystem.loadLibrary(\"ParallelMEGenerated\");");
 		ret.add("}");
 		return ret;
 	}

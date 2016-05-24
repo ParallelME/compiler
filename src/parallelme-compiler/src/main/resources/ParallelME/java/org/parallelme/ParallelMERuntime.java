@@ -44,7 +44,7 @@ public class ParallelMERuntime {
 	private native int nativeGetWidth(long imagePointer);
 
 	private ParallelMERuntime() {
-		System.loadLibrary("ParallelME");
+		System.loadLibrary("ParallelMEGenerated");
 		this.runtimePointer = nativeInit();
 	}
 
