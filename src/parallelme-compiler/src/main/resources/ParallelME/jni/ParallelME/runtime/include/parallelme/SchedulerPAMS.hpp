@@ -10,6 +10,7 @@
 #define PARALLELME_SCHEDULER_PAMS_HPP
 
 #include "Scheduler.hpp"
+#include <condition_variable>
 #include <list>
 #include <mutex>
 
@@ -34,26 +35,13 @@ class SchedulerPAMS : public Scheduler {
     };
     TaskInfoList _cpuTaskList;
     TaskInfoList _gpuTaskList;
-    std::mutex _globalMutex;
+    std::mutex _mutex;
+    std::condition_variable _cv;
 
 public:
-    /**
-     * Pushes a task into the scheduler.
-     * This function is thread-safe.
-     */
     void push(std::unique_ptr<Task> task);
-
-    /**
-     * Pops a task from the scheduler.
-     * This function is thread-safe.
-     */
     std::unique_ptr<Task> pop(Device &device);
-
-    /**
-     * If the scheduler still has work to do.
-     * This function is thread-safe.
-     */
-    bool hasWork();
+    void waitUntilIdle();
 };
 
 }

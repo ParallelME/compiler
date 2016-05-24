@@ -12,8 +12,8 @@
 #include <vector>
 
 namespace parallelme {
-class Task;
 class Device;
+class Task;
 
 /**
  * The Scheduler class specifies an interface that is used by all the different
@@ -45,10 +45,10 @@ public:
     virtual std::unique_ptr<Task> pop(Device &device) = 0;
 
     /**
-     * If the scheduler still has work to do.
+     * Waits until the scheduler doesn't have any more work to do.
      * This function is thread-safe.
      */
-    virtual bool hasWork() = 0;
+    virtual void waitUntilIdle() = 0;
 };
 
 }

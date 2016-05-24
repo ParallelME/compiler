@@ -30,7 +30,7 @@ import org.parallelme.compiler.util.FileWriter;
  * @author Wilson de Carvalho, Pedro Caldeira
  */
 public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
-	private static final String templateRSFile = "<introductoryMsg>\n<header>\n<functions:{functionName|\n\n<functionName>}>";
+	private static final String templateRSFile = "<introductoryMsg>\n\n<header>\n<functions:{functionName|\n\n<functionName>}>";
 	private static final String templateKernels = "private ScriptC_<originalClassName> <kernelName>;\n\n";
 	private static final String templateConstructor = "public <javaClassName>(RenderScript PM_mRS) {\n\tthis.PM_mRS = PM_mRS;\n"
 			+ "\tthis.<kernelName> = new ScriptC_<originalClassName>(PM_mRS);\n\\}\n";

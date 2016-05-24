@@ -87,5 +87,6 @@ public class Compiler {
 			walker.walk(listener, parseTrees[i]);
 			codeTranslator.run(symbolTables[i], listener, tokenStreamRewriter);
 		}
+		codeTranslator.createAndroidMKFile();
 	}
 }

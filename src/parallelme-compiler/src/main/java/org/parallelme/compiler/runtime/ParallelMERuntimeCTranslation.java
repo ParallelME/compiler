@@ -32,7 +32,7 @@ import org.stringtemplate.v4.ST;
  * @author Wilson de Carvalho
  */
 public class ParallelMERuntimeCTranslation {
-	private static final String templateCPPFile = "<introductoryMsg>\n"
+	private static final String templateCPPFile = "<introductoryMsg>\n\n"
 			+ "#include \"<cClassName>.h\"\n\n" + "#include \\<memory>\n"
 			+ "#include \\<stdexcept>\n" + "#include \\<android/log.h>\n"
 			+ "#include \\<parallelme/ParallelME.hpp>\n"
@@ -40,7 +40,7 @@ public class ParallelMERuntimeCTranslation {
 			+ "#include \"ParallelMEData.hpp\"\n\n"
 			+ "using namespace parallelme;\n\n"
 			+ "<iterator:{var|<var.body>}; separator=\"\n\n\">";
-	private static final String templateHFile = "<introductoryMsg>\n"
+	private static final String templateHFile = "<introductoryMsg>\n\n"
 			+ "#include \\<jni.h>\n\n" + "#ifndef _Included_<cClassName>\n"
 			+ "#define _Included_<cClassName>\n" + "#ifdef __cplusplus\n"
 			+ "extern \"C\" {\n" + "#endif\n\n"
@@ -76,6 +76,10 @@ public class ParallelMERuntimeCTranslation {
 			+ "\truntimePtr->runtime->finish();\n"
 			+ "\t<buffers:{var|<var.name>Buffer->copyToJNI(env, <var.arrName>);\n}>"
 			+ "\\}";
+	private final static String templateKernelFile = "<introductoryMsg>\n\n"
+			+ "#ifndef USERKERNELS_HPP\n" + "#define USERKERNELS_HPP\n\n"
+			+ "const char userKernels[] =\n"
+			+ "\t<kernels:{var|\"<var.line>\"}; separator=\"\n\">;\n" + "#endif\n";
 
 	/**
 	 * Create the kernel file that will be used to store the user code written
@@ -85,10 +89,6 @@ public class ParallelMERuntimeCTranslation {
 			IteratorsAndBinds iteratorsAndBinds,
 			Map<String, UserLibraryTranslatorDefinition> translators,
 			String outputDestinationFolder) {
-		String templateKernelFile = "<introductoryMsg>\n"
-				+ "#ifndef USERKERNELS_HPP\n" + "#define USERKERNELS_HPP\n\n"
-				+ "const char userKernels[] =\n"
-				+ "\t<kernels:{var|\"<var.line>\"}; separator=\"\n\">;\n" + "#endif\n";
 		ST st = new ST(templateKernelFile);
 		// 1. Add header comment
 		st.add("introductoryMsg", RuntimeCommonDefinitions.getInstance()

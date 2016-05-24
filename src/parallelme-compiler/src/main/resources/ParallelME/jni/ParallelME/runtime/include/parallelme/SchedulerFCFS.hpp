@@ -9,9 +9,10 @@
 #ifndef PARALLELME_SCHEDULER_FCFS_HPP
 #define PARALLELME_SCHEDULER_FCFS_HPP
 
-#include <mutex>
-#include <list>
 #include "Scheduler.hpp"
+#include <condition_variable>
+#include <list>
+#include <mutex>
 
 namespace parallelme {
 
@@ -24,28 +25,12 @@ namespace parallelme {
 class SchedulerFCFS : public Scheduler {
     std::list<std::unique_ptr<Task>> _taskList;
     std::mutex _mutex;
+    std::condition_variable _cv;
 
 public:
-    /**
-     * Pushes a task into the scheduler.
-     * This function is thread-safe.
-     */
     void push(std::unique_ptr<Task> task);
-
-    /**
-     * Pops a task from the scheduler.
-     * This function is thread-safe.
-     */
     std::unique_ptr<Task> pop(Device &device);
-
-    /**
-     * If the scheduler still has work to do.
-     * This function is thread-safe.
-     */
-    inline bool hasWork() {
-        std::unique_lock<std::mutex> lock(_mutex);
-        return !_taskList.empty();
-    }
+    void waitUntilIdle();
 };
 
 }

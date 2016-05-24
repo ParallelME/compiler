@@ -68,7 +68,7 @@ void Runtime::submitTask(std::unique_ptr<Task> task) {
 }
 
 void Runtime::finish() {
-    while(_scheduler->hasWork()) { } // TODO: busy wait is not good.
+    _scheduler->waitUntilIdle();
 
     for(auto &worker : _workers)
         worker->finish();

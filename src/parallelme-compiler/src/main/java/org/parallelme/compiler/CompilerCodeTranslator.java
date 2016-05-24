@@ -43,14 +43,15 @@ public class CompilerCodeTranslator {
 	private final String outputDestinationFolder;
 	private final RuntimeDefinition rsRuntime;
 	private final RuntimeDefinition pmRuntime;
-	private final static String templateJavaInterface = "<introductoryMsg>\n"
+	private final List<Pair<String, String>> compiledClasses;
+	private final static String templateJavaInterface = "<introductoryMsg>\n\n"
 			+ "package <packageName>;\n\n"
 			+ "<imports:{var|import <var.statement>;\n}>\n"
 			+ "public interface <interfaceName> {\n"
 			+ "\tpublic boolean isValid();\n\n"
 			+ "\t<methods:{var|<var.signature>;}; separator=\"\\n\\n\">"
 			+ "\n}\n";
-	private final static String templateJavaClass = "<introductoryMsg>\n"
+	private final static String templateJavaClass = "<introductoryMsg>\n\n"
 			+ "package <packageName>;\n\n"
 			+ "<imports:{var|import <var.statement>;\n}>\n"
 			+ "public class <className> implements <interfaceName> {\n"
@@ -58,6 +59,16 @@ public class CompilerCodeTranslator {
 			+ "\tpublic boolean isValid() {\n\t\t<isValidBody>\n\t\\}\n\n"
 			+ "\t<methods:{var|<var.signature> {\n\t<var.body>\n\\}}; separator=\"\\n\\n\">"
 			+ "\n\\}\n";
+	private final static String templateInitialization = "\n\n\tprivate <interfaceName> <objectName>;\n\n"
+			+ "\tpublic <className>(RenderScript PM_mRS) {\n"
+			+ "\t\tthis.<objectName> = new <openCLClassName>();\n"
+			+ "\t\tif (!this.<objectName>.isValid())\n"
+			+ "\t\t\tthis.<objectName> = new <renderScriptClassName>(PM_mRS);\n"
+			+ "\t}\n";
+	private final static String templateSequentialIterator = "<declParams:{var|<var.type>[] <var.arrName> = new <var.type>[1];\n"
+			+ "<var.arrName>[0] = <var.varName>;\n}>"
+			+ "<paralleMEObject>.<iteratorName>(<params:{var|<var.name>}; separator=\", \">);"
+			+ "\n<recoverParams:{var|<var.varName> = <var.arrName>[0];}>";
 
 	/**
 	 * Base constructor.
@@ -74,6 +85,7 @@ public class CompilerCodeTranslator {
 				outputDestinationFolder);
 		this.pmRuntime = new ParallelMERuntimeDefinition(cTranslator,
 				outputDestinationFolder);
+		this.compiledClasses = new ArrayList<>();
 	}
 
 	/**
@@ -101,19 +113,20 @@ public class CompilerCodeTranslator {
 			IteratorsAndBinds iteratorsAndBinds = this.getIteratorsAndBinds(
 					listener.getIteratorsAndBinds(), classSymbol);
 			List<MethodCall> methodCalls = listener.getMethodCalls();
-			String className = classSymbol.name;
+			this.compiledClasses.add(new Pair<String, String>(packageName,
+					classSymbol.name));
 			// 2. Creates the java interface that will be used to implement each
 			// runtime code.
-			this.createJavaWrapperInterface(packageName, className,
+			this.createJavaWrapperInterface(packageName, classSymbol.name,
 					iteratorsAndBinds, methodCalls);
 			// 3. Translate code to RenderScript
-			this.runtimeSpecificTranslation(packageName, className,
+			this.runtimeSpecificTranslation(packageName, classSymbol.name,
 					iteratorsAndBinds, methodCalls, this.rsRuntime);
 			// 4. Translate code to ParallelME runtime
-			this.runtimeSpecificTranslation(packageName, className,
+			this.runtimeSpecificTranslation(packageName, classSymbol.name,
 					iteratorsAndBinds, methodCalls, this.pmRuntime);
 			// 5. Translate the user code, calling the runtime wrapper
-			this.translateUserCode(packageName, className, classSymbol,
+			this.translateUserCode(packageName, classSymbol.name, classSymbol,
 					iteratorsAndBinds, methodCalls, listener.getImportTokens(),
 					tokenStreamRewriter);
 		}
@@ -405,7 +418,7 @@ public class CompilerCodeTranslator {
 	private void insertRenderScriptImports(ClassSymbol classSymbol,
 			TokenStreamRewriter tokenStreamRewriter)
 			throws CompilationException {
-		ST st = new ST("<imports:{var|import <var.statement>;\n}>\n)");
+		ST st = new ST("<imports:{var|import <var.statement>;\n}>\n");
 		this.addImportStatements(this.rsRuntime.getImports(), st);
 		tokenStreamRewriter.insertBefore(classSymbol.tokenAddress.start,
 				st.render());
@@ -427,12 +440,6 @@ public class CompilerCodeTranslator {
 			TokenStreamRewriter tokenStreamRewriter, String className) {
 		String interfaceName = RuntimeCommonDefinitions.getInstance()
 				.getJavaWrapperInterfaceName(className);
-		String templateInitialization = "\n\n\tprivate <interfaceName> <objectName>;\n\n"
-				+ "\tpublic <className>(RenderScript PM_mRS) {\n"
-				+ "\t\tthis.<objectName> = new <openCLClassName>();\n"
-				+ "\t\tif (this.<objectName>.isValid())\n"
-				+ "\t\t\tthis.<objectName> = new <renderScriptClassName>(PM_mRS);\n"
-				+ "\t}\n";
 		ST st = new ST(templateInitialization);
 		st.add("interfaceName", interfaceName);
 		st.add("objectName", RuntimeCommonDefinitions.getInstance()
@@ -495,10 +502,6 @@ public class CompilerCodeTranslator {
 			String translatedStatement;
 			// Sequential iterators must create arrays to store variables
 			if (iterator.getType() == IteratorType.Sequential) {
-				String templateSequentialIterator = "<declParams:{var|<var.type>[] <var.arrName> = new <var.type>[1];\n"
-						+ "<var.arrName>[0] = <var.varName>;\n}>"
-						+ "<paralleMEObject>.<iteratorName>(<params:{var|<var.name>}; separator=\", \">);"
-						+ "\n<recoverParams:{var|<var.varName> = <var.arrName>[0];}>";
 				ST st = new ST(templateSequentialIterator);
 				st.add("paralleMEObject", objectName);
 				st.add("iteratorName", RuntimeCommonDefinitions.getInstance()
@@ -721,5 +724,37 @@ public class CompilerCodeTranslator {
 			}
 		}
 		iterator.setType(iteratorType);
+	}
+
+	/**
+	 * Creates Android.mk file in ParallelME JNI folder based on all previously
+	 * compiled classes.
+	 */
+	public void createAndroidMKFile() {
+		String templateAndroidMKFile = "<introductoryMsg>\n\n"
+				+ "LOCAL_PATH := $(call my-dir)\n"
+				+ "include $(CLEAR_VARS)\n"
+				+ "LOCAL_MODULE := libParallelMECompiled\n"
+				+ "LOCAL_ARM_MODE := arm\n"
+				+ "LOCAL_C_INCLUDES := $(LOCAL_PATH)/../runtime/include\n"
+				+ "LOCAL_CFLAGS := -O3 -Wall -Wextra -Werror -Wno-unused-parameter -Wno-extern-c-compat\n"
+				+ "LOCAL_CPPFLAGS := -O3 -std=c++14 -fexceptions\n"
+				+ "LOCAL_CPP_FEATURES += exceptions\n"
+				+ "LOCAL_LDLIBS := -llog -ljnigraphics\n"
+				+ "LOCAL_SHARED_LIBRARIES := libParallelMERuntime\n"
+				+ "LOCAL_SRC_FILES := <files:{var|<var.name>}; separator=\" \\\n\">\n"
+				+ "include $(BUILD_SHARED_LIBRARY)\n";
+		ST st = new ST(templateAndroidMKFile);
+		st.add("introductoryMsg", RuntimeCommonDefinitions.getInstance()
+				.getAndroidMKHeaderComment());
+		st.add("files", null);
+		for (Pair<String, String> pair : compiledClasses) {
+			st.addAggr("files.{name}", RuntimeCommonDefinitions.getInstance()
+					.getCClassName(pair.left, pair.right) + ".cpp");
+		}
+		FileWriter.writeFile(
+				"Android.mk",
+				RuntimeCommonDefinitions.getInstance().getJNIDestinationFolder(
+						outputDestinationFolder), st.render());
 	}
 }

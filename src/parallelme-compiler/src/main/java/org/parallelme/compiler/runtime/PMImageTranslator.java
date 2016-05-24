@@ -21,7 +21,7 @@ import org.stringtemplate.v4.ST;
  */
 public abstract class PMImageTranslator extends PMTranslator implements
 		HDRImageTranslator {
-	private static final String templateMethodCall = "return ParallelMERuntime().getInstance().<methodName>(<params:{var|<var.name>}; separator=\", \">);";
+	private static final String templateMethodCall = "return ParallelMERuntime.getInstance().<methodName>(<params:{var|<var.name>}; separator=\", \">);";
 
 	public PMImageTranslator(CTranslator cCodeTranslator) {
 		super(cCodeTranslator);

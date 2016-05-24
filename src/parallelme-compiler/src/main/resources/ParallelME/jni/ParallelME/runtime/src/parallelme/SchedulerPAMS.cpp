@@ -13,7 +13,7 @@
 using namespace parallelme;
 
 void SchedulerPAMS::push(std::unique_ptr<Task> task) {
-    std::lock_guard<std::mutex> lock(_globalMutex);
+    std::lock_guard<std::mutex> lock(_mutex);
 
     float speedUpCPU = task->score().gpuScore / task->score().cpuScore;
     float speedUpGPU = task->score().cpuScore / task->score().gpuScore;
@@ -83,7 +83,7 @@ void SchedulerPAMS::push(std::unique_ptr<Task> task) {
 
 
 std::unique_ptr<Task> SchedulerPAMS::pop(Device &device) {
-    std::lock_guard<std::mutex> lock(_globalMutex);
+    std::lock_guard<std::mutex> lock(_mutex);
     Task *retTask = nullptr;
 
     if(device.type() == Device::CPU) {
@@ -98,6 +98,7 @@ std::unique_ptr<Task> SchedulerPAMS::pop(Device &device) {
             _cpuTaskList.erase(it->second.itCPU);
         }
         else {
+            _cv.notify_all();
             return nullptr;
         }
     }
@@ -113,6 +114,7 @@ std::unique_ptr<Task> SchedulerPAMS::pop(Device &device) {
             _gpuTaskList.erase(it->second.itGPU);
         }
         else {
+            _cv.notify_all();
             return nullptr;
         }
     }
@@ -120,8 +122,13 @@ std::unique_ptr<Task> SchedulerPAMS::pop(Device &device) {
     return std::unique_ptr<Task>(retTask);
 }
 
-bool SchedulerPAMS::hasWork() {
-    std::lock_guard<std::mutex> lock(_globalMutex);
-    return !_cpuTaskList.empty() || !_gpuTaskList.empty();
+void SchedulerPAMS::waitUntilIdle() {
+    std::unique_lock<std::mutex> lock(_mutex);
+    for(;;) {
+        if(_cpuTaskList.empty() && _gpuTaskList.empty())
+            break;
+
+        _cv.wait(lock);
+    }
 }
 

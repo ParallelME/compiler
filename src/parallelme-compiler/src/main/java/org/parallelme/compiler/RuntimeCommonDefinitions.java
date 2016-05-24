@@ -34,18 +34,18 @@ public class RuntimeCommonDefinitions {
 	private final String inputBindName = "inputBind";
 	private final String outputBindName = "outputBind";
 	private final String prefix = "PM_";
-	private final String headerComment = "/**                                               _    __ ____\n"
+	private final String headerComment = "**                                               _    __ ____\n"
 			+ " *   _ __  ___ _____   ___   __  __   ___ __     / |  / /  __/\n"
 			+ " *  |  _ \\/ _ |  _  | / _ | / / / /  / __/ /    /  | / / /__\n"
 			+ " *  |  __/ __ |  ___|/ __ |/ /_/ /__/ __/ /__  / / v  / /__\n"
 			+ " *  |_| /_/ |_|_|\\_\\/_/ |_/____/___/___/____/ /_/  /_/____/\n"
 			+ " *\n"
 			+ " * Code created automatically by ParallelME compiler.\n"
-			+ " */\n";
+			+ " *";
 
 	private RuntimeCommonDefinitions() {
 	}
-	
+
 	public static RuntimeCommonDefinitions getInstance() {
 		return instance;
 	}
@@ -63,9 +63,13 @@ public class RuntimeCommonDefinitions {
 	}
 
 	public String getHeaderComment() {
-		return this.headerComment;
+		return "/" + this.headerComment + "/";
 	}
 
+	public String getAndroidMKHeaderComment() {
+		return "#" + this.headerComment.replaceAll("\\*", "#") + "#";
+	}
+	
 	/**
 	 * Return an unique prefixed iterator name base on its sequential number.
 	 */
@@ -175,7 +179,8 @@ public class RuntimeCommonDefinitions {
 	 * Return a destination folder for output JNI files.
 	 */
 	public String getJNIDestinationFolder(String baseDestinationFolder) {
-		return baseDestinationFolder + File.separator + "jni" + File.separator;
+		return baseDestinationFolder + File.separator + "jni" + File.separator
+				+ "ParallelME" + File.separator + "compiled" + File.separator;
 	}
 
 	/**

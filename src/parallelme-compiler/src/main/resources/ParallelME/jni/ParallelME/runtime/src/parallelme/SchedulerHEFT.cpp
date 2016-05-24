@@ -63,6 +63,7 @@ std::unique_ptr<Task> SchedulerHEFT::pop(Device &device){
             return retTask;
         }
         else {
+            _cvCpu.notify_all();
             return nullptr;
         }
     }
@@ -75,6 +76,7 @@ std::unique_ptr<Task> SchedulerHEFT::pop(Device &device){
             return retTask;
         }
         else {
+            _cvGpu.notify_all();
             return nullptr;
         }
     }
@@ -83,9 +85,23 @@ std::unique_ptr<Task> SchedulerHEFT::pop(Device &device){
     }
 }
 
-bool SchedulerHEFT::hasWork() {
-    std::lock_guard<std::mutex> lockCPU(_cpuMutex);
-    std::lock_guard<std::mutex> lockGPU(_gpuMutex);
-    return !_cpuTaskList.empty() || !_gpuTaskList.empty();
+void SchedulerHEFT::waitUntilIdle() {
+    std::unique_lock<std::mutex> lockCpu(_cpuMutex);
+    std::unique_lock<std::mutex> lockGpu(_gpuMutex);
+    for(;;) {
+        if(_cpuTaskList.empty() && _gpuTaskList.empty()) {
+            break;
+        }
+        else if(_cpuTaskList.empty()) {
+            lockCpu.unlock();
+            _cvGpu.wait(lockGpu);
+            lockCpu.lock();
+        }
+        else { // _gpuTaskList.empty()
+            lockGpu.unlock();
+            _cvCpu.wait(lockCpu);
+            lockGpu.lock();
+        }
+    }
 }
 

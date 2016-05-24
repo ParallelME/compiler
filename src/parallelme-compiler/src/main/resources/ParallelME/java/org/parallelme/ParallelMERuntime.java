@@ -27,7 +27,11 @@ public class ParallelMERuntime {
 
 	private native long nativeInit();
 
-	private native void nativeCleanUp(long runtimePointer);
+	private native void nativeCleanUpRuntime(long runtimePointer);
+
+	private native void nativeCleanUpImage(long imagePointer);
+
+	private native void nativeCleanUpArray(long arrayPointer);
 
 	private native long nativeCreateHDRImage(long runtimePointer, byte[] data,
 			int width, int height);
@@ -46,8 +50,16 @@ public class ParallelMERuntime {
 
 	@Override
 	protected void finalize() throws Throwable {
-		nativeCleanUp(runtimePointer);
+		nativeCleanUpRuntime(runtimePointer);
 		super.finalize();
+	}
+
+	public void cleanUpImage(long imagePointer) {
+		nativeCleanUpImage(imagePointer);
+	}
+
+	public void cleanUpArray(long arrayPointer) {
+		nativeCleanUpArray(arrayPointer);
 	}
 
 	public long createHDRImage(byte[] data, int width, int height) {

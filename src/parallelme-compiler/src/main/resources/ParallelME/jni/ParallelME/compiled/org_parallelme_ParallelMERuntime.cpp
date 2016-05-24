@@ -34,9 +34,19 @@ JNIEXPORT jlong JNICALL Java_org_parallelme_ParallelMERuntime_nativeInit
 	return ret;
 }
 
-JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativeCleanUp(JNIEnv *env, jobject self, jlong rtmPtr) {
+JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativeCleanUpRuntime(JNIEnv *env, jobject self, jlong rtmPtr) {
 	if (rtmPtr)
 		delete (ParallelMERuntimeData *) rtmPtr;
+}
+
+JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativeCleanUpImage(JNIEnv *env, jobject self, jlong varPtr) {
+	if (varPtr)
+		delete (ImageData *) varPtr;
+}
+
+JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativeCleanUpArray(JNIEnv *env, jobject self, jlong varPtr) {
+	if (varPtr)
+		delete (ArrayData *) varPtr;
 }
 
 JNIEXPORT jlong JNICALL Java_org_parallelme_ParallelMERuntime_nativeCreateHDRImage(JNIEnv *env, jobject self, jlong rtmPtr, jbyteArray data, jint width, jint height) {

@@ -1,6 +1,6 @@
 /**                                               _    __ ____
  *   _ __  ___ _____   ___   __  __   ___ __     / |  / /  __/
- *  |  _ \/ _ |  _  | / _ | / / / /  / _ / /    /  | / / /__
+ *  |  _ \/ _ |  _  | / _ | / / / /  / __/ /    /  | / / /__
  *  |  __/ __ |  ___|/ __ |/ /_/ /__/ __/ /__  / / v  / /__
  *  |_| /_/ |_|_|\_\/_/ |_/____/___/___/____/ /_/  /_/____/
  *
@@ -18,7 +18,13 @@ extern "C" {
 JNIEXPORT jlong JNICALL Java_org_parallelme_ParallelMERuntime_nativeInit
   (JNIEnv *, jobject);
 
-JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativeCleanUp
+JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativeCleanUpRuntime
+  (JNIEnv *, jobject, jlong);
+
+JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativeCleanUpImage
+  (JNIEnv *, jobject, jlong);
+
+JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativeCleanUpArray
   (JNIEnv *, jobject, jlong);
 
 JNIEXPORT jlong JNICALL Java_org_parallelme_ParallelMERuntime_nativeCreateHDRImage

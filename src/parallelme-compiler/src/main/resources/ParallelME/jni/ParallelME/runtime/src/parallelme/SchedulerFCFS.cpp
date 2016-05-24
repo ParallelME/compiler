@@ -27,7 +27,17 @@ std::unique_ptr<Task> SchedulerFCFS::pop(Device &device){
         return retTask;
     }
     else {
+        _cv.notify_all();
         return nullptr;
     }
 }
 
+void SchedulerFCFS::waitUntilIdle() {
+    std::unique_lock<std::mutex> lock(_mutex);
+    for(;;) {
+        if(_taskList.empty())
+            break;
+
+        _cv.wait(lock);
+    }
+}

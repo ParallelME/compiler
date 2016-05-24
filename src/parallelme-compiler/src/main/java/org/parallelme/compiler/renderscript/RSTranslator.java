@@ -160,8 +160,7 @@ public abstract class RSTranslator extends BaseTranslator {
 					iterator);
 			externalVariables.append(variable.typeName + " " + gVariableName
 					+ ";\n");
-			code2Translate = this.replaceAndEscapePrefix(code2Translate,
-					gVariableName, variable.name);
+			code2Translate = code2Translate.replaceAll(variable.name, gVariableName);
 		}
 		externalVariables.append("\n");
 		ret = externalVariables.toString()
@@ -209,7 +208,7 @@ public abstract class RSTranslator extends BaseTranslator {
 			st.addAggr(
 					"externalVariables.{ variableType, outVariableName, variableName }",
 					variable.typeName, gNameOut, gNameVar);
-			cCode = this.replaceAndEscapePrefix(cCode, gNameVar, variable.name);
+			cCode = cCode.replaceAll(variable.name, gNameVar);
 		}
 		String prefix = this.commonDefinitions.getPrefix();
 		ST stFor = new ST(templateForLoop);

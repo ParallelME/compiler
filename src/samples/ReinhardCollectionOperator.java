@@ -36,8 +36,6 @@ public class ReinhardCollectionOperator implements ReinhardOperator {
         this.toRgb();
         this.clamp(power);
         image.toBitmap(bitmap);
-
-        image = null;
     }
 
     public void waitFinish() {

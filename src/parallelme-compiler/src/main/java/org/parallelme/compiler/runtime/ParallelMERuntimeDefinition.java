@@ -72,7 +72,12 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 		List<String> ret = new ArrayList<>();
 		ret.addAll(this.declarePointers(iteratorsAndBinds.inputBinds));
 		// Declare native functions to user JNI
+		ret.add(" ");
 		ret.addAll(this.declareNativeIterators(iteratorsAndBinds.iterators));
+		ret.add(" ");
+		ret.addAll(this.cleanUpPointers(iteratorsAndBinds.inputBinds));
+		ret.add(" ");
+		ret.addAll(this.initializeParallelME());
 		return ret;
 	}
 
@@ -133,6 +138,40 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 							parameters, false)
 					+ ";");
 		}
+		return ret;
+	}
+
+	private List<String> cleanUpPointers(List<InputBind> inputBinds) {
+		ArrayList<String> ret = new ArrayList<>();
+		Set<Variable> variables = new HashSet<>();
+		for (InputBind inputBind : inputBinds)
+			variables.add(inputBind.variable);
+		ret.add("@Override");
+		ret.add("protected void finalize() throws Throwable {");
+		for (Variable variable : variables) {
+			if (variable.typeName.equals(HDRImage.getName())
+					|| variable.typeName.equals(BitmapImage.getName()))
+				ret.add(String.format(
+						"\tnativeCleanUpImage(%s);",
+						RuntimeCommonDefinitions.getInstance().getPointerName(
+								variable)));
+			else if (variable.typeName.equals(Array.getName()))
+				ret.add(String.format(
+						"\tnativeCleanUpArray(%s);",
+						RuntimeCommonDefinitions.getInstance().getPointerName(
+								variable)));
+		}
+		ret.add("\tsuper.finalize();");
+		ret.add("}");
+		ret.add("");
+		return ret;
+	}
+
+	private List<String> initializeParallelME() {
+		ArrayList<String> ret = new ArrayList<>();
+		ret.add("static {");
+		ret.add("\tSystem.loadLibrary(\"ParallelMECompiled\");");
+		ret.add("}");
 		return ret;
 	}
 

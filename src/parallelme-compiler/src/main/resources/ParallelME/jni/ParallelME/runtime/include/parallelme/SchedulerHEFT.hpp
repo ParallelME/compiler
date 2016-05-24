@@ -9,6 +9,7 @@
 #ifndef PARALLELME_SCHEDULER_HEFT_HPP
 #define PARALLELME_SCHEDULER_HEFT_HPP
 
+#include <condition_variable>
 #include <list>
 #include <mutex>
 #include "Scheduler.hpp"
@@ -27,25 +28,12 @@ class SchedulerHEFT : public Scheduler {
     std::list<std::unique_ptr<Task>> _globalTaskList;
     std::mutex _cpuMutex;
     std::mutex _gpuMutex;
+    std::condition_variable _cvCpu, _cvGpu;
 
 public:
-    /**
-     * Pushes a task into the scheduler.
-     * This function is thread-safe.
-     */
     void push(std::unique_ptr<Task> task);
-
-    /**
-     * Pops a task from the scheduler.
-     * This function is thread-safe.
-     */
     std::unique_ptr<Task> pop(Device &device);
-
-    /**
-     * If the scheduler still has work to do.
-     * This function is thread-safe.
-     */
-    bool hasWork();
+    void waitUntilIdle();
 };
 
 }
