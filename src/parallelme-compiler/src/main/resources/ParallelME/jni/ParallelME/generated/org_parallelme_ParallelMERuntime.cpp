@@ -62,9 +62,34 @@ JNIEXPORT jlong JNICALL Java_org_parallelme_ParallelMERuntime_nativeCreateHDRIma
 	imagePtr->outputBuffer = std::make_shared<Buffer>(Buffer::sizeGenerator(imagePtr->workSize, Buffer::FLOAT4));
 
 	auto task = std::make_unique<Task>(runtimePtr->program);
-	task->addKernel("toFloat");
+	task->addKernel("toFloatHDRImage");
 	task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {
-		kernelHash["toFloat"]
+		kernelHash["toFloatHDRImage"]
+			->setArg(0, imagePtr->inputBuffer)
+			->setArg(1, imagePtr->outputBuffer)
+			->setWorkSize(imagePtr->workSize);
+	});
+	runtimePtr->runtime->submitTask(std::move(task));
+	runtimePtr->runtime->finish();
+	return (jlong) imagePtr;
+}
+
+JNIEXPORT jlong JNICALL Java_org_parallelme_ParallelMERuntime_nativeCreateBitmapImage(JNIEnv *env, jobject self, jlong rtmPtr, jobject data, jint width, jint height) {
+	auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;
+	auto imagePtr = new ImageData();
+	imagePtr->width = width;
+	imagePtr->height = height;
+	imagePtr->workSize = width * height;
+
+	// Num elements * items per element * size of item
+	imagePtr->inputBuffer = std::make_shared<Buffer>(Buffer::sizeGenerator(imagePtr->workSize, Buffer::CHAR4));
+	imagePtr->inputBuffer->copyFromJNI(env, data);
+	imagePtr->outputBuffer = std::make_shared<Buffer>(Buffer::sizeGenerator(imagePtr->workSize, Buffer::FLOAT4));
+
+	auto task = std::make_unique<Task>(runtimePtr->program);
+	task->addKernel("toFloatBitmapImage");
+	task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {
+		kernelHash["toFloatBitmapImage"]
 			->setArg(0, imagePtr->inputBuffer)
 			->setArg(1, imagePtr->outputBuffer)
 			->setWorkSize(imagePtr->workSize);

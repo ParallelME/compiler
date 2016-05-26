@@ -12,12 +12,7 @@ import org.parallelme.userlibrary.image.RGB;
  * @author Wilson de Carvalho.
  */
 public class BitmapLoaderTest {
-    public Bitmap load(Resources res, int resource) {
-        BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inMutable = true;
-
-        Bitmap bitmap = BitmapFactory.decodeResource(res, resource, options);
-
+    public Bitmap load(Bitmap bitmap) {
         BitmapImage image = new BitmapImage(bitmap);
         // to Yxy
         image.par().foreach(new ForeachFunction<RGB>() {
@@ -75,7 +70,7 @@ public class BitmapLoaderTest {
 				pixel.blue *= 255;
             }
         });
-        bitmap = image.toBitmap();
+        image.toBitmap(bitmap);
 
         return bitmap;
     }

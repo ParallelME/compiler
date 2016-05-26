@@ -13,12 +13,12 @@ import java.util.HashMap;
 import org.parallelme.compiler.userlibrary.UserLibraryClassImpl;
 
 /**
- * Defines the user library function class ForeachFunction.
+ * Defines the user library function class Foreach.
  * 
  * @author Wilson de Carvalho
  */
-public class ForeachFunction extends UserLibraryClassImpl {
-	public ForeachFunction() {
+public class Foreach extends UserLibraryClassImpl {
+	public Foreach() {
 		this.initValidMethodsSet();
 	}
 
@@ -43,6 +43,6 @@ public class ForeachFunction extends UserLibraryClassImpl {
 	 * {@inheritDoc}
 	 */
 	public static String getName() {
-		return "ForeachFunction";
+		return "Foreach";
 	}
 }

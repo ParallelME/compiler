@@ -30,6 +30,12 @@ JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativeCleanUpArray
 JNIEXPORT jlong JNICALL Java_org_parallelme_ParallelMERuntime_nativeCreateHDRImage
   (JNIEnv *, jobject, jlong, jbyteArray, jint, jint);
 
+JNIEXPORT jlong JNICALL Java_org_parallelme_ParallelMERuntime_nativeCreateBitmapImage
+  (JNIEnv *, jobject, jlong, jobject, jint, jint);
+
+JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativeToBitmapBitmapImage
+  (JNIEnv *, jobject, jlong, jlong, jobject);
+
 JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativeToBitmapHDRImage
   (JNIEnv *, jobject, jlong, jlong, jobject);
 

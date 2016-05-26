@@ -31,7 +31,7 @@ import org.stringtemplate.v4.ST;
  * @author Wilson de Carvalho
  */
 public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
-	private static final String templateCreateAllocation = "<allocation> = Allocation.createSized(PM_mRS, Element.<elementType>(PM_mRS), <allocationLength>);\n"
+	private static final String templateCreateAllocation = "<allocation> = Allocation.createSized(PM_mRS, Element.<elementType>(PM_mRS), <inputArray>.length);\n"
 			+ "<allocation>.copyFrom(<inputArray>);";
 	private static final String templateCreateOutputAllocation = "<name> = (<type>) java.lang.reflect.Array.newInstance(<baseType>.class, <inputAllocation>.getType().getX());\n";
 	private static final String templateAllocationCopyTo = "<inputObject>.copyTo(<destinationObject>);";
@@ -70,10 +70,9 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 		String inputObject = this.commonDefinitions
 				.getVariableInName(inputBind.variable);
 		ST st = new ST(templateCreateAllocation);
-		// TODO Check if parameters array has size 3, otherwise throw an
+		// TODO Check if parameters array has size 1, otherwise throw an
 		// exception and abort translation.
 		st.add("inputArray", inputBind.parameters[0]);
-		st.add("allocationLength", inputBind.parameters[2]);
 		st.add("allocation", inputObject);
 		st.add("elementType", parallelME2RSAllocationTypes
 				.get(inputBind.variable.typeParameterName));

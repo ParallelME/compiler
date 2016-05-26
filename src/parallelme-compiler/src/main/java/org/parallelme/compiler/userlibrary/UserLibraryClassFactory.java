@@ -30,8 +30,8 @@ public class UserLibraryClassFactory {
 			return BitmapImage.getInstance();
 		else if (className.equals(HDRImage.getName()))
 			return HDRImage.getInstance();
-		else if (className.equals(ForeachFunction.getName()))
-			return new ForeachFunction();
+		else if (className.equals(Foreach.getName()))
+			return new Foreach();
 		else if (className.equals(RGB.getName()))
 			return RGB.getInstance();
 		else if (className.equals(RGBA.getName()))

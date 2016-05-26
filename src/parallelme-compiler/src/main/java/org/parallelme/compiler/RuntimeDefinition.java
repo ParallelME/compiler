@@ -56,17 +56,6 @@ public interface RuntimeDefinition {
 			List<MethodCall> methodCalls) throws CompilationException;
 
 	/**
-	 * Translates a given method call to a runtime-variable equivalent
-	 * operation.
-	 * 
-	 * @param methodCall
-	 *            Method call that must be translated
-	 * @return A string with the new code for method call replacement.
-	 */
-	public String translateMethodCall(MethodCall methodCall)
-			throws CompilationException;
-
-	/**
 	 * Get the necessary imports for this runtime.
 	 * 
 	 * @return A list where each element is a import statement.

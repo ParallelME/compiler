@@ -17,7 +17,6 @@ import java.util.Set;
 
 import org.parallelme.compiler.RuntimeCommonDefinitions;
 import org.parallelme.compiler.RuntimeDefinitionImpl;
-import org.parallelme.compiler.SimpleLogger;
 import org.parallelme.compiler.exception.CompilationException;
 import org.parallelme.compiler.intermediate.*;
 import org.parallelme.compiler.intermediate.Iterator.IteratorType;
@@ -40,6 +39,8 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	private void initTranslators() {
 		if (super.translators == null) {
 			super.translators = new HashMap<>();
+			super.translators.put(BitmapImage.getName(), new PMBitmapImageTranslator(
+					cCodeTranslator));
 			super.translators.put(HDRImage.getName(), new PMHDRImageTranslator(
 					cCodeTranslator));
 		}
@@ -209,30 +210,5 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	public void exportInternalLibrary(String packageName,
 			String destinationFolder) throws IOException {
 		this.exportResource("ParallelME", destinationFolder);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String translateMethodCall(MethodCall methodCall) {
-		String ret = "";
-		if (methodCall.variable.typeName.equals(BitmapImage.getName())
-				|| methodCall.variable.typeName.equals(HDRImage.getName())) {
-			if (methodCall.methodName.equals(BitmapImage.getInstance()
-					.getWidthMethodName())) {
-				ret = RuntimeCommonDefinitions.getInstance().getVariableInName(
-						methodCall.variable)
-						+ ".getType().getX()";
-			} else if (methodCall.methodName.equals(BitmapImage.getInstance()
-					.getHeightMethodName())) {
-				ret = RuntimeCommonDefinitions.getInstance().getVariableInName(
-						methodCall.variable)
-						+ ".getType().getY()";
-			}
-		} else {
-			SimpleLogger.error("");
-		}
-		return ret;
 	}
 }

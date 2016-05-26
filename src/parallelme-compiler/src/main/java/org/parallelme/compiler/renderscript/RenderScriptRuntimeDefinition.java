@@ -18,7 +18,6 @@ import java.util.Set;
 import org.stringtemplate.v4.ST;
 import org.parallelme.compiler.RuntimeCommonDefinitions;
 import org.parallelme.compiler.RuntimeDefinitionImpl;
-import org.parallelme.compiler.SimpleLogger;
 import org.parallelme.compiler.intermediate.*;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.userlibrary.classes.*;
@@ -156,30 +155,5 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	@Override
 	public void exportInternalLibrary(String packageName,
 			String destinationFolder) throws IOException {
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String translateMethodCall(MethodCall methodCall) {
-		String ret = "";
-		if (methodCall.variable.typeName.equals(BitmapImage.getName())
-				|| methodCall.variable.typeName.equals(HDRImage.getName())) {
-			if (methodCall.methodName.equals(BitmapImage.getInstance()
-					.getWidthMethodName())) {
-				ret = RuntimeCommonDefinitions.getInstance()
-						.getVariableInName(methodCall.variable)
-						+ ".getType().getX()";
-			} else if (methodCall.methodName.equals(BitmapImage.getInstance()
-					.getHeightMethodName())) {
-				ret = RuntimeCommonDefinitions.getInstance()
-						.getVariableInName(methodCall.variable)
-						+ ".getType().getY()";
-			}
-		} else {
-			SimpleLogger.error("");
-		}
-		return ret;
 	}
 }
