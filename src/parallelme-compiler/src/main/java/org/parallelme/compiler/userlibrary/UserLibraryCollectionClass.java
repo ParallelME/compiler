@@ -17,7 +17,7 @@ import java.util.Set;
  * 
  * @author Wilson de Carvalho
  */
-public abstract class UserLibraryCollectionClass extends UserLibraryClassImpl {
+public abstract class UserLibraryCollectionClass extends UserLibraryClass {
 	private static String foreachMethodName = "foreach";
 	private static String reduceMethodName = "reduce";
 	private static Set<String> operationMethods;

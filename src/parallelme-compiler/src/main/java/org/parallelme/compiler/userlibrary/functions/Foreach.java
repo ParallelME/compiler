@@ -10,14 +10,14 @@ package org.parallelme.compiler.userlibrary.functions;
 
 import java.util.HashMap;
 
-import org.parallelme.compiler.userlibrary.UserLibraryClassImpl;
+import org.parallelme.compiler.userlibrary.UserLibraryClass;
 
 /**
  * Defines the user library function class Foreach.
  * 
  * @author Wilson de Carvalho
  */
-public class Foreach extends UserLibraryClassImpl {
+public class Foreach extends UserLibraryClass {
 	public Foreach() {
 		this.initValidMethodsSet();
 	}

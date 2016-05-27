@@ -10,14 +10,14 @@ package org.parallelme.compiler.userlibrary.classes;
 
 import java.util.HashMap;
 
-import org.parallelme.compiler.userlibrary.UserLibraryClassImpl;
+import org.parallelme.compiler.userlibrary.UserLibraryClass;
 
 /**
  * Defines the user library class Int32.
  * 
  * @author Wilson de Carvalho
  */
-public class Int32 extends UserLibraryClassImpl {
+public class Int32 extends UserLibraryClass {
 	private static Int32 instance = new Int32();
 
 	private Int32() {

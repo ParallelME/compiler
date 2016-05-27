@@ -28,7 +28,7 @@ import org.parallelme.compiler.userlibrary.classes.RGBA;
  * 
  * @author Wilson de Carvalho
  */
-public abstract class BaseTranslator implements UserLibraryTranslatorDefinition {
+public abstract class BaseUserLibraryTranslator implements UserLibraryTranslatorDefinition {
 	protected RuntimeCommonDefinitions commonDefinitions = RuntimeCommonDefinitions.getInstance();
 
 	/**

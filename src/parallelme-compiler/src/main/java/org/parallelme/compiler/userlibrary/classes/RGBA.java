@@ -10,14 +10,14 @@ package org.parallelme.compiler.userlibrary.classes;
 
 import java.util.HashMap;
 
-import org.parallelme.compiler.userlibrary.UserLibraryClassImpl;
+import org.parallelme.compiler.userlibrary.UserLibraryClass;
 
 /**
  * Defines the user library class RGBA.
  * 
  * @author Wilson de Carvalho
  */
-public class RGBA extends UserLibraryClassImpl {
+public class RGBA extends UserLibraryClass {
 	private static RGBA instance = new RGBA();
 
 	private RGBA() {

@@ -10,14 +10,14 @@ package org.parallelme.compiler.userlibrary.classes;
 
 import java.util.HashMap;
 
-import org.parallelme.compiler.userlibrary.UserLibraryClassImpl;
+import org.parallelme.compiler.userlibrary.UserLibraryClass;
 
 /**
  * Defines the user library class RGB.
  * 
  * @author Wilson de Carvalho
  */
-public class RGB extends UserLibraryClassImpl {
+public class RGB extends UserLibraryClass {
 	private static RGB instance = new RGB();
 
 	private RGB() {

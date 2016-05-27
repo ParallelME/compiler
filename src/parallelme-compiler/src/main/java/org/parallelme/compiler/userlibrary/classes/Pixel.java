@@ -10,14 +10,14 @@ package org.parallelme.compiler.userlibrary.classes;
 
 import java.util.HashMap;
 
-import org.parallelme.compiler.userlibrary.UserLibraryClassImpl;
+import org.parallelme.compiler.userlibrary.UserLibraryClass;
 
 /**
  * Defines the user library class Pixel.
  * 
  * @author Wilson de Carvalho
  */
-public class Pixel extends UserLibraryClassImpl {
+public class Pixel extends UserLibraryClass {
 	private static Pixel instance = new Pixel();
 
 	private Pixel() {

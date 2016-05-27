@@ -6,7 +6,7 @@
  *
  */
 
-package org.parallelme.compiler.renderscript;
+package org.parallelme.compiler.translation.renderscript;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -15,7 +15,7 @@ import org.parallelme.compiler.intermediate.Operation;
 import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.intermediate.Operation.ExecutionType;
 import org.parallelme.compiler.translation.CTranslator;
-import org.parallelme.compiler.translation.userlibrary.BaseTranslator;
+import org.parallelme.compiler.translation.userlibrary.BaseUserLibraryTranslator;
 import org.parallelme.compiler.userlibrary.classes.Array;
 import org.parallelme.compiler.userlibrary.classes.BitmapImage;
 import org.parallelme.compiler.userlibrary.classes.HDRImage;
@@ -26,7 +26,7 @@ import org.stringtemplate.v4.ST;
  * 
  * @author Wilson de Carvalho
  */
-public abstract class RSTranslator extends BaseTranslator {
+public abstract class RSTranslator extends BaseUserLibraryTranslator {
 	private static final String templateOperationParallelCall = "<externalVariables:{var|<var.kernelName>.set_<var.gVariableName>(<var.variableName>);\n}>"
 			+ "<kernelName>.forEach_<functionName>(<allocationName>, <allocationName>);";
 	private static final String templateOperationSequentialCall = "<externalVariables:{var|"

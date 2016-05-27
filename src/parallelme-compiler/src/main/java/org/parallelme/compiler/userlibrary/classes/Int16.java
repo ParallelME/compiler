@@ -10,14 +10,14 @@ package org.parallelme.compiler.userlibrary.classes;
 
 import java.util.HashMap;
 
-import org.parallelme.compiler.userlibrary.UserLibraryClassImpl;
+import org.parallelme.compiler.userlibrary.UserLibraryClass;
 
 /**
  * Defines the user library class Int16.
  * 
  * @author Wilson de Carvalho
  */
-public class Int16 extends UserLibraryClassImpl {
+public class Int16 extends UserLibraryClass {
 	private static Int16 instance = new Int16();
 
 	private Int16() {

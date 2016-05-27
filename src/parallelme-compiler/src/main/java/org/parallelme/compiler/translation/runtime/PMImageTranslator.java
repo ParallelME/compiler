@@ -6,7 +6,7 @@
  *
  */
 
-package org.parallelme.compiler.runtime;
+package org.parallelme.compiler.translation.runtime;
 
 import org.parallelme.compiler.intermediate.MethodCall;
 import org.parallelme.compiler.intermediate.OutputBind;

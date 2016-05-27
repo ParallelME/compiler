@@ -6,7 +6,7 @@
  *
  */
 
-package org.parallelme.compiler.runtime;
+package org.parallelme.compiler.translation.runtime;
 
 import java.io.IOException;
 import java.util.ArrayList;

@@ -6,7 +6,7 @@
  *
  */
 
-package org.parallelme.compiler.renderscript;
+package org.parallelme.compiler.translation.renderscript;
 
 import org.parallelme.compiler.intermediate.InputBind;
 import org.parallelme.compiler.intermediate.OutputBind;

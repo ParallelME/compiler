@@ -6,14 +6,14 @@
  *
  */
 
-package org.parallelme.compiler.runtime;
+package org.parallelme.compiler.translation.runtime;
 
 import org.parallelme.compiler.intermediate.Operation;
 import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.intermediate.Operation.ExecutionType;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.translation.PrimitiveTypes;
-import org.parallelme.compiler.translation.userlibrary.BaseTranslator;
+import org.parallelme.compiler.translation.userlibrary.BaseUserLibraryTranslator;
 import org.parallelme.compiler.userlibrary.classes.BitmapImage;
 import org.parallelme.compiler.userlibrary.classes.HDRImage;
 import org.stringtemplate.v4.ST;
@@ -23,7 +23,7 @@ import org.stringtemplate.v4.ST;
  * 
  * @author Wilson de Carvalho
  */
-public abstract class PMTranslator extends BaseTranslator {
+public abstract class PMTranslator extends BaseUserLibraryTranslator {
 	protected static final String templateCallJNIFunction = "<jniJavaClassName>.getInstance().<functionName>(<params:{var|<var.name>}; separator=\", \">)";
 	private static final String templateKernelDecl = "__kernel void <functionName>(<params:{var|<var.type> <var.name>}; separator=\", \">)";
 	private static final String templateForLoop = "for (int <varName> = 0; <varName> \\< <varMaxVal>; ++<varName>) {\n\t<body>}\n";

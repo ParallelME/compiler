@@ -6,7 +6,7 @@
  *
  */
 
-package org.parallelme.compiler.renderscript;
+package org.parallelme.compiler.translation.renderscript;
 
 import java.util.ArrayList;
 import java.util.HashMap;

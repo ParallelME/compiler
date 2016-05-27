@@ -10,14 +10,14 @@ package org.parallelme.compiler.userlibrary.classes;
 
 import java.util.HashMap;
 
-import org.parallelme.compiler.userlibrary.UserLibraryClassImpl;
+import org.parallelme.compiler.userlibrary.UserLibraryClass;
 
 /**
  * Defines the user library class Float32.
  * 
  * @author Wilson de Carvalho
  */
-public class Float32 extends UserLibraryClassImpl {
+public class Float32 extends UserLibraryClass {
 	private static Float32 instance = new Float32();
 
 	private Float32() {

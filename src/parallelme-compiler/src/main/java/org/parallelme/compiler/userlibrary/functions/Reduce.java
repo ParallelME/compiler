@@ -10,14 +10,14 @@ package org.parallelme.compiler.userlibrary.functions;
 
 import java.util.HashMap;
 
-import org.parallelme.compiler.userlibrary.UserLibraryClassImpl;
+import org.parallelme.compiler.userlibrary.UserLibraryClass;
 
 /**
  * Defines the user library function class Reduce.
  * 
  * @author Wilson de Carvalho
  */
-public class Reduce extends UserLibraryClassImpl {
+public class Reduce extends UserLibraryClass {
 	public Reduce() {
 		this.initValidMethodsSet();
 	}

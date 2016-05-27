@@ -6,7 +6,7 @@
  *
  */
 
-package org.parallelme.compiler.runtime;
+package org.parallelme.compiler.translation.runtime;
 
 import java.util.HashSet;
 import java.util.List;
