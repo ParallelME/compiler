@@ -20,7 +20,7 @@ import org.antlr.v4.runtime.TokenStreamRewriter;
 import org.parallelme.compiler.RuntimeDefinition.TargetRuntime;
 import org.parallelme.compiler.exception.CompilationException;
 import org.parallelme.compiler.intermediate.*;
-import org.parallelme.compiler.intermediate.Iterator.IteratorType;
+import org.parallelme.compiler.intermediate.Operation.ExecutionType;
 import org.parallelme.compiler.intermediate.OutputBind.OutputBindType;
 import org.parallelme.compiler.renderscript.RenderScriptRuntimeDefinition;
 import org.parallelme.compiler.runtime.ParallelMERuntimeDefinition;
@@ -65,9 +65,9 @@ public class CompilerCodeTranslator {
 			+ "\t\tif (!this.<objectName>.isValid())\n"
 			+ "\t\t\tthis.<objectName> = new <renderScriptClassName>(PM_mRS);\n"
 			+ "\t}\n";
-	private final static String templateSequentialIterator = "<declParams:{var|<var.type>[] <var.arrName> = new <var.type>[1];\n"
+	private final static String templateSequentialOperation = "<declParams:{var|<var.type>[] <var.arrName> = new <var.type>[1];\n"
 			+ "<var.arrName>[0] = <var.varName>;\n}>"
-			+ "<paralleMEObject>.<iteratorName>(<params:{var|<var.name>}; separator=\", \">);"
+			+ "<paralleMEObject>.<operationName>(<params:{var|<var.name>}; separator=\", \">);"
 			+ "\n<recoverParams:{var|<var.varName> = <var.arrName>[0];}>";
 
 	/**
@@ -105,29 +105,29 @@ public class CompilerCodeTranslator {
 				.getSymbols(ClassSymbol.class);
 		// Gets the class symbol table
 		if (!classSymbols.isEmpty()) {
-			// 1. Get iterators and set proper types (parallel or sequential)
+			// 1. Get operations and set proper types (parallel or sequential)
 			// depending on its code structure.
 			String packageName = listener.getPackageName();
 			ClassSymbol classSymbol = (ClassSymbol) symbolTable.getSymbols(
 					ClassSymbol.class).get(0);
-			IteratorsAndBinds iteratorsAndBinds = this.getIteratorsAndBinds(
-					listener.getIteratorsAndBinds(), classSymbol);
+			OperationsAndBinds operationsAndBinds = this.getOperationsAndBinds(
+					listener.getOperationsAndBinds(), classSymbol);
 			List<MethodCall> methodCalls = listener.getMethodCalls();
 			this.compiledClasses.add(new Pair<String, String>(packageName,
 					classSymbol.name));
 			// 2. Creates the java interface that will be used to implement each
 			// runtime code.
 			this.createJavaWrapperInterface(packageName, classSymbol.name,
-					iteratorsAndBinds, methodCalls);
+					operationsAndBinds, methodCalls);
 			// 3. Translate code to RenderScript
 			this.runtimeSpecificTranslation(packageName, classSymbol.name,
-					iteratorsAndBinds, methodCalls, this.rsRuntime);
+					operationsAndBinds, methodCalls, this.rsRuntime);
 			// 4. Translate code to ParallelME runtime
 			this.runtimeSpecificTranslation(packageName, classSymbol.name,
-					iteratorsAndBinds, methodCalls, this.pmRuntime);
+					operationsAndBinds, methodCalls, this.pmRuntime);
 			// 5. Translate the user code, calling the runtime wrapper
 			this.translateUserCode(packageName, classSymbol.name, classSymbol,
-					iteratorsAndBinds, methodCalls, listener.getImportTokens(),
+					operationsAndBinds, methodCalls, listener.getImportTokens(),
 					tokenStreamRewriter);
 		}
 	}
@@ -136,27 +136,27 @@ public class CompilerCodeTranslator {
 	 * Perform runtime-specific translation.
 	 * 
 	 * @param packageName
-	 *            Name of the package of which current data (class, iterators
+	 *            Name of the package of which current data (class, operations
 	 *            and binds) belong.
 	 * @param className
-	 *            Name of the class of which current data (iterators and binds)
+	 *            Name of the class of which current data (operations and binds)
 	 *            belong.
-	 * @param iteratorsAndBinds
-	 *            Container with iterators and binds.
+	 * @param operationsAndBinds
+	 *            Container with operations and binds.
 	 * @param methodCalls
 	 *            List of method calls that must be replaced.
 	 * @throws CompilationException
 	 */
 	private void runtimeSpecificTranslation(String packageName,
-			String className, IteratorsAndBinds iteratorsAndBinds,
+			String className, OperationsAndBinds operationsAndBinds,
 			List<MethodCall> methodCalls, RuntimeDefinition targetRuntime)
 			throws CompilationException {
 		// 1. Creates Java wrapper implementation for interface created
 		this.createJavaWrapperImplementation(packageName, className,
-				iteratorsAndBinds, methodCalls, targetRuntime);
+				operationsAndBinds, methodCalls, targetRuntime);
 		// 2. Translate user code to C code compatible with the target runtime
-		targetRuntime.translateIteratorsAndBinds(packageName, className,
-				iteratorsAndBinds);
+		targetRuntime.translateOperationsAndBinds(packageName, className,
+				operationsAndBinds);
 		// 3. Export internal library files for each target runtime
 		try {
 			targetRuntime.exportInternalLibrary("", outputDestinationFolder);
@@ -171,19 +171,19 @@ public class CompilerCodeTranslator {
 	 * calls.
 	 * 
 	 * @param packageName
-	 *            Name of the package of which current data (class, iterators
+	 *            Name of the package of which current data (class, operations
 	 *            and binds) belong.
 	 * @param className
-	 *            Name of the class of which current data (iterators and binds)
+	 *            Name of the class of which current data (operations and binds)
 	 *            belong.
-	 * @param iteratorsAndBinds
-	 *            Container with iterators and binds.
+	 * @param operationAndBinds
+	 *            Container with operations and binds.
 	 * @param methodCalls
 	 *            List of method calls that must be replaced.
 	 * @throws CompilationException
 	 */
 	private void createJavaWrapperInterface(String packageName,
-			String className, IteratorsAndBinds iteratorsAndBinds,
+			String className, OperationsAndBinds operationAndBinds,
 			List<MethodCall> methodCalls) throws CompilationException {
 		String interfaceName = RuntimeCommonDefinitions.getInstance()
 				.getJavaWrapperInterfaceName(className);
@@ -193,17 +193,17 @@ public class CompilerCodeTranslator {
 		st.add("packageName", packageName);
 		st.add("interfaceName", interfaceName);
 		Set<String> userLibraryClasses = new HashSet<String>();
-		for (InputBind inputBind : iteratorsAndBinds.inputBinds) {
+		for (InputBind inputBind : operationAndBinds.inputBinds) {
 			st.addAggr("methods.{signature}", RuntimeCommonDefinitions
 					.getInstance().createJavaMethodSignature(inputBind));
 			userLibraryClasses.add(inputBind.variable.typeName);
 		}
-		for (Iterator iterator : iteratorsAndBinds.iterators) {
+		for (Operation operation : operationAndBinds.operations) {
 			st.addAggr("methods.{signature}", RuntimeCommonDefinitions
-					.getInstance().createJavaMethodSignature(iterator));
-			userLibraryClasses.add(iterator.variable.typeName);
+					.getInstance().createJavaMethodSignature(operation));
+			userLibraryClasses.add(operation.variable.typeName);
 		}
-		for (OutputBind outputBind : iteratorsAndBinds.outputBinds) {
+		for (OutputBind outputBind : operationAndBinds.outputBinds) {
 			st.addAggr("methods.{signature}", RuntimeCommonDefinitions
 					.getInstance().createJavaMethodSignature(outputBind));
 			userLibraryClasses.add(outputBind.variable.typeName);
@@ -275,13 +275,13 @@ public class CompilerCodeTranslator {
 	 * previously for a given runtime.
 	 * 
 	 * @param packageName
-	 *            Name of the package of which current data (class, iterators
+	 *            Name of the package of which current data (class, operations
 	 *            and binds) belong.
 	 * @param className
-	 *            Name of the class of which current data (iterators and binds)
+	 *            Name of the class of which current data (operations and binds)
 	 *            belong.
-	 * @param iteratorsAndBinds
-	 *            Container with iterators and binds.
+	 * @param operationsAndBinds
+	 *            Container with operations and binds.
 	 * @param methodCalls
 	 *            Set of method calls that must be replaced.
 	 * @param targetRuntime
@@ -289,7 +289,7 @@ public class CompilerCodeTranslator {
 	 *            implementation.
 	 */
 	private void createJavaWrapperImplementation(String packageName,
-			String className, IteratorsAndBinds iteratorsAndBinds,
+			String className, OperationsAndBinds operationsAndBinds,
 			List<MethodCall> methodCalls, RuntimeDefinition targetRuntime)
 			throws CompilationException {
 		String interfaceName = RuntimeCommonDefinitions.getInstance()
@@ -305,7 +305,7 @@ public class CompilerCodeTranslator {
 		st.add("className", javaClassName);
 		st.add("classDeclarations", null);
 		Set<String> userLibraryClasses = new HashSet<String>();
-		for (InputBind inputBind : iteratorsAndBinds.inputBinds) {
+		for (InputBind inputBind : operationsAndBinds.inputBinds) {
 			UserLibraryTranslatorDefinition translator = targetRuntime
 					.getTranslator(inputBind.variable.typeName);
 			st.addAggr("classDeclarations.{line}",
@@ -321,19 +321,19 @@ public class CompilerCodeTranslator {
 			st.add("isValidBody", line);
 		}
 		for (String line : targetRuntime.getInitializationString(className,
-				iteratorsAndBinds, methodCalls)) {
+				operationsAndBinds, methodCalls)) {
 			st.addAggr("classDeclarations.{line}", line);
 		}
-		for (Iterator iterator : iteratorsAndBinds.iterators) {
+		for (Operation operation : operationsAndBinds.operations) {
 			String methodSignature = RuntimeCommonDefinitions.getInstance()
-					.createJavaMethodSignature(iterator);
+					.createJavaMethodSignature(operation);
 			String body = targetRuntime.getTranslator(
-					iterator.variable.typeName).translateIteratorCall(
-					javaClassName, iterator);
+					operation.variable.typeName).translateOperationCall(
+					javaClassName, operation);
 			st.addAggr("methods.{signature, body}", methodSignature, body);
-			userLibraryClasses.add(iterator.variable.typeName);
+			userLibraryClasses.add(operation.variable.typeName);
 		}
-		for (OutputBind outputBind : iteratorsAndBinds.outputBinds) {
+		for (OutputBind outputBind : operationsAndBinds.outputBinds) {
 			String methodSignature = RuntimeCommonDefinitions.getInstance()
 					.createJavaMethodSignature(outputBind);
 			String body = targetRuntime.getTranslator(
@@ -367,13 +367,13 @@ public class CompilerCodeTranslator {
 	 * runtime wrapper references.
 	 * 
 	 * @param packageName
-	 *            Name of the package of which current data (class, iterators
+	 *            Name of the package of which current data (class, operations
 	 *            and binds) belong.
 	 * @param className
-	 *            Name of the class of which current data (iterators and binds)
+	 *            Name of the class of which current data (operations and binds)
 	 *            belong.
-	 * @param iteratorsAndBinds
-	 *            Container with iterators and binds.
+	 * @param operationsAndBinds
+	 *            Container with operations and binds.
 	 * @param methodCalls
 	 *            Set of method calls that must be replaced.
 	 * @param importTokens
@@ -382,7 +382,7 @@ public class CompilerCodeTranslator {
 	 *            Token stream that will be used to rewrite user code.
 	 */
 	private void translateUserCode(String packageName, String className,
-			ClassSymbol classSymbol, IteratorsAndBinds iteratorsAndBinds,
+			ClassSymbol classSymbol, OperationsAndBinds operationsAndBinds,
 			Collection<MethodCall> methodCalls,
 			Collection<TokenAddress> importTokens,
 			TokenStreamRewriter tokenStreamRewriter)
@@ -393,11 +393,11 @@ public class CompilerCodeTranslator {
 		this.insertRenderScriptImports(classSymbol, tokenStreamRewriter);
 		this.createRuntimeInstance(classSymbol, tokenStreamRewriter, className);
 		this.translateInputBinds(tokenStreamRewriter, className,
-				iteratorsAndBinds.inputBinds);
-		this.translateIterators(tokenStreamRewriter,
-				iteratorsAndBinds.iterators);
+				operationsAndBinds.inputBinds);
+		this.translateOperations(tokenStreamRewriter,
+				operationsAndBinds.operations);
 		this.translateOutputBinds(tokenStreamRewriter,
-				iteratorsAndBinds.outputBinds);
+				operationsAndBinds.outputBinds);
 		this.translateMethodCalls(tokenStreamRewriter, methodCalls);
 		FileWriter.writeFile(
 				className + ".java",
@@ -433,7 +433,7 @@ public class CompilerCodeTranslator {
 	 * @param tokenStreamRewriter
 	 *            Token stream that will be used to rewrite user code.
 	 * @param className
-	 *            Name of the class of which current data (iterators and binds)
+	 *            Name of the class of which current data (operations and binds)
 	 *            belong.
 	 */
 	private void createRuntimeInstance(ClassSymbol classSymbol,
@@ -460,7 +460,7 @@ public class CompilerCodeTranslator {
 	 * @param tokenStreamRewriter
 	 *            Token stream that will be used to rewrite user code.
 	 * @param className
-	 *            Name of the class of which current data (iterators and binds)
+	 *            Name of the class of which current data (operations and binds)
 	 *            belong.
 	 * @param inputBinds
 	 *            Input binds that must be translated.
@@ -486,27 +486,27 @@ public class CompilerCodeTranslator {
 	}
 
 	/**
-	 * Translate iterators in Java user code to call ParallelME runtime
+	 * Translate operations in Java user code to call ParallelME runtime
 	 * wrappers.
 	 * 
 	 * @param tokenStreamRewriter
 	 *            Token stream that will be used to rewrite user code.
-	 * @param iterators
-	 *            Iterator that must be translated.
+	 * @param operations
+	 *            Operation that must be translated.
 	 */
-	private void translateIterators(TokenStreamRewriter tokenStreamRewriter,
-			List<Iterator> iterators) {
+	private void translateOperations(TokenStreamRewriter tokenStreamRewriter,
+			List<Operation> operations) {
 		String objectName = RuntimeCommonDefinitions.getInstance()
 				.getParallelMEObjectName();
-		for (Iterator iterator : iterators) {
+		for (Operation operation : operations) {
 			String translatedStatement;
-			// Sequential iterators must create arrays to store variables
-			if (iterator.getType() == IteratorType.Sequential) {
-				ST st = new ST(templateSequentialIterator);
+			// Sequential operations must create arrays to store variables
+			if (operation.getExecutionType() == ExecutionType.Sequential) {
+				ST st = new ST(templateSequentialOperation);
 				st.add("paralleMEObject", objectName);
-				st.add("iteratorName", RuntimeCommonDefinitions.getInstance()
-						.getIteratorName(iterator));
-				for (Variable variable : iterator.getExternalVariables()) {
+				st.add("operationName", RuntimeCommonDefinitions.getInstance()
+						.getOperationName(operation));
+				for (Variable variable : operation.getExternalVariables()) {
 					if (!variable.isFinal()) {
 						String arrName = RuntimeCommonDefinitions.getInstance()
 								.getPrefix() + variable.name;
@@ -524,14 +524,14 @@ public class CompilerCodeTranslator {
 				translatedStatement = String.format(
 						"%s.%s(%s);",
 						objectName,
-						RuntimeCommonDefinitions.getInstance().getIteratorName(
-								iterator),
+						RuntimeCommonDefinitions.getInstance()
+								.getOperationName(operation),
 						RuntimeCommonDefinitions.getInstance()
 								.toCommaSeparatedString(
-										iterator.getExternalVariables()));
+										operation.getExternalVariables()));
 			}
-			tokenStreamRewriter.replace(iterator.statementAddress.start,
-					iterator.statementAddress.stop, translatedStatement);
+			tokenStreamRewriter.replace(operation.statementAddress.start,
+					operation.statementAddress.stop, translatedStatement);
 		}
 	}
 
@@ -569,7 +569,7 @@ public class CompilerCodeTranslator {
 	}
 
 	/**
-	 * Translate non-iterator and non-output bind method calls.
+	 * Translate non-operation and non-output bind method calls.
 	 * 
 	 * @param tokenStreamRewriter
 	 *            Token stream that will be used to rewrite user code.
@@ -665,25 +665,25 @@ public class CompilerCodeTranslator {
 	}
 
 	/**
-	 * Split iterators and binds into separate lists, putting them on a specific
-	 * container.
+	 * Split operations and binds into separate lists, putting them on a
+	 * specific container.
 	 * 
-	 * @param iteratorsAndBinds
-	 *            List of all iterators and binds found.
+	 * @param operationsAndBinds
+	 *            List of all operations and binds found.
 	 * @param symbolTable
 	 *            Symbol table.
 	 * 
-	 * @return Container with input binds, iterators and output binds.
+	 * @return Container with input binds, operations and output binds.
 	 */
-	private IteratorsAndBinds getIteratorsAndBinds(
-			Collection<UserLibraryData> iteratorsAndBinds, Symbol symbolTable) {
-		ArrayList<Iterator> iterators = new ArrayList<>();
+	private OperationsAndBinds getOperationsAndBinds(
+			Collection<UserLibraryData> operationsAndBinds, Symbol symbolTable) {
+		ArrayList<Operation> operations = new ArrayList<>();
 		ArrayList<OutputBind> outputBinds = new ArrayList<>();
-		for (UserLibraryData userLibraryData : iteratorsAndBinds) {
-			if (userLibraryData instanceof Iterator) {
-				Iterator iterator = (Iterator) userLibraryData;
-				this.setIteratorType(iterator);
-				iterators.add(iterator);
+		for (UserLibraryData userLibraryData : operationsAndBinds) {
+			if (userLibraryData instanceof Operation) {
+				Operation operation = (Operation) userLibraryData;
+				this.setOperationType(operation);
+				operations.add(operation);
 			} else if (userLibraryData instanceof OutputBind) {
 				outputBinds.add((OutputBind) userLibraryData);
 			}
@@ -701,29 +701,29 @@ public class CompilerCodeTranslator {
 			inputBinds.add(new InputBind(variable, ++inputBindCount, arguments,
 					pair.left.statementAddress, pair.right.statementAddress));
 		}
-		return new IteratorsAndBinds(inputBinds, iterators, outputBinds);
+		return new OperationsAndBinds(inputBinds, operations, outputBinds);
 	}
 
 	/**
-	 * Check an iterator and find out if it is a parallel or sequential
-	 * iterator. Parallel iterators must have ALL external variables final,
-	 * whereas iterators that contains non-const variables will be compiled to
+	 * Check an operation and find out if it is a parallel or sequential
+	 * operation. Parallel operations must have ALL external variables final,
+	 * whereas operations that contains non-const variables will be compiled to
 	 * sequential versions in the target runtime.
 	 */
-	private void setIteratorType(Iterator iterator) {
-		Variable[] variables = iterator.getExternalVariables();
-		Iterator.IteratorType iteratorType = IteratorType.Parallel;
+	private void setOperationType(Operation operation) {
+		Variable[] variables = operation.getExternalVariables();
+		Operation.ExecutionType executionType = ExecutionType.Parallel;
 		for (int i = 0; i < variables.length
-				&& iteratorType == IteratorType.Parallel; i++) {
+				&& executionType == ExecutionType.Parallel; i++) {
 			if (!variables[i].isFinal()) {
 				SimpleLogger
-						.warn("Iterator with non-final external variable in line "
-								+ iterator.statementAddress.start.getLine()
-								+ " will be translated to a sequential iterator in the target runtime.");
-				iteratorType = IteratorType.Sequential;
+						.warn("Operation with non-final external variable in line "
+								+ operation.statementAddress.start.getLine()
+								+ " will be translated to a sequential operation in the target runtime.");
+				executionType = ExecutionType.Sequential;
 			}
 		}
-		iterator.setType(iteratorType);
+		operation.setExecutionType(executionType);
 	}
 
 	/**

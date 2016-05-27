@@ -9,8 +9,8 @@
 package org.parallelme.compiler.translation.userlibrary;
 
 import org.parallelme.compiler.RuntimeCommonDefinitions;
-import org.parallelme.compiler.intermediate.Iterator;
-import org.parallelme.compiler.intermediate.Iterator.IteratorType;
+import org.parallelme.compiler.intermediate.Operation;
+import org.parallelme.compiler.intermediate.Operation.ExecutionType;
 import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.translation.BoxedTypes;
 import org.parallelme.compiler.translation.PrimitiveTypes;
@@ -138,14 +138,14 @@ public abstract class BaseTranslator implements UserLibraryTranslatorDefinition 
 	/**
 	 * Create a global variable name for the given variable following some
 	 * standards. Global variables will be prefixed with "g" followed by an
-	 * upper case letter and sufixed by the iterator name, so "max" from
-	 * iterator 2 becomes "gMax_Iterator2"
+	 * upper case letter and sufixed by the operation name, so "max" from
+	 * foreach 2 becomes "gMax_Foreach2"
 	 */
-	protected String getGlobalVariableName(String variable, Iterator iterator) {
-		String iteratorName = this.commonDefinitions.getIteratorName(iterator);
+	protected String getGlobalVariableName(String variable, Operation operation) {
+		String operationName = this.commonDefinitions.getOperationName(operation);
 		String variableName = this.upperCaseFirstLetter(variable);
 		return this.commonDefinitions.getPrefix() + "g" + variableName
-				+ this.upperCaseFirstLetter(iteratorName);
+				+ this.upperCaseFirstLetter(operationName);
 	}
 
 	/**
@@ -160,34 +160,34 @@ public abstract class BaseTranslator implements UserLibraryTranslatorDefinition 
 	 * {@inheritDoc}
 	 */
 	@Override
-	public String translateIterator(String className, Iterator iterator) {
+	public String translateForeach(String className, Operation operation) {
 		String ret;
-		// Translate parallel iterators
-		if (iterator.getType() == IteratorType.Parallel) {
-			ret = this.translateParallelIterator(iterator);
+		// Translate parallel operations
+		if (operation.getExecutionType() == ExecutionType.Parallel) {
+			ret = this.translateParallelOperation(operation);
 		} else {
-			ret = this.translateSequentialIterator(iterator);
+			ret = this.translateSequentialOperation(operation);
 		}
 		return ret;
 	}
 
 	/**
-	 * Translates a parallel iterator returning a C code compatible with this
+	 * Translates a parallel operation returning a C code compatible with this
 	 * runtime.
 	 * 
-	 * @param iterator
-	 *            Iterator that must be translated.
-	 * @return C code with iterator's user code compatible with this runtime.
+	 * @param operation
+	 *            Operation that must be translated.
+	 * @return C code with operation's user code compatible with this runtime.
 	 */
-	abstract protected String translateParallelIterator(Iterator iterator);
+	abstract protected String translateParallelOperation(Operation operation);
 
 	/**
-	 * Translates a sequential iterator returning a C code compatible with this
+	 * Translates a sequential operation returning a C code compatible with this
 	 * runtime.
 	 * 
-	 * @param iterator
-	 *            Iterator that must be translated.
-	 * @return C code with iterator's user code compatible with this runtime.
+	 * @param operation
+	 *            Operation that must be translated.
+	 * @return C code with operation's user code compatible with this runtime.
 	 */
-	abstract protected String translateSequentialIterator(Iterator iterator);
+	abstract protected String translateSequentialOperation(Operation operation);
 }

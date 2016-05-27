@@ -16,8 +16,9 @@ import org.parallelme.compiler.antlr.JavaParser.ExpressionContext;
 import org.parallelme.compiler.antlr.JavaParser.StatementExpressionContext;
 import org.parallelme.compiler.antlr.JavaParser.VariableDeclaratorContext;
 import org.parallelme.compiler.antlr.JavaParser.VariableInitializerContext;
-import org.parallelme.compiler.intermediate.Iterator;
+import org.parallelme.compiler.intermediate.Operation;
 import org.parallelme.compiler.intermediate.MethodCall;
+import org.parallelme.compiler.intermediate.Operation.OperationType;
 import org.parallelme.compiler.intermediate.OutputBind;
 import org.parallelme.compiler.intermediate.OutputBind.OutputBindType;
 import org.parallelme.compiler.intermediate.UserFunction;
@@ -27,13 +28,14 @@ import org.parallelme.compiler.symboltable.*;
 import org.parallelme.compiler.userlibrary.*;
 
 /**
- * Translates the code written in the iterator.
+ * The second pass is responsible for creating the intermediate representation,
+ * which will decouple the symbol table from code translation.
  * 
  * @author Wilson de Carvalho
  */
 public class CompilerSecondPassListener extends ScopeDrivenListener {
 	private enum StatementType {
-		Iterator, OutputBind, None;
+		Operation, OutputBind, None;
 	}
 
 	// Enumeration that is used to indicate what type of statement is currently
@@ -41,25 +43,27 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 	private StatementType statementType = StatementType.None;
 	// Stores the user library variables under the scope.
 	private Map<String, Symbol> userLibraryVariablesUnderScope;
-	// Stores all those libraries that are used inside an interator, but are
+	// Stores all those libraries that are used inside an operation, but are
 	// declared outside its method scope.
-	private Map<String, VariableSymbol> iteratorExternalVariables;
-	private Iterator currentIteratorData;
-	private final ArrayList<UserLibraryData> iteratorsAndBinds;
+	private Map<String, VariableSymbol> operationExternalVariables;
+	private Operation currentOperationData;
+	private final ArrayList<UserLibraryData> operationsAndBinds;
 	// Token stream used to extract original code data.
 	private TokenStream tokenStream;
-	// Used to calculate the unique number for iterators.
-	private int iteratorCount;
+	// Used to calculate the unique number for operations.
+	private int operationCount;
 	// Used to calculate the unique number for output binds.
 	private int outputBindCount;
 	// Used to calculate the unique number for method calls.
 	private int methodCallCount;
 	// Stores package name.
 	private String packageName;
+	// Stores current operation name
+	private String operationName;
 	// List of those tokens that must be removed from the output code.
 	private final ArrayList<TokenAddress> importTokens = new ArrayList<>();
 	// List of those method calls on user library objects (methods that are not
-	// output bind or iterators).
+	// output bind or operations).
 	private final ArrayList<MethodCall> methodCalls = new ArrayList<>();
 
 	/**
@@ -71,19 +75,19 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 	 */
 	public CompilerSecondPassListener(TokenStream tokenStream) {
 		super(new RootSymbol());
-		this.iteratorsAndBinds = new ArrayList<>();
+		this.operationsAndBinds = new ArrayList<>();
 		this.tokenStream = tokenStream;
-		this.iteratorCount = this.outputBindCount = this.methodCallCount = 0;
+		this.operationCount = this.outputBindCount = this.methodCallCount = 0;
 	}
 
 	/**
-	 * List user library iterators that must be translated to the target
+	 * List user library operations that must be translated to the target
 	 * runtime.
 	 * 
-	 * @return A collection of iterator data.
+	 * @return A collection of operations and binds.
 	 */
-	public ArrayList<UserLibraryData> getIteratorsAndBinds() {
-		return this.iteratorsAndBinds;
+	public ArrayList<UserLibraryData> getOperationsAndBinds() {
+		return this.operationsAndBinds;
 	}
 
 	/**
@@ -107,17 +111,17 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 	/**
 	 * List of method calls expressions.
 	 * 
-	 * @return A collection of non-iterator and non-output bind method calls.
+	 * @return A collection of non-operations and non-output bind method calls.
 	 */
 	public List<MethodCall> getMethodCalls() {
 		return this.methodCalls;
 	}
 
 	/**
-	 * Number of Iterator objects created during the parse walk.
+	 * Number of operation objects created during the parse walk.
 	 */
-	public int getIteratorCount() {
-		return this.iteratorCount;
+	public int getOperationCount() {
+		return this.operationCount;
 	}
 
 	/**
@@ -152,41 +156,41 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 
 	@Override
 	public void exitBlock(JavaParser.BlockContext ctx) {
-		this.finalizeIteratorDetection();
+		this.finalizeOperationDetection();
 	}
 
 	/**
-	 * Finalizes the iterator block detection.
+	 * Finalizes the operation block detection.
 	 */
-	private void finalizeIteratorDetection() {
-		// If a user library iterator data was created, then we must fill the
+	private void finalizeOperationDetection() {
+		// If a user library operation data was created, then we must fill the
 		// remaining data.
-		if (this.statementType == StatementType.Iterator
-				&& this.currentIteratorData != null) {
-			this.getIteratorData();
-			this.currentIteratorData = null;
-			this.iteratorExternalVariables = null;
+		if (this.statementType == StatementType.Operation
+				&& this.currentOperationData != null) {
+			this.getOperationData();
+			this.currentOperationData = null;
+			this.operationExternalVariables = null;
 		}
 		this.statementType = StatementType.None;
 	}
 
 	/**
-	 * Extracts the necessary iterator data to create an object with user
+	 * Extracts the necessary operation data to create an object with user
 	 * function data.
 	 * 
 	 * TODO This code must be refactored. This data should be get in the
-	 * isIterator method. I got this data here because I'm using an instance of
+	 * isOperation method. I got this data here because I'm using an instance of
 	 * ScopeDrivenListener that builds the symbol table along the tree walk. It
 	 * must be modified to provide scopes based on the symbol table created on
 	 * the first pass, otherwise this translator will never work correctly in
 	 * case a user class variable is declared after a given method and then used
 	 * inside this method.
 	 */
-	private void getIteratorData() {
+	private void getOperationData() {
 		if (this.currentScope.enclosingScope instanceof CreatorSymbol) {
 			if (!(this.currentScope instanceof MethodSymbol)) {
 				// TODO Must point to an error here. This method must be called
-				// uniquely if a user library iterator was detected.
+				// uniquely if a user library operation was detected.
 				return;
 			}
 			// Looks for a method body in the current method scope
@@ -198,38 +202,37 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 				}
 			}
 			if (methodBody == null) {
-				// TODO Must point to an error here. This method must be called
-				// uniquely if a user library iterator with body was detected.
-				return;
+				throw new RuntimeException("Operation with no method body.");
 			}
 			if (!method.arguments.isEmpty()) {
-				Symbol argument = method.arguments.iterator().next();
-				if (argument instanceof VariableSymbol) {
-					VariableSymbol argumentVariable = (VariableSymbol) argument;
-					String originalMethodContent = tokenStream.getText(
-							methodBody.tokenAddress.start,
-							methodBody.tokenAddress.stop);
-					UserFunction userFunctionData = new UserFunction(
-							originalMethodContent, new Variable(
-									argumentVariable.name,
-									argumentVariable.typeName,
-									argumentVariable.typeParameterName,
-									argumentVariable.modifier,
-									argumentVariable.identifier));
-					// Add all those external variables found on the iterator to
-					// be used in the second pass.
-					for (VariableSymbol variable : this.iteratorExternalVariables
-							.values()) {
-						this.currentIteratorData
-								.addExternalVariable(new Variable(
-										variable.name, variable.typeName,
-										variable.typeParameterName,
-										variable.modifier, variable.identifier));
+				Variable[] variables = new Variable[method.arguments.size()];
+				int i = 0;
+				for (Symbol argument : method.arguments) {
+					if (argument instanceof VariableSymbol) {
+						VariableSymbol argumentVariable = (VariableSymbol) argument;
+						variables[i++] = new Variable(argumentVariable.name,
+								argumentVariable.typeName,
+								argumentVariable.typeParameterName,
+								argumentVariable.modifier,
+								argumentVariable.identifier);
 					}
-					this.currentIteratorData
-							.setUserFunctionData(userFunctionData);
-					this.iteratorsAndBinds.add(this.currentIteratorData);
 				}
+				String originalMethodContent = tokenStream.getText(
+						methodBody.tokenAddress.start,
+						methodBody.tokenAddress.stop);
+				UserFunction userFunctionData = new UserFunction(
+						originalMethodContent, variables);
+				// Add all those external variables found on the operation to
+				// be used in the second pass.
+				for (VariableSymbol variable : this.operationExternalVariables
+						.values()) {
+					this.currentOperationData.addExternalVariable(new Variable(
+							variable.name, variable.typeName,
+							variable.typeParameterName, variable.modifier,
+							variable.identifier));
+				}
+				this.currentOperationData.setUserFunctionData(userFunctionData);
+				this.operationsAndBinds.add(this.currentOperationData);
 			}
 		}
 	}
@@ -255,17 +258,17 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 			UserLibraryClass userLibraryClass = UserLibraryClassFactory
 					.create(variable.typeName);
 			// Check if the declared object is a collection
-			if (userLibraryClass instanceof UserLibraryCollectionClassImpl) {
-				if (this.isIterator(variable, this.currentStatement, ctx)) {
-					this.statementType = StatementType.Iterator;
-					this.iteratorExternalVariables = new LinkedHashMap<>();
-					this.getIteratorData(variable);
+			if (userLibraryClass instanceof UserLibraryCollectionClass) {
+				if (this.isOperation(variable, this.currentStatement, ctx)) {
+					this.statementType = StatementType.Operation;
+					this.operationExternalVariables = new LinkedHashMap<>();
+					this.getOperationData(variable);
 				} else if (this.isOutputBind(variable,
-						(UserLibraryCollectionClassImpl) userLibraryClass, ctx)) {
+						(UserLibraryCollectionClass) userLibraryClass, ctx)) {
 					this.statementType = StatementType.OutputBind;
 					this.getOutputBindData(variable, ctx);
 				} else if (this.isValidMethod(
-						(UserLibraryCollectionClassImpl) userLibraryClass, ctx)) {
+						(UserLibraryCollectionClass) userLibraryClass, ctx)) {
 					this.getMethodCallData(variable, ctx);
 				}
 			}
@@ -274,14 +277,14 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 		// this scope, but is under the enclosing scope. In this case, it is
 		// possible to find all those variables that are used in a user function
 		// implementation, but was in fact declared outside its scope.
-		if (this.statementType == StatementType.Iterator) {
+		if (this.statementType == StatementType.Operation) {
 			Symbol variable = this.currentScope.getInnerSymbol(expression,
 					VariableSymbol.class);
 			if (variable == null) {
 				VariableSymbol variableEncScope = (VariableSymbol) this.currentScope.enclosingScope
 						.getSymbolUnderScope(expression, VariableSymbol.class);
 				if (variableEncScope != null) {
-					this.iteratorExternalVariables.put(variableEncScope.name,
+					this.operationExternalVariables.put(variableEncScope.name,
 							variableEncScope);
 				}
 			}
@@ -290,7 +293,7 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 
 	/**
 	 * Checks if the statement provided that contains a user library object
-	 * corresponds to an iterator that must be translated to the target runtime.
+	 * corresponds to an operation that must be translated to the target runtime.
 	 * 
 	 * @param variable
 	 *            User library variable symbol that corresponds to the statement
@@ -300,39 +303,55 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 	 * @param etx
 	 *            Expression containing a user library object.
 	 */
-	private boolean isIterator(UserLibraryVariableSymbol variable,
+	private boolean isOperation(UserLibraryVariableSymbol variable,
 			JavaParser.StatementContext stx, JavaParser.ExpressionContext etx) {
 		boolean ret = false;
 		// Work on the following cases:
-		// - variableName.par().foreach(...)
+		// - variableName.par().operationName(...)
 		if (etx.parent.getText().equals(variable.name + ".par")
 				&& stx.statementExpression() != null
 				&& stx.statementExpression().expression() != null
 				&& stx.statementExpression().expression().expressionList() != null
 				&& !stx.statementExpression().expression().expressionList()
-						.isEmpty()) {
+						.isEmpty()
+				&& etx.parent.parent.parent instanceof ExpressionContext) {
 			// This statement must have its expressions evaluated
-			this.statementType = StatementType.Iterator;
+			this.statementType = StatementType.Operation;
+			this.operationName = ((ExpressionContext) etx.parent.parent.parent)
+					.Identifier().getText();
 			ret = true;
 		}
 		return ret;
 	}
 
 	/**
-	 * Gets the iterator data from a variable symbol and stores on the
-	 * currentIteratorData object.
+	 * Gets the operation data from a variable symbol and stores on the
+	 * currentOperationData object.
 	 * 
 	 * @param variable
-	 *            User library variable symbol that corresponds to the iterator
+	 *            User library variable symbol that corresponds to the operation
 	 *            variable.
 	 */
-	private void getIteratorData(UserLibraryVariableSymbol variable) {
+	private void getOperationData(UserLibraryVariableSymbol variable) {
 		Variable variableParameter = new Variable(variable.name,
 				variable.typeName, variable.typeParameterName,
 				variable.modifier, variable.identifier);
-		this.currentIteratorData = new Iterator(variableParameter,
-				++iteratorCount, new TokenAddress(this.currentStatement.start,
-						this.currentStatement.stop));
+		OperationType operationType;
+		if (UserLibraryCollectionClass.getOperationMethods().contains(
+				this.operationName)) {
+			if (this.operationName.equals(UserLibraryCollectionClass
+					.getForeachMethodName())) {
+				operationType = OperationType.Foreach;
+			} else {
+				operationType = OperationType.Reduce;
+			}
+		} else {
+			throw new RuntimeException("Unsupported operation: "
+					+ this.operationName);
+		}
+		this.currentOperationData = new Operation(variableParameter,
+				++operationCount, new TokenAddress(this.currentStatement.start,
+						this.currentStatement.stop), operationType);
 	}
 
 	/**
@@ -346,7 +365,7 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 		boolean ret = false;
 		if (ctx.parent.getText().equals(
 				variable.name + "."
-						+ userLibraryClass.getDataOutputMethodName())) {
+						+ userLibraryClass.getOutputBindMethodName())) {
 			ret = true;
 		}
 		return ret;
@@ -453,7 +472,7 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 					tokenAddress = new TokenAddress(
 							this.currentVariableStatement.start,
 							this.currentVariableStatement.stop);
-				this.iteratorsAndBinds.add(new OutputBind(userLibraryVariable,
+				this.operationsAndBinds.add(new OutputBind(userLibraryVariable,
 						destinationVariable, ++this.outputBindCount,
 						tokenAddress, outputBindType));
 			}

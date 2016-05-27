@@ -86,16 +86,16 @@ public abstract class RuntimeDefinitionImpl implements RuntimeDefinition {
 	/**
 	 * Return the list of necessary imports for user library classes.
 	 * 
-	 * @param iteratorsAndBinds
-	 *            List of all iterators and binds found in a given class.
+	 * @param operationsAndBinds
+	 *            List of all operations and binds found in a given class.
 	 * 
 	 * @return String with the necessary imports.
 	 */
 	protected String getUserLibraryImports(
-			List<UserLibraryData> iteratorsAndBinds) {
+			List<UserLibraryData> operationsAndBinds) {
 		StringBuffer imports = new StringBuffer();
 		boolean exportedHDR = false;
-		for (UserLibraryData userLibraryData : iteratorsAndBinds) {
+		for (UserLibraryData userLibraryData : operationsAndBinds) {
 			if (!exportedHDR
 					&& userLibraryData.variable.typeName.equals(HDRImage
 							.getName())) {

@@ -13,26 +13,33 @@ import java.util.ArrayList;
 import org.parallelme.compiler.symboltable.TokenAddress;
 
 /**
- * Intermediate representation for iterators.
+ * Intermediate representation for operations.
  * 
  * @author Wilson de Carvalho
  */
-public class Iterator extends UserLibraryData {
-	public enum IteratorType {
+public class Operation extends UserLibraryData {
+	public enum ExecutionType {
 		Parallel, Sequential, None;
 	}
+	public enum OperationType {
+		Foreach, Reduce, Map, Filter;
+	}
 
+	public final TokenAddress statementAddress;
+	public final OperationType operationType;
+	
 	private UserFunction userFunctionData;
 	private ArrayList<Variable> externalVariables;
-	public final TokenAddress statementAddress;
-	private IteratorType type;
+	
+	private ExecutionType executionType;
 
-	public Iterator(Variable variableParameter, int sequentialNumber,
-			TokenAddress statementAddress) {
+	public Operation(Variable variableParameter, int sequentialNumber,
+			TokenAddress statementAddress, OperationType operationType) {
 		super(variableParameter, sequentialNumber);
 		this.externalVariables = new ArrayList<>();
-		this.setType(type);
+		this.setExecutionType(executionType);
 		this.statementAddress = statementAddress;
+		this.operationType = operationType;
 	}
 
 	public UserFunction getUserFunctionData() {
@@ -53,11 +60,11 @@ public class Iterator extends UserLibraryData {
 		this.externalVariables.add(variable);
 	}
 
-	public IteratorType getType() {
-		return type;
+	public ExecutionType getExecutionType() {
+		return executionType;
 	}
 
-	public void setType(IteratorType type) {
-		this.type = type;
+	public void setExecutionType(ExecutionType executionType) {
+		this.executionType = executionType;
 	}
 }

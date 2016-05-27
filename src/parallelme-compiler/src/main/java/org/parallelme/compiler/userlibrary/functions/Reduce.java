@@ -6,27 +6,20 @@
  *
  */
 
-package org.parallelme.compiler.userlibrary.classes;
+package org.parallelme.compiler.userlibrary.functions;
 
 import java.util.HashMap;
 
-import org.parallelme.compiler.userlibrary.UserLibraryCollectionClass;
+import org.parallelme.compiler.userlibrary.UserLibraryClassImpl;
 
 /**
- * Defines the user library collection class Array.
+ * Defines the user library function class Reduce.
  * 
  * @author Wilson de Carvalho
  */
-public class Array extends UserLibraryCollectionClass {
-	private static String outputBindMethodName = "toJavaArray";
-	private static Array instance = new Array();
-
-	private Array() {
+public class Reduce extends UserLibraryClassImpl {
+	public Reduce() {
 		this.initValidMethodsSet();
-	}
-	
-	public static Array getInstance() {
-		return instance;
 	}
 
 	/**
@@ -35,6 +28,7 @@ public class Array extends UserLibraryCollectionClass {
 	@Override
 	protected void initValidMethodsSet() {
 		this.validMethods = new HashMap<>();
+		this.validMethods.put("function", "UserData");
 	}
 
 	/**
@@ -48,15 +42,7 @@ public class Array extends UserLibraryCollectionClass {
 	/**
 	 * {@inheritDoc}
 	 */
-	@Override
-	public String getOutputBindMethodName() {
-		return outputBindMethodName;
-	}
-	
-	/**
-	 * {@inheritDoc}
-	 */
 	public static String getName() {
-		return "Array";
+		return "Reduce";
 	}
 }

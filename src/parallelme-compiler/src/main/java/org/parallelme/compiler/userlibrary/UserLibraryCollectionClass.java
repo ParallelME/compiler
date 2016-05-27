@@ -8,29 +8,52 @@
 
 package org.parallelme.compiler.userlibrary;
 
+import java.util.HashSet;
+import java.util.Set;
+
 /**
- * Describes a User Library collection class.
- * 
- * This interface and derived classes were solely created to accomplish a first
- * viable version (prototype) of our compiler. Thus in future version we should
- * eliminate explicit user library classes' declaration and move to a
- * parser-based approach in which the compiler would also analyze user library
- * classes in order to evaluate parameters, methods, constructors and so on.
+ * Several useful implementations for derived concrete classes that will
+ * represent user library collection classes.
  * 
  * @author Wilson de Carvalho
  */
-public interface UserLibraryCollectionClass extends UserLibraryClass {
-	/**
-	 * Gets iterator method name.
-	 * 
-	 * @return Method name.
-	 */
-	public String getIteratorMethodName();
+public abstract class UserLibraryCollectionClass extends UserLibraryClassImpl {
+	private static String foreachMethodName = "foreach";
+	private static String reduceMethodName = "reduce";
+	private static Set<String> operationMethods;
+
+	static {
+		operationMethods = new HashSet<>();
+		operationMethods.add(foreachMethodName);
+		operationMethods.add(reduceMethodName);
+	}
+
+	public static Set<String> getOperationMethods() {
+		return operationMethods;
+	}
 
 	/**
-	 * Gets the data output method name.
+	 * Gets foreach method name.
 	 * 
 	 * @return Method name.
 	 */
-	public String getDataOutputMethodName();
+	public static String getForeachMethodName() {
+		return foreachMethodName;
+	}
+
+	/**
+	 * Gets reduce method name.
+	 * 
+	 * @return Reduce name.
+	 */
+	public static String getReduceMethodName() {
+		return reduceMethodName;
+	}
+
+	/**
+	 * Gets output bind method name.
+	 * 
+	 * @return Method name.
+	 */
+	abstract public String getOutputBindMethodName();
 }

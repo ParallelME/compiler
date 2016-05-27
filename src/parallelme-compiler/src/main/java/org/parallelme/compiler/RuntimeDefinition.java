@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.util.List;
 
 import org.parallelme.compiler.exception.CompilationException;
-import org.parallelme.compiler.intermediate.IteratorsAndBinds;
+import org.parallelme.compiler.intermediate.OperationsAndBinds;
 import org.parallelme.compiler.intermediate.MethodCall;
 import org.parallelme.compiler.translation.userlibrary.UserLibraryTranslatorDefinition;
 
@@ -43,8 +43,8 @@ public interface RuntimeDefinition {
 	 * 
 	 * @param className
 	 *            Current class name.
-	 * @param iteratorsAndBinds
-	 *            Container with iterators and binds.
+	 * @param operationsAndBinds
+	 *            Container with operations and binds.
 	 * @param methodCalls
 	 *            List of method calls to user library objects.
 	 * 
@@ -52,7 +52,7 @@ public interface RuntimeDefinition {
 	 *         string is an element on the list).
 	 */
 	public List<String> getInitializationString(String className,
-			IteratorsAndBinds iteratorsAndBinds,
+			OperationsAndBinds operationsAndBinds,
 			List<MethodCall> methodCalls) throws CompilationException;
 
 	/**
@@ -63,19 +63,19 @@ public interface RuntimeDefinition {
 	public List<String> getImports() throws CompilationException;
 
 	/**
-	 * Translates a list of iterators.
+	 * Translates a list of operations.
 	 * 
 	 * @param packageName
-	 *            Name of the package of which current data (class, iterators
+	 *            Name of the package of which current data (class, operations
 	 *            and binds) belong.
 	 * @param className
-	 *            Name of the class of which current data (iterators and binds)
+	 *            Name of the class of which current data (operations and binds)
 	 *            belong.
-	 * @param iteratorsAndBinds
-	 *            Container with iterators and binds.
+	 * @param operationsAndBinds
+	 *            Container with operations and binds.
 	 */
-	public void translateIteratorsAndBinds(String packageName,
-			String className, IteratorsAndBinds iteratorsAndBinds)
+	public void translateOperationsAndBinds(String packageName,
+			String className, OperationsAndBinds operationsAndBinds)
 			throws CompilationException;
 
 	/**

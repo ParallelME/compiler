@@ -43,7 +43,7 @@ public class ReinhardCollectionOperator implements ReinhardOperator {
     }
 
     private void toYxy(){
-        image.par().foreach(new ForeachFunction<Pixel>() {
+        image.par().foreach(new Foreach<Pixel>() {
             @Override
             public void function(Pixel pixel) {
                 float result0, result1, result2;
@@ -77,7 +77,7 @@ public class ReinhardCollectionOperator implements ReinhardOperator {
         sum = 0.0f;
         max = 0.0f;
 
-        image.par().foreach(new ForeachFunction<Pixel>() {
+        image.par().foreach(new Foreach<Pixel>() {
             @Override
             public void function(Pixel pixel) {
                 sum += Math.log(0.00001f + pixel.rgba.red);
@@ -98,7 +98,7 @@ public class ReinhardCollectionOperator implements ReinhardOperator {
     private void tonemap() {
         final float fScaleFactor = scaleFactor;
         final float fLmax2 = lmax2;
-        image.par().foreach(new ForeachFunction<Pixel>() {
+        image.par().foreach(new Foreach<Pixel>() {
             @Override
             public void function(Pixel pixel) {
                 // Scale to midtone.
@@ -111,7 +111,7 @@ public class ReinhardCollectionOperator implements ReinhardOperator {
     }
 
     private void toRgb(){
-        image.par().foreach(new ForeachFunction<Pixel>() {
+        image.par().foreach(new Foreach<Pixel>() {
             @Override
             public void function(Pixel pixel) {
                 float _x, _y, _z, g, b;
@@ -143,7 +143,7 @@ public class ReinhardCollectionOperator implements ReinhardOperator {
     }
 
     private void clamp(final float power) {
-        image.par().foreach(new ForeachFunction<Pixel>() {
+        image.par().foreach(new Foreach<Pixel>() {
             @Override
             public void function(Pixel pixel) {
                 // Clamp.

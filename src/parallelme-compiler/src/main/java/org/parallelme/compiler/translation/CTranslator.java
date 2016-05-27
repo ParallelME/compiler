@@ -10,7 +10,7 @@ package org.parallelme.compiler.translation;
 
 /**
  * Defines the contract of a C code translator that will be used to translate
- * iterators' code to C.
+ * operations' code to C.
  * 
  * @author Wilson de Carvalho
  */

@@ -11,19 +11,19 @@ package org.parallelme.compiler.intermediate;
 import java.util.List;
 
 /**
- * Container class for keeping collections of iterators and binds.
+ * Container class for keeping collections of operations and binds.
  * 
  * @author Wilson de Carvalho
  */
-public class IteratorsAndBinds {
+public class OperationsAndBinds {
 	public final List<InputBind> inputBinds;
-	public final List<Iterator> iterators;
+	public final List<Operation> operations;
 	public final List<OutputBind> outputBinds;
 
-	public IteratorsAndBinds(List<InputBind> inputBinds,
-			List<Iterator> iterators, List<OutputBind> outputBinds) {
+	public OperationsAndBinds(List<InputBind> inputBinds,
+			List<Operation> operations, List<OutputBind> outputBinds) {
 		this.inputBinds = inputBinds;
-		this.iterators = iterators;
+		this.operations = operations;
 		this.outputBinds = outputBinds;
 	}
 }

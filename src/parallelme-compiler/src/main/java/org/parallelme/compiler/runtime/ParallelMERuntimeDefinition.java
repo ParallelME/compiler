@@ -19,7 +19,7 @@ import org.parallelme.compiler.RuntimeCommonDefinitions;
 import org.parallelme.compiler.RuntimeDefinitionImpl;
 import org.parallelme.compiler.exception.CompilationException;
 import org.parallelme.compiler.intermediate.*;
-import org.parallelme.compiler.intermediate.Iterator.IteratorType;
+import org.parallelme.compiler.intermediate.Operation.ExecutionType;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.userlibrary.classes.*;
 import org.stringtemplate.v4.ST;
@@ -39,8 +39,8 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	private void initTranslators() {
 		if (super.translators == null) {
 			super.translators = new HashMap<>();
-			super.translators.put(BitmapImage.getName(), new PMBitmapImageTranslator(
-					cCodeTranslator));
+			super.translators.put(BitmapImage.getName(),
+					new PMBitmapImageTranslator(cCodeTranslator));
 			super.translators.put(HDRImage.getName(), new PMHDRImageTranslator(
 					cCodeTranslator));
 		}
@@ -68,15 +68,15 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	 */
 	@Override
 	public List<String> getInitializationString(String className,
-			IteratorsAndBinds iteratorsAndBinds, List<MethodCall> methodCalls)
+			OperationsAndBinds operationsAndBinds, List<MethodCall> methodCalls)
 			throws CompilationException {
 		List<String> ret = new ArrayList<>();
-		ret.addAll(this.declarePointers(iteratorsAndBinds.inputBinds));
-		// Declare native functions to user JNI
+		ret.addAll(this.declarePointers(operationsAndBinds.inputBinds));
 		ret.add(" ");
-		ret.addAll(this.declareNativeIterators(iteratorsAndBinds.iterators));
+		// Declare native functions to call NDK
+		ret.addAll(this.declareNativeOperations(operationsAndBinds.operations));
 		ret.add(" ");
-		ret.addAll(this.cleanUpPointers(iteratorsAndBinds.inputBinds));
+		ret.addAll(this.cleanUpPointers(operationsAndBinds.inputBinds));
 		ret.add(" ");
 		ret.addAll(this.initializeParallelME());
 		return ret;
@@ -102,17 +102,17 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 		return ret;
 	}
 
-	private List<String> declareNativeIterators(List<Iterator> iterators)
+	private List<String> declareNativeOperations(List<Operation> operations)
 			throws CompilationException {
 		List<String> ret = new ArrayList<>();
 		Variable runtimePtr = new Variable("runtimePtr", "long", "", "", -1);
 		Variable variablePointer = new Variable("varPtr", "long", "", "", -1);
-		for (Iterator iterator : iterators) {
+		for (Operation operation : operations) {
 			Parameter[] parameters;
-			// Sequential iterators must create an array for each variable. This
+			// Sequential operations must create an array for each variable. This
 			// array will be used to store the output value.
-			Variable[] externalVariables = iterator.getExternalVariables();
-			if (iterator.getType() == IteratorType.Sequential) {
+			Variable[] externalVariables = operation.getExternalVariables();
+			if (operation.getExecutionType() == ExecutionType.Sequential) {
 				parameters = new Parameter[externalVariables.length * 2 + 2];
 				parameters[0] = runtimePtr;
 				parameters[1] = variablePointer;
@@ -133,7 +133,7 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 						externalVariables.length);
 			}
 			String name = RuntimeCommonDefinitions.getInstance()
-					.getIteratorName(iterator);
+					.getOperationName(operation);
 			ret.add(RuntimeCommonDefinitions.getInstance()
 					.createJavaMethodSignature("private native", "void", name,
 							parameters, false)
@@ -190,17 +190,17 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public void translateIteratorsAndBinds(String packageName,
-			String className, IteratorsAndBinds iteratorsAndBinds) {
+	public void translateOperationsAndBinds(String packageName,
+			String className, OperationsAndBinds operationsAndBinds) {
 		ParallelMERuntimeCTranslation cTranslation = new ParallelMERuntimeCTranslation();
-		cTranslation.createKernelFile(className, iteratorsAndBinds,
+		cTranslation.createKernelFile(className, operationsAndBinds,
 				this.translators, this.outputDestinationFolder);
 		String cClassName = RuntimeCommonDefinitions.getInstance()
 				.getJavaWrapperClassName(className, TargetRuntime.ParallelME);
 		cTranslation.createCPPFile(packageName, cClassName,
-				iteratorsAndBinds.iterators, this.outputDestinationFolder);
+				operationsAndBinds.operations, this.outputDestinationFolder);
 		cTranslation.createHFile(packageName, cClassName,
-				iteratorsAndBinds.iterators, this.outputDestinationFolder);
+				operationsAndBinds.operations, this.outputDestinationFolder);
 	}
 
 	/**

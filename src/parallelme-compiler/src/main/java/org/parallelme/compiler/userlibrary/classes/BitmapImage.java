@@ -8,70 +8,20 @@
 
 package org.parallelme.compiler.userlibrary.classes;
 
-import java.util.HashMap;
-
-import org.parallelme.compiler.userlibrary.UserLibraryCollectionClassImpl;
-
 /**
  * Defines the user library collection class BitmapImage.
  * 
  * @author Wilson de Carvalho
  */
-public class BitmapImage extends UserLibraryCollectionClassImpl {
-	private static String iteratorMethodName = "foreach";
-	private static String dataOutputMethodName = "toBitmap";
-	private static String getHeightName = "getHeight";
-	private static String getWidthMethodName = "getWidth";
+public class BitmapImage extends Image {
 	private static BitmapImage instance = new BitmapImage();
 
 	private BitmapImage() {
-		this.initValidMethodsSet();
+		super();
 	}
 	
 	public static BitmapImage getInstance() {
 		return instance;
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	protected void initValidMethodsSet() {
-		this.validMethods = new HashMap<>();
-		this.validMethods.put(getHeightName, "int");
-		this.validMethods.put(getWidthMethodName, "int");
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public boolean isTyped() {
-		return false;
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String getIteratorMethodName() {
-		return iteratorMethodName;
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String getDataOutputMethodName() {
-		return dataOutputMethodName;
-	}
-	
-	public String getHeightMethodName() {
-		return getHeightName;
-	}
-	
-	public String getWidthMethodName() {
-		return getWidthMethodName;
 	}
 	
 	/**

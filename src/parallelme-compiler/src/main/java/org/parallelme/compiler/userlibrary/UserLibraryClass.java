@@ -30,7 +30,7 @@ public interface UserLibraryClass {
 	public boolean isTyped();
 
 	/**
-	 * List all valid methods for this class, EXCEPT output bind and iterator
+	 * List all valid methods for this class, EXCEPT output bind and operation
 	 * methods. These last methods names must be returned in specific methods.
 	 * 
 	 * @return A Set with valid method names.
@@ -38,7 +38,7 @@ public interface UserLibraryClass {
 	public Set<String> getValidMethods();
 
 	/**
-	 * Get the return type of a valid method (non-iterator and non-output bind).
+	 * Get the return type of a valid method (non-operation and non-output bind).
 	 */
 	public String getReturnType(String methodName);
 

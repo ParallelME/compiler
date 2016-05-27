@@ -13,9 +13,11 @@ import java.io.File;
 import org.parallelme.compiler.RuntimeDefinition.TargetRuntime;
 import org.parallelme.compiler.exception.CompilationException;
 import org.parallelme.compiler.intermediate.*;
-import org.parallelme.compiler.intermediate.Iterator.IteratorType;
+import org.parallelme.compiler.intermediate.Operation.ExecutionType;
+import org.parallelme.compiler.intermediate.Operation.OperationType;
 import org.parallelme.compiler.userlibrary.UserLibraryClass;
 import org.parallelme.compiler.userlibrary.UserLibraryClassFactory;
+import org.parallelme.compiler.userlibrary.UserLibraryCollectionClass;
 import org.parallelme.compiler.userlibrary.classes.Array;
 import org.parallelme.compiler.userlibrary.classes.HDRImage;
 import org.stringtemplate.v4.ST;
@@ -30,7 +32,6 @@ public class RuntimeCommonDefinitions {
 	private final String templateMethodSignature = "<modifier> <returnType> <name>(<params:{var|<var.type> <var.name>}; separator=\", \">)";
 	private final String inSuffix = "In";
 	private final String outSuffix = "Out";
-	private final String iteratorName = "iterator";
 	private final String inputBindName = "inputBind";
 	private final String outputBindName = "outputBind";
 	private final String prefix = "PM_";
@@ -40,8 +41,7 @@ public class RuntimeCommonDefinitions {
 			+ " *  |  __/ __ |  ___|/ __ |/ /_/ /__/ __/ /__  / / v  / /__\n"
 			+ " *  |_| /_/ |_|_|\\_\\/_/ |_/____/___/___/____/ /_/  /_/____/\n"
 			+ " *\n"
-			+ " * Code created automatically by ParallelME compiler.\n"
-			+ " *";
+			+ " * Code created automatically by ParallelME compiler.\n" + " *";
 
 	private RuntimeCommonDefinitions() {
 	}
@@ -69,19 +69,25 @@ public class RuntimeCommonDefinitions {
 	public String getAndroidMKHeaderComment() {
 		return "#" + this.headerComment.replaceAll("\\*", "#") + "#";
 	}
-	
+
 	/**
-	 * Return an unique prefixed iterator name base on its sequential number.
+	 * Return an unique prefixed operation name base on its sequential number.
 	 */
-	public String getPrefixedIteratorName(Iterator iterator) {
-		return this.prefix + this.getIteratorName(iterator);
+	public String getPrefixedOperationName(Operation operation) {
+		return this.prefix + this.getOperationName(operation);
 	}
 
 	/**
-	 * Return an unique iterator name base on its sequential number.
+	 * Return an unique operation name base on its sequential number.
 	 */
-	public String getIteratorName(Iterator iterator) {
-		return iteratorName + iterator.sequentialNumber;
+	public String getOperationName(Operation operation) {
+		if (operation.operationType == OperationType.Foreach) {
+			return UserLibraryCollectionClass.getForeachMethodName()
+					+ operation.sequentialNumber;
+		} else {
+			return UserLibraryCollectionClass.getReduceMethodName()
+					+ operation.sequentialNumber;
+		}
 	}
 
 	/**
@@ -311,17 +317,17 @@ public class RuntimeCommonDefinitions {
 	}
 
 	/**
-	 * Creates a Java method signature for a given iterator.
+	 * Creates a Java method signature for a given operation.
 	 */
-	public String createJavaMethodSignature(Iterator iterator) {
-		if (iterator.getType() == IteratorType.Sequential) {
+	public String createJavaMethodSignature(Operation operation) {
+		if (operation.getExecutionType() == ExecutionType.Sequential) {
 			return this.createJavaMethodSignature("public", "void",
-					this.getIteratorName(iterator),
-					iterator.getExternalVariables(), true);
+					this.getOperationName(operation),
+					operation.getExternalVariables(), true);
 		} else {
 			return this.createJavaMethodSignature("public", "void",
-					this.getIteratorName(iterator),
-					iterator.getExternalVariables(), false);
+					this.getOperationName(operation),
+					operation.getExternalVariables(), false);
 		}
 	}
 

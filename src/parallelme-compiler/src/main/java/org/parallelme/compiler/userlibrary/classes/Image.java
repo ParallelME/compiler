@@ -13,20 +13,18 @@ import java.util.HashMap;
 import org.parallelme.compiler.userlibrary.UserLibraryCollectionClass;
 
 /**
- * Defines the user library collection class Array.
+ * Defines user library Image derived classes.
  * 
- * @author Wilson de Carvalho
+ * @author Wilson de Carvalho, Pedro Caldeira
  */
-public class Array extends UserLibraryCollectionClass {
-	private static String outputBindMethodName = "toJavaArray";
-	private static Array instance = new Array();
+public abstract class Image extends UserLibraryCollectionClass {
+	private static String outputBindMethodName = "toBitmap";
+	private static String getHeightName = "getHeight";
+	private static String getWidthMethodName = "getWidth";
 
-	private Array() {
+	public Image() {
+		super();
 		this.initValidMethodsSet();
-	}
-	
-	public static Array getInstance() {
-		return instance;
 	}
 
 	/**
@@ -35,6 +33,8 @@ public class Array extends UserLibraryCollectionClass {
 	@Override
 	protected void initValidMethodsSet() {
 		this.validMethods = new HashMap<>();
+		this.validMethods.put(getHeightName, "int");
+		this.validMethods.put(getWidthMethodName, "int");
 	}
 
 	/**
@@ -42,7 +42,7 @@ public class Array extends UserLibraryCollectionClass {
 	 */
 	@Override
 	public boolean isTyped() {
-		return true;
+		return false;
 	}
 
 	/**
@@ -52,11 +52,12 @@ public class Array extends UserLibraryCollectionClass {
 	public String getOutputBindMethodName() {
 		return outputBindMethodName;
 	}
-	
-	/**
-	 * {@inheritDoc}
-	 */
-	public static String getName() {
-		return "Array";
+
+	public String getHeightMethodName() {
+		return getHeightName;
+	}
+
+	public String getWidthMethodName() {
+		return getWidthMethodName;
 	}
 }

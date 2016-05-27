@@ -11,7 +11,7 @@ package org.parallelme.compiler.intermediate;
 import org.parallelme.compiler.symboltable.TokenAddress;
 
 /**
- * Intermediate representation for regular method call (non-iterator, non-bind)
+ * Intermediate representation for regular method call (non-operation, non-bind)
  * on a given object.
  * 
  * @author Wilson de Carvalho

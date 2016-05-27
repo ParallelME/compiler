@@ -11,7 +11,7 @@ package org.parallelme.compiler.translation.userlibrary;
 import java.util.List;
 
 import org.parallelme.compiler.intermediate.InputBind;
-import org.parallelme.compiler.intermediate.Iterator;
+import org.parallelme.compiler.intermediate.Operation;
 import org.parallelme.compiler.intermediate.MethodCall;
 import org.parallelme.compiler.intermediate.OutputBind;
 
@@ -98,33 +98,33 @@ public interface UserLibraryTranslatorDefinition {
 			OutputBind outputBind);
 
 	/**
-	 * Translates a given iterator returning the C code compatible for a given
-	 * runtime.
+	 * Translates a given foreach operation returning the C code compatible for
+	 * a given runtime.
 	 * 
 	 * @param className
 	 *            Name of the java class (user class) where the input bind was
 	 *            originally created.
-	 * @param iterator
-	 *            Iterator information.
+	 * @param operation
+	 *            Foreach operation information.
 	 * 
 	 * @return A string with the C code for the given runtime.
 	 */
-	public String translateIterator(String className, Iterator iterator);
+	public String translateForeach(String className, Operation operation);
 
 	/**
-	 * Translates a given iterator returning the Java code that will be used to
+	 * Translates a given operation returning the Java code that will be used to
 	 * call a given runtime code.
 	 * 
 	 * @param className
 	 *            Name of the java class (user class) where the input bind was
 	 *            originally created.
-	 * @param iterator
-	 *            Iterator information.
+	 * @param operation
+	 *            Operation information.
 	 * 
 	 * @return A string with the java code for replacement on the original user
 	 *         code written with the user library.
 	 */
-	public String translateIteratorCall(String className, Iterator iterator);
+	public String translateOperationCall(String className, Operation operation);
 
 	/**
 	 * Translates a given method call returning the Java code that will be used

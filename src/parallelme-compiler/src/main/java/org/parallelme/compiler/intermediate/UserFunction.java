@@ -15,10 +15,10 @@ package org.parallelme.compiler.intermediate;
  */
 public class UserFunction {
 	public final String Code;
-	public final Variable variableArgument;
+	public final Variable[] arguments;
 
-	public UserFunction(String Code, Variable variableArgument) {
+	public UserFunction(String Code, Variable[] arguments) {
 		this.Code = Code;
-		this.variableArgument = variableArgument;
+		this.arguments = arguments;
 	}
 }

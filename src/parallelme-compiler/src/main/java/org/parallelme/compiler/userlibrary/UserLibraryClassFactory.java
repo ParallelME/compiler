@@ -32,6 +32,8 @@ public class UserLibraryClassFactory {
 			return HDRImage.getInstance();
 		else if (className.equals(Foreach.getName()))
 			return new Foreach();
+		else if (className.equals(Reduce.getName()))
+			return new Reduce();
 		else if (className.equals(RGB.getName()))
 			return RGB.getInstance();
 		else if (className.equals(RGBA.getName()))

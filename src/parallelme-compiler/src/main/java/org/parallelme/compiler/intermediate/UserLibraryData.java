@@ -16,7 +16,7 @@ package org.parallelme.compiler.intermediate;
  */
 public class UserLibraryData {
 	public final Variable variable;
-	// A sequential number that is used to uniquely identify this iterator.
+	// A sequential number that is used to uniquely identify this user library element.
 	public final int sequentialNumber;
 
 	public UserLibraryData(Variable variable, int sequentialNumber) {
