@@ -109,7 +109,7 @@ public interface UserLibraryTranslatorDefinition {
 	 * 
 	 * @return A string with the C code for the given runtime.
 	 */
-	public String translateForeach(String className, Operation operation);
+	public String translateOperation(String className, Operation operation);
 
 	/**
 	 * Translates a given operation returning the Java code that will be used to

@@ -14,6 +14,7 @@ import org.parallelme.compiler.intermediate.Operation.ExecutionType;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.translation.PrimitiveTypes;
 import org.parallelme.compiler.translation.userlibrary.BaseUserLibraryTranslator;
+import org.parallelme.compiler.userlibrary.classes.Array;
 import org.parallelme.compiler.userlibrary.classes.BitmapImage;
 import org.parallelme.compiler.userlibrary.classes.HDRImage;
 import org.stringtemplate.v4.ST;
@@ -76,13 +77,13 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 		String cCode = this.translateVariable(userFunctionVariable,
 				this.cCodeTranslator.translate(code2Translate)).trim();
 		ST stForY = new ST(templateForLoop);
-		stForY.add("varName", "PM_y");
-		stForY.add("varMaxVal", this.getHeightVariableName());
 		// BitmapImage and HDRImage types contains two for loops
 		String dataInDeclaration;
 		String dataOutReturn;
 		if (operation.variable.typeName.equals(BitmapImage.getName())
 				|| operation.variable.typeName.equals(HDRImage.getName())) {
+			stForY.add("varName", "PM_y");
+			stForY.add("varMaxVal", this.getHeightVariableName());
 			dataInDeclaration = this
 					.translateType(userFunctionVariable.typeName)
 					+ " "
@@ -99,13 +100,16 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 			stForX.add("body", cCode);
 			stForY.add("body", stForX.render());
 		} else {
+			// Array
+			stForY.add("varName", "PM_x");
+			stForY.add("varMaxVal", this.getLengthVariableName());
 			dataInDeclaration = this
 					.translateType(userFunctionVariable.typeName)
 					+ " "
 					+ userFunctionVariable.name
 					+ " = "
-					+ this.getDataVariableName() + "[PM_y];\n";
-			dataOutReturn = this.getDataVariableName() + "[PM_y] = "
+					+ this.getDataVariableName() + "[PM_x];\n";
+			dataOutReturn = this.getDataVariableName() + "[PM_x] = "
 					+ userFunctionVariable.name + ";\n";
 			cCode = dataInDeclaration + cCode + "\n" + dataOutReturn;
 			// Array types
@@ -138,8 +142,12 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 		st.add("return", "void");
 		st.add("functionName",
 				this.commonDefinitions.getOperationName(operation));
-		st.addAggr("params.{type, name}", "__global float4",
-				"*" + this.getDataVariableName());
+		st.addAggr(
+				"params.{type, name}",
+				String.format("__global %s*", this.translateType(operation
+						.getUserFunctionData().arguments[0].typeName)),
+				this.getDataVariableName());
+
 		// External variables must be declared twice in sequential operations:
 		// 1: A C typed variable with the same name which will be used in
 		// the original user code.
@@ -164,6 +172,9 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 						this.getWidthVariableName());
 				st.addAggr("params.{type, name}", "int",
 						this.getHeightVariableName());
+			} else if (operation.variable.typeName.equals(Array.getName())) {
+				st.addAggr("params.{type, name}", "int",
+						this.getLengthVariableName());
 			}
 		}
 
@@ -190,6 +201,13 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 	 */
 	protected String getWidthVariableName() {
 		return this.commonDefinitions.getPrefix() + "width";
+	}
+
+	/**
+	 * Name for length variable that is used in C kernel code.
+	 */
+	protected String getLengthVariableName() {
+		return this.commonDefinitions.getPrefix() + "length";
 	}
 
 	/**

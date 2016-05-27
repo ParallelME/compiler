@@ -24,7 +24,7 @@ import org.stringtemplate.v4.ST;
  */
 public class PMHDRImageTranslator extends PMImageTranslator implements
 		HDRImageTranslator {
-	private static final String templateInputBindCreation = "<imagePointer> = ParallelMERuntime.getInstance().createHDRImage(data, width, height);";
+	private static final String templateInputBindObjCreation = "<imagePointer> = ParallelMERuntime.getInstance().createHDRImage(data, width, height);";
 	private static final String templateKernelToFloat = "__kernel void toFloatHDRImage(__global uchar4 *PM_dataIn, __global float4 *PM_dataOut) {\n"
 			+ "\tint PM_gid = get_global_id(0);\n"
 			+ "\tuchar4 PM_in = PM_dataIn[PM_gid];\n"
@@ -70,7 +70,7 @@ public class PMHDRImageTranslator extends PMImageTranslator implements
 	@Override
 	public String translateInputBindObjCreation(String className,
 			InputBind inputBind) {
-		ST st = new ST(templateInputBindCreation);
+		ST st = new ST(templateInputBindObjCreation);
 		st.add("imagePointer",
 				this.commonDefinitions.getPointerName(inputBind.variable));
 		return st.render();

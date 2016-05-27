@@ -29,7 +29,7 @@ public abstract class PMImageTranslator extends PMTranslator implements
 			+ "\tParallelMERuntime.getInstance().getWidth(<imagePointer>),\n"
 			+ "\tParallelMERuntime.getInstance().getHeight(<imagePointer>),\n"
 			+ "\tBitmap.Config.ARGB_8888);\n";
-	private static final String templateOutputBindCall2 = "ParallelMERuntime.getInstance().toBitmap<className>(<imagePointer>, bitmap);";
+	private static final String templateOutputBindCall2 = "ParallelMERuntime.getInstance().toBitmap<className>(<imagePointer>, <bitmapName>);";
 
 	public PMImageTranslator(CTranslator cCodeTranslator) {
 		super(cCodeTranslator);
@@ -54,6 +54,7 @@ public abstract class PMImageTranslator extends PMTranslator implements
 		st.add("imagePointer",
 				this.commonDefinitions.getPointerName(outputBind.variable));
 		st.add("className", outputBind.variable.typeName);
+		st.add("bitmapName", outputBind.destinationObject.name);
 		ret.append(st.render());
 		return ret.toString();
 	}

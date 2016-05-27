@@ -13,6 +13,7 @@ import java.util.List;
 
 import org.parallelme.compiler.intermediate.InputBind;
 import org.parallelme.compiler.intermediate.OutputBind;
+import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.translation.userlibrary.BitmapImageTranslator;
 import org.stringtemplate.v4.ST;
@@ -24,7 +25,7 @@ import org.stringtemplate.v4.ST;
  */
 public class PMBitmapImageTranslator extends PMImageTranslator implements
 		BitmapImageTranslator {
-	private static final String templateInputBindCreation = "<imagePointer> = ParallelMERuntime.getInstance().createBitmapImage(bitmap);";
+	private static final String templateInputBindObjCreation = "<imagePointer> = ParallelMERuntime.getInstance().createBitmapImage(<bitmapName>);";
 	private static final String templateKernelToFloat = "__kernel void toFloatBitmapImage(__global uchar4 *PM_dataIn, __global float4 *PM_dataOut) {\n"
 			+ "\tint PM_gid = get_global_id(0);\n"
 			+ "\tuchar4 PM_in = PM_dataIn[PM_gid];\n"
@@ -35,7 +36,7 @@ public class PMBitmapImageTranslator extends PMImageTranslator implements
 			+ "\tPM_out.s3 = 0f;\n"
 			+ "\tPM_dataOut[PM_gid] = PM_out;\n"
 			+ "}\n";
-	private static final String templateKernelToBitmap = "__kernel void toBitmapHDRImage(__global float4 *PM_dataIn, __global uchar4 *PM_dataOut) {\n"
+	private static final String templateKernelToBitmap = "__kernel void toBitmapBitmapImage(__global float4 *PM_dataIn, __global uchar4 *PM_dataOut) {\n"
 			+ "\tint PM_gid = get_global_id(0);\n"
 			+ "\tfloat4 PM_in = PM_dataIn[PM_gid];\n"
 			+ "\tuchar4 PM_out;\n"
@@ -63,9 +64,11 @@ public class PMBitmapImageTranslator extends PMImageTranslator implements
 	@Override
 	public String translateInputBindObjCreation(String className,
 			InputBind inputBind) {
-		ST st = new ST(templateInputBindCreation);
+		ST st = new ST(templateInputBindObjCreation);
 		st.add("imagePointer",
 				this.commonDefinitions.getPointerName(inputBind.variable));
+		Variable variable = (Variable) inputBind.parameters[0];
+		st.add("bitmapName", variable.name);
 		return st.render();
 	}
 

@@ -19,8 +19,6 @@ import org.parallelme.compiler.userlibrary.classes.Float32;
 import org.parallelme.compiler.userlibrary.classes.Int16;
 import org.parallelme.compiler.userlibrary.classes.Int32;
 import org.parallelme.compiler.userlibrary.classes.Pixel;
-import org.parallelme.compiler.userlibrary.classes.RGB;
-import org.parallelme.compiler.userlibrary.classes.RGBA;
 
 /**
  * Base class for translators containing code that is shared between different
@@ -28,8 +26,10 @@ import org.parallelme.compiler.userlibrary.classes.RGBA;
  * 
  * @author Wilson de Carvalho
  */
-public abstract class BaseUserLibraryTranslator implements UserLibraryTranslatorDefinition {
-	protected RuntimeCommonDefinitions commonDefinitions = RuntimeCommonDefinitions.getInstance();
+public abstract class BaseUserLibraryTranslator implements
+		UserLibraryTranslatorDefinition {
+	protected RuntimeCommonDefinitions commonDefinitions = RuntimeCommonDefinitions
+			.getInstance();
 
 	/**
 	 * Translates a given type to an equivalent runtime type. Example: translate
@@ -37,15 +37,13 @@ public abstract class BaseUserLibraryTranslator implements UserLibraryTranslator
 	 * 
 	 * @param typeName
 	 *            Type that must be translated.
-	 * @return A string with the equivalent type for this runtime.
+	 * @param targetRuntime
+	 *            Target runtime.
+	 * @return A string with the equivalent type for the given runtime.
 	 */
 	protected String translateType(String typeName) {
 		String translatedType = "";
-		if (typeName.equals(RGB.getName())) {
-			translatedType = "float3";
-		} else if (typeName.equals(RGBA.getName())) {
-			translatedType = "float4";
-		} else if (typeName.equals(Pixel.getName())) {
+		if (typeName.equals(Pixel.getName())) {
 			translatedType = "float4";
 		} else if (typeName.equals(Int16.getName())) {
 			translatedType = "short";
@@ -73,11 +71,7 @@ public abstract class BaseUserLibraryTranslator implements UserLibraryTranslator
 	 */
 	protected String translateVariable(Variable variable, String code) {
 		String translatedCode = "";
-		if (variable.typeName.equals(RGB.getName())) {
-			translatedCode = this.translateRGBVariable(variable, code);
-		} else if (variable.typeName.equals(RGBA.getName())) {
-			translatedCode = this.translateRGBAVariable(variable, code);
-		} else if (variable.typeName.equals(Pixel.getName())) {
+		if (variable.typeName.equals(Pixel.getName())) {
 			translatedCode = this.translatePixelVariable(variable, code);
 		} else if (variable.typeName.equals(Int16.getName())
 				|| variable.typeName.equals(Int32.getName())
@@ -91,25 +85,6 @@ public abstract class BaseUserLibraryTranslator implements UserLibraryTranslator
 					BoxedTypes.getCType(variable.typeName));
 		}
 		return translatedCode;
-	}
-
-	protected String translateRGBVariable(Variable variable, String code) {
-		String ret = code.replaceAll(variable.typeName,
-				this.translateType(variable.typeName));
-		ret = ret.replaceAll(variable.name + ".red", variable.name + ".s0");
-		ret = ret.replaceAll(variable.name + ".green", variable.name + ".s1");
-		ret = ret.replaceAll(variable.name + ".blue", variable.name + ".s2");
-		return ret;
-	}
-
-	protected String translateRGBAVariable(Variable variable, String code) {
-		String ret = code.replaceAll(variable.typeName,
-				this.translateType(variable.typeName));
-		ret = ret.replaceAll(variable.name + ".red", variable.name + ".s0");
-		ret = ret.replaceAll(variable.name + ".green", variable.name + ".s1");
-		ret = ret.replaceAll(variable.name + ".blue", variable.name + ".s2");
-		ret = ret.replaceAll(variable.name + ".alpha", variable.name + ".s3");
-		return ret;
 	}
 
 	protected String translatePixelVariable(Variable variable, String code) {
@@ -142,7 +117,8 @@ public abstract class BaseUserLibraryTranslator implements UserLibraryTranslator
 	 * foreach 2 becomes "gMax_Foreach2"
 	 */
 	protected String getGlobalVariableName(String variable, Operation operation) {
-		String operationName = this.commonDefinitions.getOperationName(operation);
+		String operationName = this.commonDefinitions
+				.getOperationName(operation);
 		String variableName = this.upperCaseFirstLetter(variable);
 		return this.commonDefinitions.getPrefix() + "g" + variableName
 				+ this.upperCaseFirstLetter(operationName);
@@ -160,7 +136,7 @@ public abstract class BaseUserLibraryTranslator implements UserLibraryTranslator
 	 * {@inheritDoc}
 	 */
 	@Override
-	public String translateForeach(String className, Operation operation) {
+	public String translateOperation(String className, Operation operation) {
 		String ret;
 		// Translate parallel operations
 		if (operation.getExecutionType() == ExecutionType.Parallel) {

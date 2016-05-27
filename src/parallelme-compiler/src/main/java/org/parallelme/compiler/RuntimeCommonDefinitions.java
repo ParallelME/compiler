@@ -292,22 +292,17 @@ public class RuntimeCommonDefinitions {
 			throws CompilationException {
 		Parameter[] parameters = inputBind.parameters;
 		if (inputBind.variable.typeName.equals(Array.getName())) {
-			if (inputBind.parameters.length != 3)
+			if (inputBind.parameters.length != 2)
 				throw new CompilationException(
-						"Array constructor must have 3 arguments: primitive type array, NumericalData class and arrray length.");
+						"Array constructor must have 2 arguments: primitive type array and NumericalData class.");
 			// Second element (NumericalData class) in original parameters is
 			// not used
-			parameters = new Parameter[2];
+			parameters = new Parameter[1];
 			parameters[0] = inputBind.parameters[0];
-			// Checks if the array length parameter is a expression. In case
-			// positive, temporarily translates it to a literal integer in order
-			// to create a valid signature.
-			parameters[1] = inputBind.parameters[2] instanceof Expression ? new Literal(
-					"1", "int") : inputBind.parameters[2];
 		} else if (inputBind.variable.typeName.equals(HDRImage.getName())) {
 			if (inputBind.parameters.length != 3)
 				throw new CompilationException(
-						"Array constructor must have 3 arguments: byte array, width and height.");
+						"HDRImage constructor must have 3 arguments: byte array, width and height.");
 			parameters = new Parameter[3];
 			parameters[0] = new Variable("data", "byte[]", "", "", -1);
 			parameters[1] = new Variable("width", "int", "", "", -1);

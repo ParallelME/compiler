@@ -15,9 +15,9 @@ public class BitmapLoaderTest {
     public Bitmap load(Bitmap bitmap) {
         BitmapImage image = new BitmapImage(bitmap);
         // to Yxy
-        image.par().foreach(new Foreach<RGB>() {
+        image.par().foreach(new Foreach<Pixel>() {
             @Override
-            public void function(RGB pixel) {
+            public void function(Pixel pixel) {
 				pixel.red /= 255;
 				pixel.green /= 255;
 				pixel.blue /= 255;
@@ -43,9 +43,9 @@ public class BitmapLoaderTest {
             }
         });
         // to RGB
-        image.par().foreach(new Foreach<RGB>() {
+        image.par().foreach(new Foreach<Pixel>() {
             @Override
-            public void function(RGB pixel) {
+            public void function(Pixel pixel) {
                 float xVal, zVal;
                 float yVal = pixel.red;       // Y
 

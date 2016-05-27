@@ -21,20 +21,26 @@ JNIEXPORT jlong JNICALL Java_org_parallelme_ParallelMERuntime_nativeInit
 JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativeCleanUpRuntime
   (JNIEnv *, jobject, jlong);
 
-JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativeCleanUpImage
-  (JNIEnv *, jobject, jlong);
+JNIEXPORT jlong JNICALL Java_org_parallelme_ParallelMERuntime_nativeCreateShortArray
+  (JNIEnv *, jobject, jlong, jarray, jint);
 
-JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativeCleanUpArray
-  (JNIEnv *, jobject, jlong);
+JNIEXPORT jlong JNICALL Java_org_parallelme_ParallelMERuntime_nativeCreateIntArray
+  (JNIEnv *, jobject, jlong, jarray, jint);
 
-JNIEXPORT jlong JNICALL Java_org_parallelme_ParallelMERuntime_nativeCreateHDRImage
-  (JNIEnv *, jobject, jlong, jbyteArray, jint, jint);
+JNIEXPORT jlong JNICALL Java_org_parallelme_ParallelMERuntime_nativeCreateFloatArray
+  (JNIEnv *, jobject, jlong, jarray, jint);
+
+JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativetoArray
+  (JNIEnv *, jobject, jlong, jlong, jarray);
 
 JNIEXPORT jlong JNICALL Java_org_parallelme_ParallelMERuntime_nativeCreateBitmapImage
   (JNIEnv *, jobject, jlong, jobject, jint, jint);
 
 JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativeToBitmapBitmapImage
   (JNIEnv *, jobject, jlong, jlong, jobject);
+
+JNIEXPORT jlong JNICALL Java_org_parallelme_ParallelMERuntime_nativeCreateHDRImage
+  (JNIEnv *, jobject, jlong, jbyteArray, jint, jint);
 
 JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativeToBitmapHDRImage
   (JNIEnv *, jobject, jlong, jlong, jobject);
@@ -45,6 +51,9 @@ JNIEXPORT jint JNICALL Java_org_parallelme_ParallelMERuntime_nativeGetHeight
 JNIEXPORT jint JNICALL Java_org_parallelme_ParallelMERuntime_nativeGetWidth
   (JNIEnv *, jobject, jlong);
 
+JNIEXPORT jint JNICALL Java_org_parallelme_ParallelMERuntime_nativeGetLength
+  (JNIEnv *, jobject, jlong);
+  
 #ifdef __cplusplus
 }
 #endif

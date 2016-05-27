@@ -135,7 +135,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 			if (operation.operationType == OperationType.Foreach) {
 				st.add("functions",
 						this.translators.get(operation.variable.typeName)
-								.translateForeach(className, operation));
+								.translateOperation(className, operation));
 			}
 		}
 		// 4. Translate outputbinds

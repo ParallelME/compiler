@@ -34,10 +34,6 @@ public class UserLibraryClassFactory {
 			return new Foreach();
 		else if (className.equals(Reduce.getName()))
 			return new Reduce();
-		else if (className.equals(RGB.getName()))
-			return RGB.getInstance();
-		else if (className.equals(RGBA.getName()))
-			return RGBA.getInstance();
 		else if (className.equals(Pixel.getName()))
 			return Pixel.getInstance();
 		else if (className.equals(Int16.getName()))

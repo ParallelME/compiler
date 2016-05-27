@@ -21,6 +21,7 @@ import org.parallelme.compiler.intermediate.OutputBind;
 import org.parallelme.compiler.intermediate.Operation.ExecutionType;
 import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.translation.userlibrary.UserLibraryTranslatorDefinition;
+import org.parallelme.compiler.userlibrary.classes.Array;
 import org.parallelme.compiler.userlibrary.classes.BitmapImage;
 import org.parallelme.compiler.userlibrary.classes.HDRImage;
 import org.parallelme.compiler.util.FileWriter;
@@ -108,7 +109,7 @@ public class ParallelMERuntimeCTranslation {
 		// 3. Translate operations
 		for (Operation operation : operationsAndBinds.operations) {
 			String kernel = translators.get(operation.variable.typeName)
-					.translateForeach(className, operation);
+					.translateOperation(className, operation);
 			this.addKernelByLine(kernel, st);
 		}
 		// 4. Translate outputbinds
@@ -219,6 +220,8 @@ public class ParallelMERuntimeCTranslation {
 				|| operation.variable.typeName.equals(BitmapImage.getName())) {
 			st.addAggr("setArgs.{index, name}", ++i, "variablePtr->width");
 			st.addAggr("setArgs.{index, name}", ++i, "variablePtr->height");
+		} else if (operation.variable.typeName.equals(Array.getName())) {
+			st.addAggr("setArgs.{index, name}", ++i, "variablePtr->length");
 		}
 
 		return st.render();

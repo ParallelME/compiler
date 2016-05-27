@@ -11,7 +11,6 @@ package org.parallelme.compiler.translation.renderscript;
 import org.parallelme.compiler.intermediate.InputBind;
 import org.parallelme.compiler.intermediate.OutputBind;
 import org.parallelme.compiler.intermediate.OutputBind.OutputBindType;
-import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.translation.userlibrary.ImageTranslator;
 import org.parallelme.compiler.userlibrary.classes.HDRImage;
@@ -59,10 +58,9 @@ public abstract class RSImageTranslator extends RSTranslator implements
 	public String translateOutputBindCall(String className,
 			OutputBind outputBind) {
 		StringBuilder ret = new StringBuilder();
-		Variable variable = outputBind.variable;
-		String inputObject = this.commonDefinitions.getVariableInName(variable);
+		String inputObject = this.commonDefinitions.getVariableInName(outputBind.variable);
 		String outputObject = this.commonDefinitions
-				.getVariableOutName(variable);
+				.getVariableOutName(outputBind.variable);
 		String destinationObject = outputBind.destinationObject.name;
 		// If it is an object assignment, must declare the destination
 		// object type and name.

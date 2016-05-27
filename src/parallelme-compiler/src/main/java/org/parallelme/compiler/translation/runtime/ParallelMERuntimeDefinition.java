@@ -39,6 +39,8 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	private void initTranslators() {
 		if (super.translators == null) {
 			super.translators = new HashMap<>();
+			super.translators.put(Array.getName(), new PMArrayTranslator(
+					cCodeTranslator));
 			super.translators.put(BitmapImage.getName(),
 					new PMBitmapImageTranslator(cCodeTranslator));
 			super.translators.put(HDRImage.getName(), new PMHDRImageTranslator(
@@ -109,7 +111,8 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 		Variable variablePointer = new Variable("varPtr", "long", "", "", -1);
 		for (Operation operation : operations) {
 			Parameter[] parameters;
-			// Sequential operations must create an array for each variable. This
+			// Sequential operations must create an array for each variable.
+			// This
 			// array will be used to store the output value.
 			Variable[] externalVariables = operation.getExternalVariables();
 			if (operation.getExecutionType() == ExecutionType.Sequential) {
@@ -149,19 +152,6 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 			variables.add(inputBind.variable);
 		ret.add("@Override");
 		ret.add("protected void finalize() throws Throwable {");
-		for (Variable variable : variables) {
-			if (variable.typeName.equals(HDRImage.getName())
-					|| variable.typeName.equals(BitmapImage.getName()))
-				ret.add(String.format(
-						"\tParallelMERuntime.getInstance().cleanUpImage(%s);",
-						RuntimeCommonDefinitions.getInstance().getPointerName(
-								variable)));
-			else if (variable.typeName.equals(Array.getName()))
-				ret.add(String.format(
-						"\tParallelMERuntime.getInstance().cleanUpArray(%s);",
-						RuntimeCommonDefinitions.getInstance().getPointerName(
-								variable)));
-		}
 		ret.add("\tsuper.finalize();");
 		ret.add("}");
 		ret.add("");
