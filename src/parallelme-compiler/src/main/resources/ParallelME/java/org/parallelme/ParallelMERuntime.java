@@ -27,12 +27,12 @@ public class ParallelMERuntime {
 
 	private native long nativeInit();
 	private native void nativeCleanUpRuntime(long runtimePointer);
-	private native long nativeCreateShortArray(long runtimePointer, short[] array, int length);
-	private native long nativeCreateIntArray(long runtimePointer, int[] array, int length);
-	private native long nativeCreateFloatArray(long runtimePointer, float[] array, int length);
-	private native void nativeToArray(long runtimePointer, long arrayPointer, short[]);
-	private native void nativeToArray(long runtimePointer, long arrayPointer, int[]);
-	private native void nativeToArray(long runtimePointer, long arrayPointer, float[]);
+	private native long nativeCreateShortArray(short[] array, int length);
+	private native void nativeToShortArray(long arrayPointer, short[] array);
+	private native long nativeCreateIntArray(int[] array, int length);
+	private native void nativeToIntArray(long arrayPointer, int[] array);
+	private native long nativeCreateFloatArray(float[] array, int length);
+	private native void nativeToFloatArray(long arrayPointer, float[] array);
 	private native long nativeCreateBitmapImage(long runtimePointer, Bitmap bitmap, int width, int height);
 	private native void nativeToBitmapBitmapImage(long runtimePointer, long imagePointer, Bitmap bitmap);
 	private native long nativeCreateHDRImage(long runtimePointer, byte[] data, int width, int height);
@@ -52,36 +52,32 @@ public class ParallelMERuntime {
 		super.finalize();
 	}
 
-	public void cleanUpArray(long arrayPointer) {
-		nativeCleanUpArray(arrayPointer);
-	}
-
 	public long createArray(short[] array) {
-		return nativeCreateShortArray(runtimePointer, array, array.length);
-	}
-
-	public long createArray(int[] array) {
-		return nativeCreateIntArray(runtimePointer, array, array.length);
-	}
-
-	public long createArray(float[] array) {
-		return nativeCreateFloatArray(runtimePointer, array, array.length);
+		return nativeCreateShortArray(array, array.length);
 	}
 
 	public long toArray(long arrayPointer, short[] array) {
-		return nativeToArray(runtimePointer, arrayPointer, array);
+		return nativeToShortArray(arrayPointer, array);
+	}
+
+	public long createArray(int[] array) {
+		return nativeCreateIntArray(array, array.length);
 	}
 
 	public long toArray(long arrayPointer, int[] array) {
-		return nativeToArray(runtimePointer, arrayPointer, array);
+		return nativeToIntArray(arrayPointer, array);
 	}
 
-	public long toArray(long arrayPointer, float[] array) {
-		return nativeToArray(runtimePointer, arrayPointer, array);
+	public long createArray(float[] array) {
+		return nativeCreateFloatArray(array, array.length);
+	}
+
+	public void toArray(long arrayPointer, float[] array) {
+		nativeToFloatArray(arrayPointer, array);
 	}
 	
-	public long createBitmapImage(Bitmap bitmap) {
-		return nativeCreateBitmapImage(runtimePointer, bitmap, bitmap.getWidth(), bitmap.getHeight());
+	public void createBitmapImage(Bitmap bitmap) {
+		nativeCreateBitmapImage(runtimePointer, bitmap, bitmap.getWidth(), bitmap.getHeight());
 	}
 
 	public void toBitmapBitmapImage(long imagePointer, Bitmap bitmap) {
@@ -106,4 +102,5 @@ public class ParallelMERuntime {
 
 	public int getLength(long arrayPointer) {
 		return nativeGetLength(arrayPointer);
-	}}
+	}
+}
