@@ -21,25 +21,29 @@ public class Operation extends UserLibraryData {
 	public enum ExecutionType {
 		Parallel, Sequential, None;
 	}
+
 	public enum OperationType {
 		Foreach, Reduce, Map, Filter;
 	}
 
 	public final TokenAddress statementAddress;
 	public final OperationType operationType;
-	
+	public final Variable destinationVariable;
+
 	private UserFunction userFunctionData;
 	private ArrayList<Variable> externalVariables;
-	
+
 	private ExecutionType executionType;
 
 	public Operation(Variable variableParameter, int sequentialNumber,
-			TokenAddress statementAddress, OperationType operationType) {
+			TokenAddress statementAddress, OperationType operationType,
+			Variable destinationVariable) {
 		super(variableParameter, sequentialNumber);
 		this.externalVariables = new ArrayList<>();
 		this.setExecutionType(executionType);
 		this.statementAddress = statementAddress;
 		this.operationType = operationType;
+		this.destinationVariable = destinationVariable;
 	}
 
 	public UserFunction getUserFunctionData() {

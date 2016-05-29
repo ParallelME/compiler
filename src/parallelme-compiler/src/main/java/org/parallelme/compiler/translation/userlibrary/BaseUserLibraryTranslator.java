@@ -10,8 +10,8 @@ package org.parallelme.compiler.translation.userlibrary;
 
 import org.parallelme.compiler.RuntimeCommonDefinitions;
 import org.parallelme.compiler.intermediate.Operation;
-import org.parallelme.compiler.intermediate.Operation.ExecutionType;
 import org.parallelme.compiler.intermediate.Variable;
+import org.parallelme.compiler.intermediate.Operation.ExecutionType;
 import org.parallelme.compiler.translation.BoxedTypes;
 import org.parallelme.compiler.translation.PrimitiveTypes;
 import org.parallelme.compiler.translation.userlibrary.UserLibraryTranslatorDefinition;
@@ -30,85 +30,6 @@ public abstract class BaseUserLibraryTranslator implements
 		UserLibraryTranslatorDefinition {
 	protected RuntimeCommonDefinitions commonDefinitions = RuntimeCommonDefinitions
 			.getInstance();
-
-	/**
-	 * Translates a given type to an equivalent runtime type. Example: translate
-	 * RGB type to float3 on RenderScript.
-	 * 
-	 * @param typeName
-	 *            Type that must be translated.
-	 * @param targetRuntime
-	 *            Target runtime.
-	 * @return A string with the equivalent type for the given runtime.
-	 */
-	protected String translateType(String typeName) {
-		String translatedType = "";
-		if (typeName.equals(Pixel.getName())) {
-			translatedType = "float4";
-		} else if (typeName.equals(Int16.getName())) {
-			translatedType = "short";
-		} else if (typeName.equals(Int32.getName())) {
-			translatedType = "int";
-		} else if (typeName.equals(Float32.getName())) {
-			translatedType = "float";
-		} else if (PrimitiveTypes.isPrimitive(typeName)) {
-			translatedType = PrimitiveTypes.getCType(typeName);
-		} else if (BoxedTypes.isBoxed(typeName)) {
-			translatedType = BoxedTypes.getCType(typeName);
-		}
-		return translatedType;
-	}
-
-	/**
-	 * Translates variables on the give code to a correspondent runtime-specific
-	 * type. Example: replaces all RGB objects by float3 on RenderScript.
-	 * 
-	 * @param variable
-	 *            Variable that must be translated.
-	 * @param code
-	 *            Original code that must have the reference replaced.
-	 * @return A string with the new code with the variable replaced.
-	 */
-	protected String translateVariable(Variable variable, String code) {
-		String translatedCode = "";
-		if (variable.typeName.equals(Pixel.getName())) {
-			translatedCode = this.translatePixelVariable(variable, code);
-		} else if (variable.typeName.equals(Int16.getName())
-				|| variable.typeName.equals(Int32.getName())
-				|| variable.typeName.equals(Float32.getName())) {
-			translatedCode = this.translateNumericVariable(variable, code);
-		} else if (PrimitiveTypes.isPrimitive(variable.typeName)) {
-			translatedCode = code.replaceAll(variable.typeName,
-					PrimitiveTypes.getCType(variable.typeName));
-		} else if (BoxedTypes.isBoxed(variable.typeName)) {
-			translatedCode = code.replaceAll(variable.typeName,
-					BoxedTypes.getCType(variable.typeName));
-		}
-		return translatedCode;
-	}
-
-	protected String translatePixelVariable(Variable variable, String code) {
-		String ret = code.replaceAll(variable.typeName,
-				this.translateType(variable.typeName));
-		ret = ret.replaceAll(variable.name + ".x", "x");
-		ret = ret.replaceAll(variable.name + ".y", "y");
-		ret = ret
-				.replaceAll(variable.name + ".rgba.red", variable.name + ".s0");
-		ret = ret.replaceAll(variable.name + ".rgba.green", variable.name
-				+ ".s1");
-		ret = ret.replaceAll(variable.name + ".rgba.blue", variable.name
-				+ ".s2");
-		ret = ret.replaceAll(variable.name + ".rgba.alpha", variable.name
-				+ ".s3");
-		return ret;
-	}
-
-	protected String translateNumericVariable(Variable variable, String code) {
-		String ret = code.replaceAll(variable.typeName,
-				this.translateType(variable.typeName));
-		ret = ret.replaceAll(variable.name + ".value", variable.name);
-		return ret;
-	}
 
 	/**
 	 * Create a global variable name for the given variable following some
@@ -130,6 +51,57 @@ public abstract class BaseUserLibraryTranslator implements
 	protected String upperCaseFirstLetter(String string) {
 		return string.substring(0, 1).toUpperCase()
 				+ string.substring(1, string.length());
+	}
+
+	/**
+	 * Translates variables on the give code to a correspondent runtime-specific
+	 * type. Example: replaces all RGB objects by float3 on RenderScript.
+	 * 
+	 * @param variable
+	 *            Variable that must be translated.
+	 * @param code
+	 *            Original code that must have the reference replaced.
+	 * @return A string with the new code with the variable replaced.
+	 */
+	public String translateVariable(Variable variable, String code) {
+		String translatedCode = "";
+		if (variable.typeName.equals(Pixel.getName())) {
+			translatedCode = this.translatePixelVariable(variable, code);
+		} else if (variable.typeName.equals(Int16.getName())
+				|| variable.typeName.equals(Int32.getName())
+				|| variable.typeName.equals(Float32.getName())) {
+			translatedCode = this.translateNumericVariable(variable, code);
+		} else if (PrimitiveTypes.isPrimitive(variable.typeName)) {
+			translatedCode = code.replaceAll(variable.typeName,
+					PrimitiveTypes.getCType(variable.typeName));
+		} else if (BoxedTypes.isBoxed(variable.typeName)) {
+			translatedCode = code.replaceAll(variable.typeName,
+					BoxedTypes.getCType(variable.typeName));
+		}
+		return translatedCode;
+	}
+
+	public String translatePixelVariable(Variable variable, String code) {
+		String ret = code.replaceAll(variable.typeName,
+				this.commonDefinitions.translateType(variable.typeName));
+		ret = ret.replaceAll(variable.name + ".x", "x");
+		ret = ret.replaceAll(variable.name + ".y", "y");
+		ret = ret
+				.replaceAll(variable.name + ".rgba.red", variable.name + ".s0");
+		ret = ret.replaceAll(variable.name + ".rgba.green", variable.name
+				+ ".s1");
+		ret = ret.replaceAll(variable.name + ".rgba.blue", variable.name
+				+ ".s2");
+		ret = ret.replaceAll(variable.name + ".rgba.alpha", variable.name
+				+ ".s3");
+		return ret;
+	}
+
+	public String translateNumericVariable(Variable variable, String code) {
+		String ret = code.replaceAll(variable.typeName,
+				this.commonDefinitions.translateType(variable.typeName));
+		ret = ret.replaceAll(variable.name + ".value", variable.name);
+		return ret;
 	}
 
 	/**

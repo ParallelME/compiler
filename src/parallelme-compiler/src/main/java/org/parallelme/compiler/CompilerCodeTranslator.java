@@ -67,8 +67,11 @@ public class CompilerCodeTranslator {
 			+ "\t}\n";
 	private final static String templateSequentialOperation = "<declParams:{var|<var.type>[] <var.arrName> = new <var.type>[1];\n"
 			+ "<var.arrName>[0] = <var.varName>;\n}>"
-			+ "<paralleMEObject>.<operationName>(<params:{var|<var.name>}; separator=\", \">);"
+			+ "<destinationVariable:{var|<var.type> <var.name> = }><paralleMEObject>.<operationName>("
+			+ "<params:{var|<var.name>}; separator=\", \">);"
 			+ "\n<recoverParams:{var|<var.varName> = <var.arrName>[0];}>";
+	private final static String templateParallelOperation = "<destinationVariable:{var|<var.type> <var.name> = }>"
+			+ "<objectName>.<operationName>(<params>);";
 
 	/**
 	 * Base constructor.
@@ -127,8 +130,8 @@ public class CompilerCodeTranslator {
 					operationsAndBinds, methodCalls, this.pmRuntime);
 			// 5. Translate the user code, calling the runtime wrapper
 			this.translateUserCode(packageName, classSymbol.name, classSymbol,
-					operationsAndBinds, methodCalls, listener.getImportTokens(),
-					tokenStreamRewriter);
+					operationsAndBinds, methodCalls,
+					listener.getImportTokens(), tokenStreamRewriter);
 		}
 	}
 
@@ -499,13 +502,11 @@ public class CompilerCodeTranslator {
 		String objectName = RuntimeCommonDefinitions.getInstance()
 				.getParallelMEObjectName();
 		for (Operation operation : operations) {
-			String translatedStatement;
+			ST st;
 			// Sequential operations must create arrays to store variables
 			if (operation.getExecutionType() == ExecutionType.Sequential) {
-				ST st = new ST(templateSequentialOperation);
+				st = new ST(templateSequentialOperation);
 				st.add("paralleMEObject", objectName);
-				st.add("operationName", RuntimeCommonDefinitions.getInstance()
-						.getOperationName(operation));
 				for (Variable variable : operation.getExternalVariables()) {
 					if (!variable.isFinal()) {
 						String arrName = RuntimeCommonDefinitions.getInstance()
@@ -519,19 +520,25 @@ public class CompilerCodeTranslator {
 						st.addAggr("params.{name}", variable.name);
 					}
 				}
-				translatedStatement = st.render();
 			} else {
-				translatedStatement = String.format(
-						"%s.%s(%s);",
-						objectName,
-						RuntimeCommonDefinitions.getInstance()
-								.getOperationName(operation),
+				st = new ST(templateParallelOperation);
+				st.add("objectName", objectName);
+				st.add("params",
 						RuntimeCommonDefinitions.getInstance()
 								.toCommaSeparatedString(
 										operation.getExternalVariables()));
 			}
+			st.add("operationName", RuntimeCommonDefinitions.getInstance()
+					.getOperationName(operation));
+			if (operation.destinationVariable != null) {
+				st.addAggr("destinationVariable.{type, name}",
+						operation.destinationVariable.typeName,
+						operation.destinationVariable.name);
+			} else {
+				st.add("destinationVariable", null);
+			}
 			tokenStreamRewriter.replace(operation.statementAddress.start,
-					operation.statementAddress.stop, translatedStatement);
+					operation.statementAddress.stop, st.render());
 		}
 	}
 

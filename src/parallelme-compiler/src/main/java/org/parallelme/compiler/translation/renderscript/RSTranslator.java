@@ -185,7 +185,8 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 		code2Translate = code2Translate.substring(
 				code2Translate.indexOf("{") + 1, code2Translate.length());
 		ST st = new ST(templateOperationSequentialFunction);
-		String variableName = this.upperCaseFirstLetter(operation.variable.name);
+		String variableName = this
+				.upperCaseFirstLetter(operation.variable.name);
 		String gNameIn = this.getGlobalVariableName("input" + variableName,
 				operation);
 		String operationName = this.upperCaseFirstLetter(this.commonDefinitions
@@ -194,7 +195,7 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 		st.add("functionSignature",
 				this.getOperationFunctionSignature(operation));
 		st.add("operationName", operationName);
-		String userFunctionVarType = this
+		String userFunctionVarType = this.commonDefinitions
 				.translateType(userFunctionVariable.typeName);
 		st.add("userFunctionVarName", userFunctionVariable.name);
 		st.add("userFunctionVarType", userFunctionVarType);
@@ -250,8 +251,8 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 	 */
 	protected String getOperationFunctionSignature(Operation operation) {
 		String functionSignature = "";
-		String parameterTypeTranslated = this.translateType(operation
-				.getUserFunctionData().arguments[0].typeName);
+		String parameterTypeTranslated = this.commonDefinitions
+				.translateType(operation.getUserFunctionData().arguments[0].typeName);
 		if (operation.getExecutionType() == ExecutionType.Parallel) {
 			ST st = new ST(templateOperationParallelFunctionSignature);
 			st.add("parameterTypeTranslated", parameterTypeTranslated);

@@ -137,9 +137,12 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 			}
 			String name = RuntimeCommonDefinitions.getInstance()
 					.getOperationName(operation);
+			String returnType = operation.destinationVariable == null ? "void"
+					: RuntimeCommonDefinitions.getInstance().translateType(
+							operation.destinationVariable.typeName);
 			ret.add(RuntimeCommonDefinitions.getInstance()
-					.createJavaMethodSignature("private native", "void", name,
-							parameters, false)
+					.createJavaMethodSignature("private native", returnType,
+							name, parameters, false)
 					+ ";");
 		}
 		return ret;

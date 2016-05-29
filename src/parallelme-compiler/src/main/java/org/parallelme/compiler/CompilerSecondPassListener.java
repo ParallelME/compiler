@@ -13,6 +13,7 @@ import java.util.*;
 import org.antlr.v4.runtime.TokenStream;
 import org.parallelme.compiler.antlr.JavaParser;
 import org.parallelme.compiler.antlr.JavaParser.ExpressionContext;
+import org.parallelme.compiler.antlr.JavaParser.LocalVariableDeclarationStatementContext;
 import org.parallelme.compiler.antlr.JavaParser.StatementExpressionContext;
 import org.parallelme.compiler.antlr.JavaParser.VariableDeclaratorContext;
 import org.parallelme.compiler.antlr.JavaParser.VariableInitializerContext;
@@ -259,10 +260,10 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 					.create(variable.typeName);
 			// Check if the declared object is a collection
 			if (userLibraryClass instanceof UserLibraryCollectionClass) {
-				if (this.isOperation(variable, this.currentStatement, ctx)) {
+				if (this.isOperation(variable, ctx)) {
 					this.statementType = StatementType.Operation;
 					this.operationExternalVariables = new LinkedHashMap<>();
-					this.getOperationData(variable);
+					this.createOperation(variable, ctx);
 				} else if (this.isOutputBind(variable,
 						(UserLibraryCollectionClass) userLibraryClass, ctx)) {
 					this.statementType = StatementType.OutputBind;
@@ -293,33 +294,38 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 
 	/**
 	 * Checks if the statement provided that contains a user library object
-	 * corresponds to an operation that must be translated to the target runtime.
+	 * corresponds to an operation that must be translated to the target
+	 * runtime.
 	 * 
 	 * @param variable
 	 *            User library variable symbol that corresponds to the statement
 	 *            and expression provided.
-	 * @param stx
-	 *            Statement containing a user library object.
 	 * @param etx
 	 *            Expression containing a user library object.
 	 */
 	private boolean isOperation(UserLibraryVariableSymbol variable,
-			JavaParser.StatementContext stx, JavaParser.ExpressionContext etx) {
+			JavaParser.ExpressionContext etx) {
 		boolean ret = false;
 		// Work on the following cases:
 		// - variableName.par().operationName(...)
-		if (etx.parent.getText().equals(variable.name + ".par")
-				&& stx.statementExpression() != null
-				&& stx.statementExpression().expression() != null
-				&& stx.statementExpression().expression().expressionList() != null
-				&& !stx.statementExpression().expression().expressionList()
-						.isEmpty()
-				&& etx.parent.parent.parent instanceof ExpressionContext) {
-			// This statement must have its expressions evaluated
-			this.statementType = StatementType.Operation;
-			this.operationName = ((ExpressionContext) etx.parent.parent.parent)
-					.Identifier().getText();
-			ret = true;
+		JavaParser.StatementContext stx = this.currentStatement;
+		LocalVariableDeclarationStatementContext lcx = this.currentVariableStatement;
+		if (etx.parent.getText().equals(variable.name + ".par")) {
+			if ((stx != null
+					&& stx.statementExpression() != null
+					&& stx.statementExpression().expression() != null
+					&& stx.statementExpression().expression().expressionList() != null
+					&& !stx.statementExpression().expression().expressionList()
+							.isEmpty() && etx.parent.parent.parent instanceof ExpressionContext)
+					|| (lcx != null && lcx.localVariableDeclaration() != null)) {
+				// This statement must have its expressions evaluated
+				this.statementType = StatementType.Operation;
+				this.operationName = ((ExpressionContext) etx.parent.parent.parent)
+						.Identifier().getText();
+				ret = true;
+			} else {
+				throw new RuntimeException("Unsupported statement.");
+			}
 		}
 		return ret;
 	}
@@ -332,26 +338,40 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 	 *            User library variable symbol that corresponds to the operation
 	 *            variable.
 	 */
-	private void getOperationData(UserLibraryVariableSymbol variable) {
+	private void createOperation(UserLibraryVariableSymbol variable,
+			JavaParser.ExpressionContext etx) {
 		Variable variableParameter = new Variable(variable.name,
 				variable.typeName, variable.typeParameterName,
 				variable.modifier, variable.identifier);
 		OperationType operationType;
+		Variable destinationVariable = null;
 		if (UserLibraryCollectionClass.getOperationMethods().contains(
 				this.operationName)) {
 			if (this.operationName.equals(UserLibraryCollectionClass
 					.getForeachMethodName())) {
 				operationType = OperationType.Foreach;
+				this.currentOperationData = new Operation(variableParameter,
+						++operationCount, new TokenAddress(
+								this.currentStatement.start,
+								this.currentStatement.stop), operationType,
+						destinationVariable);
 			} else {
 				operationType = OperationType.Reduce;
+				LocalVariableDeclarationStatementContext lcx = this.currentVariableStatement;
+				String variableName = lcx.localVariableDeclaration()
+						.variableDeclarators().variableDeclarator(0)
+						.variableDeclaratorId().getText();
+				destinationVariable = this.getVariable(variableName);
+				this.currentOperationData = new Operation(variableParameter,
+						++operationCount, new TokenAddress(
+								this.currentVariableStatement.start,
+								this.currentVariableStatement.stop),
+						operationType, destinationVariable);
 			}
 		} else {
 			throw new RuntimeException("Unsupported operation: "
 					+ this.operationName);
 		}
-		this.currentOperationData = new Operation(variableParameter,
-				++operationCount, new TokenAddress(this.currentStatement.start,
-						this.currentStatement.stop), operationType);
 	}
 
 	/**
@@ -393,8 +413,10 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 	 * Gets the output bind data from a statement and stores on the outputBinds
 	 * array.
 	 * 
-	 * The only format accepted for the compiler prototype is:
-	 * destinationVariable = variable.outputMethod();
+	 * The only formats accepted for the compiler prototype are: 1. Type
+	 * destinationVariable = variable.outputBindMethod(); 2. destinationVariable
+	 * = variable.outputBindMethod(); 3.
+	 * variable.outputBindMethod(destinationVariable);
 	 * 
 	 * @param variable
 	 *            User library variable symbol that corresponds to the statement
@@ -447,22 +469,11 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 			throw new RuntimeException(errorMsg);
 		}
 		if (destinationVariableName != null) {
-			Symbol destinationSymbol = this.currentScope
-					.getSymbolUnderScope(destinationVariableName);
-			if (destinationSymbol instanceof VariableSymbol) {
-				VariableSymbol destinationVariableSymbol = (VariableSymbol) destinationSymbol;
-				Variable destinationVariable = new Variable(
-						destinationVariableSymbol.name,
-						destinationVariableSymbol.typeName,
-						destinationVariableSymbol.typeParameterName,
-						destinationVariableSymbol.modifier,
-						destinationVariableSymbol.identifier);
-				Variable userLibraryVariable = new Variable(
-						userLibraryVariableSymbol.name,
-						userLibraryVariableSymbol.typeName,
-						userLibraryVariableSymbol.typeParameterName,
-						userLibraryVariableSymbol.modifier,
-						userLibraryVariableSymbol.identifier);
+			Variable destinationVariable = this
+					.getVariable(destinationVariableName);
+			if (destinationVariable != null) {
+				Variable userLibraryVariable = this
+						.getVariable(userLibraryVariableSymbol);
 				TokenAddress tokenAddress;
 				if (this.currentStatement != null)
 					tokenAddress = new TokenAddress(
@@ -475,6 +486,8 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 				this.operationsAndBinds.add(new OutputBind(userLibraryVariable,
 						destinationVariable, ++this.outputBindCount,
 						tokenAddress, outputBindType));
+			} else {
+				// TODO Throw exception or show error here
 			}
 		} else {
 			String errorMsg = "Invalid output bind statement at line "
@@ -485,6 +498,27 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 			throw new RuntimeException(errorMsg);
 		}
 
+	}
+
+	public Variable getVariable(String variableName) {
+		Symbol symbol = this.currentScope.getSymbolUnderScope(variableName);
+		if (symbol instanceof VariableSymbol) {
+			VariableSymbol variableSymbol = (VariableSymbol) symbol;
+			return new Variable(variableSymbol.name, variableSymbol.typeName,
+					variableSymbol.typeParameterName, variableSymbol.modifier,
+					variableSymbol.identifier);
+		} else {
+			return null;
+		}
+	}
+
+	public Variable getVariable(
+			UserLibraryVariableSymbol userLibraryVariableSymbol) {
+		return new Variable(userLibraryVariableSymbol.name,
+				userLibraryVariableSymbol.typeName,
+				userLibraryVariableSymbol.typeParameterName,
+				userLibraryVariableSymbol.modifier,
+				userLibraryVariableSymbol.identifier);
 	}
 
 	/**

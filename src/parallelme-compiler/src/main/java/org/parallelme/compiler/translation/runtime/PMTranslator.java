@@ -28,7 +28,11 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 	protected static final String templateCallJNIFunction = "<jniJavaClassName>.getInstance().<functionName>(<params:{var|<var.name>}; separator=\", \">)";
 	private static final String templateKernelDecl = "__kernel void <functionName>(<params:{var|<var.type> <var.name>}; separator=\", \">)";
 	private static final String templateForLoop = "for (int <varName> = 0; <varName> \\< <varMaxVal>; ++<varName>) {\n\t<body>}\n";
-	private static final String templateOperationCall = "<operationName>(<params:{var|<var.name>}; separator=\", \">);";
+	private static final String templateOperationCall = ""
+			+ "<destinationVariable:{var|<var.type> <var.name> = new <var.type>();\n"
+			+ "<var.name>.value = }>"
+			+ "<operationName>(<params:{var|<var.name>}; separator=\", \">);"
+			+ "<destinationVariable:{var|\n\nreturn <var.name>;}>";
 	private static final String templateOperationSequentialFunction = "<functionSignature>\n {\n"
 			+ "\t<forLoop>"
 			+ "\t<externalVariables:{var|*<var.outVariableName> = <var.variableName>;\n}>"
@@ -51,7 +55,8 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 		String ret;
 		String gidDeclaration = String.format(
 				"int PM_gid = get_global_id(0);\n" + "\t%s %s = %s[PM_gid];",
-				this.translateType(userFunctionVariable.typeName),
+				this.commonDefinitions
+						.translateType(userFunctionVariable.typeName),
 				userFunctionVariable.name, this.getDataVariableName());
 		String dataOutReturn = String.format("%s[PM_gid] = %s;\n",
 				this.getDataVariableName(), userFunctionVariable.name);
@@ -84,7 +89,7 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 				|| operation.variable.typeName.equals(HDRImage.getName())) {
 			stForY.add("varName", "PM_y");
 			stForY.add("varMaxVal", this.getHeightVariableName());
-			dataInDeclaration = this
+			dataInDeclaration = this.commonDefinitions
 					.translateType(userFunctionVariable.typeName)
 					+ " "
 					+ userFunctionVariable.name
@@ -103,7 +108,7 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 			// Array
 			stForY.add("varName", "PM_x");
 			stForY.add("varMaxVal", this.getLengthVariableName());
-			dataInDeclaration = this
+			dataInDeclaration = this.commonDefinitions
 					.translateType(userFunctionVariable.typeName)
 					+ " "
 					+ userFunctionVariable.name
@@ -142,11 +147,10 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 		st.add("return", "void");
 		st.add("functionName",
 				this.commonDefinitions.getOperationName(operation));
-		st.addAggr(
-				"params.{type, name}",
-				String.format("__global %s*", this.translateType(operation
-						.getUserFunctionData().arguments[0].typeName)),
-				this.getDataVariableName());
+		st.addAggr("params.{type, name}", String.format("__global %s*",
+				this.commonDefinitions.translateType(operation
+						.getUserFunctionData().arguments[0].typeName)), this
+				.getDataVariableName());
 
 		// External variables must be declared twice in sequential operations:
 		// 1: A C typed variable with the same name which will be used in
@@ -230,6 +234,13 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 			for (Variable variable : operation.getExternalVariables()) {
 				st.addAggr("params.{name}", variable.name);
 			}
+		}
+		if (operation.destinationVariable != null) {
+			st.addAggr("destinationVariable.{type, name}",
+					operation.destinationVariable.typeName,
+					operation.destinationVariable.name);
+		} else {
+			st.add("destinationVariable", null);
 		}
 		return st.render();
 	}

@@ -15,11 +15,17 @@ import org.parallelme.compiler.exception.CompilationException;
 import org.parallelme.compiler.intermediate.*;
 import org.parallelme.compiler.intermediate.Operation.ExecutionType;
 import org.parallelme.compiler.intermediate.Operation.OperationType;
+import org.parallelme.compiler.translation.BoxedTypes;
+import org.parallelme.compiler.translation.PrimitiveTypes;
 import org.parallelme.compiler.userlibrary.UserLibraryClass;
 import org.parallelme.compiler.userlibrary.UserLibraryClassFactory;
 import org.parallelme.compiler.userlibrary.UserLibraryCollectionClass;
 import org.parallelme.compiler.userlibrary.classes.Array;
+import org.parallelme.compiler.userlibrary.classes.Float32;
 import org.parallelme.compiler.userlibrary.classes.HDRImage;
+import org.parallelme.compiler.userlibrary.classes.Int16;
+import org.parallelme.compiler.userlibrary.classes.Int32;
+import org.parallelme.compiler.userlibrary.classes.Pixel;
 import org.stringtemplate.v4.ST;
 
 /**
@@ -315,12 +321,14 @@ public class RuntimeCommonDefinitions {
 	 * Creates a Java method signature for a given operation.
 	 */
 	public String createJavaMethodSignature(Operation operation) {
+		String returnType = operation.destinationVariable == null ? "void"
+				: operation.destinationVariable.typeName;
 		if (operation.getExecutionType() == ExecutionType.Sequential) {
-			return this.createJavaMethodSignature("public", "void",
+			return this.createJavaMethodSignature("public", returnType,
 					this.getOperationName(operation),
 					operation.getExternalVariables(), true);
 		} else {
-			return this.createJavaMethodSignature("public", "void",
+			return this.createJavaMethodSignature("public", returnType,
 					this.getOperationName(operation),
 					operation.getExternalVariables(), false);
 		}
@@ -344,5 +352,32 @@ public class RuntimeCommonDefinitions {
 		return this.createJavaMethodSignature("public",
 				userLibrary.getReturnType(methodCall.methodName),
 				this.getMethodCallName(methodCall), new Variable[0], false);
+	}
+	/**
+	 * Translates a given type to an equivalent runtime type. Example: translate
+	 * RGB type to float3 on RenderScript.
+	 * 
+	 * @param typeName
+	 *            Type that must be translated.
+	 * @param targetRuntime
+	 *            Target runtime.
+	 * @return A string with the equivalent type for the given runtime.
+	 */
+	public String translateType(String typeName) {
+		String translatedType = "";
+		if (typeName.equals(Pixel.getName())) {
+			translatedType = "float4";
+		} else if (typeName.equals(Int16.getName())) {
+			translatedType = "short";
+		} else if (typeName.equals(Int32.getName())) {
+			translatedType = "int";
+		} else if (typeName.equals(Float32.getName())) {
+			translatedType = "float";
+		} else if (PrimitiveTypes.isPrimitive(typeName)) {
+			translatedType = PrimitiveTypes.getCType(typeName);
+		} else if (BoxedTypes.isBoxed(typeName)) {
+			translatedType = BoxedTypes.getCType(typeName);
+		}
+		return translatedType;
 	}
 }
