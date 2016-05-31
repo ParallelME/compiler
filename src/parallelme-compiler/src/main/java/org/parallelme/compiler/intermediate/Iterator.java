@@ -17,7 +17,7 @@ import org.parallelme.compiler.symboltable.TokenAddress;
  * 
  * @author Wilson de Carvalho
  */
-public class Iterator extends UserLibraryData {
+public class Iterator extends UserLibraryData implements Cloneable {
 	public enum IteratorType {
 		Parallel, Sequential, None;
 	}
@@ -26,13 +26,19 @@ public class Iterator extends UserLibraryData {
 	private ArrayList<Variable> externalVariables;
 	private TokenAddress statementAddress;
 	private IteratorType type;
+	private Iterator enclosingIterator;
 
 	public Iterator(Variable variableParameter, int sequentialNumber,
-			TokenAddress statementAddress) {
+			TokenAddress statementAddress, Iterator enclosingIterator) {
 		super(variableParameter, sequentialNumber);
 		this.externalVariables = new ArrayList<>();
 		this.setType(type);
 		this.setStatementAddress(statementAddress);
+		this.enclosingIterator = enclosingIterator;
+	}
+	
+	public Iterator getEnclosingIterator(){
+		return this.enclosingIterator;
 	}
 
 	public UserFunction getUserFunctionData() {
@@ -72,5 +78,13 @@ public class Iterator extends UserLibraryData {
 		return this.userFunctionData.hashCode() * 3
 				+ this.externalVariables.hashCode() * 7
 				+ this.statementAddress.hashCode() * 11 + type.hashCode() * 13;
+	}
+	
+	public Iterator clone(){  
+	    try{  
+	        return (Iterator) super.clone();  
+	    }catch(Exception e){ 
+	        return null; 
+	    }
 	}
 }

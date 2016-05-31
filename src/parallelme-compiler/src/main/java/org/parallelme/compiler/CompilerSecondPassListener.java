@@ -34,14 +34,8 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 		Iterator, OutputBind, None;
 	}
 
-	// Enumeration that is used to indicate what type of statement is currently
-	// being evaluated.
-	private StatementType statementType = StatementType.None;
 	// Stores the user library variables under the scope.
-	private Map<String, Symbol> userLibraryVariablesUnderScope;
-	// Stores all those libraries that are used inside an interator, but are
-	// declared outside its method scope.
-	private Map<String, VariableSymbol> iteratorExternalVariables;
+	private Map<String, Symbol> userLibraryVariablesUnderScope;	
 	private Iterator currentIteratorData;
 	private final ArrayList<UserLibraryData> iteratorsAndBinds;
 	// Token stream used to extract original code data.
@@ -56,6 +50,13 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 	// List of those method calls on user library objects (methods that are not
 	// output bind or iterators).
 	private final ArrayList<MethodCall> methodCalls = new ArrayList<>();
+	
+	// Stack that is used to indicate the chain of statements types among blocks
+	private Stack<StatementType> statementTypes;
+	
+	// Stores all those libraries that are used inside an interator, but are
+	// declared outside its method scope.	
+	private Stack<Map<String, VariableSymbol>> stackIteratorExternalVariables;
 
 	/**
 	 * Constructor.
@@ -74,6 +75,8 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 		this.iteratorsAndBinds = new ArrayList<>();
 		this.tokenStream = tokenStream;
 		this.lastFunctionCount = lastFunctionCount;
+		this.statementTypes = new Stack<StatementType>();
+		this.stackIteratorExternalVariables = new Stack<Map<String, VariableSymbol>>();
 	}
 
 	/**
@@ -147,13 +150,15 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 	private void finalizeIteratorDetection() {
 		// If a user library iterator data was created, then we must fill the
 		// remaining data.
-		if (this.statementType == StatementType.Iterator
-				&& this.currentIteratorData != null) {
-			this.getIteratorData();
-			this.currentIteratorData = null;
-			this.iteratorExternalVariables = null;
+		if(!this.statementTypes.empty()){
+			if (this.statementTypes.peek() == StatementType.Iterator
+					&& this.currentIteratorData != null) {
+				this.getIteratorData();
+				this.currentIteratorData = this.currentIteratorData.getEnclosingIterator();
+				this.iteratorExternalVariables = this.stackIteratorExternalVariables.pop();
+			}
+			this.statementTypes.pop();
 		}
-		this.statementType = StatementType.None;
 	}
 
 	/**
@@ -203,7 +208,7 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 									argumentVariable.modifier));
 					// Add all those external variables found on the iterator to
 					// be used in the second pass.
-					for (VariableSymbol variable : this.iteratorExternalVariables
+					for (VariableSymbol variable : this.stackIteratorExternalVariables.peek()
 							.values()) {
 						this.currentIteratorData
 								.addExternalVariable(new Variable(
@@ -242,12 +247,12 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 			// Check if the declared object is a collection
 			if (userLibraryClass instanceof UserLibraryCollectionClassImpl) {
 				if (this.isIterator(variable, this.currentStatement, ctx)) {
-					this.statementType = StatementType.Iterator;
-					this.iteratorExternalVariables = new LinkedHashMap<>();
+					//It is unecessary to make current statement type as Iterator cause it was already done by 'isIterator'					
+					this.stackIteratorExternalVariables.push(new LinkedHashMap<String,VariableSymbol>());
 					this.getIteratorData(variable);
 				} else if (this.isOutputBind(variable,
 						(UserLibraryCollectionClassImpl) userLibraryClass, ctx)) {
-					this.statementType = StatementType.OutputBind;
+					this.statementTypes.push(StatementType.OutputBind);
 					this.getOutputBindData(variable, ctx);
 				} else if (this.isValidMethod(
 						(UserLibraryCollectionClassImpl) userLibraryClass, ctx)) {
@@ -259,14 +264,14 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 		// this scope, but is under the enclosing scope. In this case, it is
 		// possible to find all those variables that are used in a user function
 		// implementation, but was in fact declared outside its scope.
-		if (this.statementType == StatementType.Iterator) {
+		if (!this.statementTypes.empty() && this.statementTypes.peek() == StatementType.Iterator) {
 			Symbol variable = this.currentScope.getInnerSymbol(expression,
 					VariableSymbol.class);
 			if (variable == null) {
 				VariableSymbol variableEncScope = (VariableSymbol) this.currentScope.enclosingScope
 						.getSymbolUnderScope(expression, VariableSymbol.class);
 				if (variableEncScope != null) {
-					this.iteratorExternalVariables.put(variableEncScope.name,
+					this.stackIteratorExternalVariables.peek().put(variableEncScope.name,
 							variableEncScope);
 				}
 			}
@@ -297,7 +302,7 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 				&& !stx.statementExpression().expression().expressionList()
 						.isEmpty()) {
 			// This statement must have its expressions evaluated
-			this.statementType = StatementType.Iterator;
+			this.statementTypes.push(StatementType.Iterator);
 			ret = true;
 		}
 		return ret;
@@ -315,10 +320,15 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 		Variable variableParameter = new Variable(variable.name,
 				variable.typeName, variable.typeParameterName,
 				variable.modifier);
+		
+		Iterator enclosingIterator;
+		if(this.currentIteratorData != null) enclosingIterator = this.currentIteratorData.clone();
+		else enclosingIterator = null;
+		
 		this.currentIteratorData = new Iterator(variableParameter,
 				this.iteratorsAndBinds.size() + this.lastFunctionCount,
 				new TokenAddress(this.currentStatement.start,
-						this.currentStatement.stop));
+						this.currentStatement.stop), enclosingIterator);
 	}
 
 	/**

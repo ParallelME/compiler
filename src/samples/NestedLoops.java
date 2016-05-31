@@ -22,8 +22,8 @@ public class NestedLoops {
                 array.par().foreach(new ForeachFunction<Int32>() {
                     @Override
                     public void function(Int32 element2) {
-                        varTeste += 2;
-                        element2.value = element2.value + 10 + varTeste;
+                        //varTeste += 2;
+                        element2.value = element2.value + 11;// + varTeste;
                     }
                 });
                 element.value = element.value + 10; //+ varTeste;

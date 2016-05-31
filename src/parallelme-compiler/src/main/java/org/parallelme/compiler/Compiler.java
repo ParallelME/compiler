@@ -76,10 +76,11 @@ public class Compiler {
 				javaParser[i] = parser;
 				parseTrees[i] = tree;
 				symbolTables[i] = symbolTable;
+				System.out.println(symbolTable);
 			} finally {
 				is.close();
 			}
-		}
+		}		
 		int iteratorCount = 0;
 		// ####### Second pass and code translation #######
 		CompilerCodeTranslator codeTranslator = new CompilerCodeTranslator(
