@@ -98,18 +98,16 @@ public interface UserLibraryTranslatorDefinition {
 			OutputBind outputBind);
 
 	/**
-	 * Translates a given foreach operation returning the C code compatible for
-	 * a given runtime.
+	 * Translates a given operation returning its C functions compatible for a
+	 * given runtime.
 	 * 
-	 * @param className
-	 *            Name of the java class (user class) where the input bind was
-	 *            originally created.
 	 * @param operation
-	 *            Foreach operation information.
+	 *            Operation information.
 	 * 
-	 * @return A string with the C code for the given runtime.
+	 * @return A list where each string represents a function with the C code
+	 *         for the given runtime.
 	 */
-	public String translateOperation(String className, Operation operation);
+	public List<String> translateOperation(Operation operation);
 
 	/**
 	 * Translates a given operation returning the Java code that will be used to

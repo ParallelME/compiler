@@ -56,16 +56,16 @@ public class ParallelMERuntime {
 		return nativeCreateShortArray(array, array.length);
 	}
 
-	public long toArray(long arrayPointer, short[] array) {
-		return nativeToShortArray(arrayPointer, array);
+	public void toArray(long arrayPointer, short[] array) {
+		nativeToShortArray(arrayPointer, array);
 	}
 
 	public long createArray(int[] array) {
 		return nativeCreateIntArray(array, array.length);
 	}
 
-	public long toArray(long arrayPointer, int[] array) {
-		return nativeToIntArray(arrayPointer, array);
+	public void toArray(long arrayPointer, int[] array) {
+		nativeToIntArray(arrayPointer, array);
 	}
 
 	public long createArray(float[] array) {

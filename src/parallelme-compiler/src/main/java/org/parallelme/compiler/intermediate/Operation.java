@@ -9,6 +9,7 @@
 package org.parallelme.compiler.intermediate;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import org.parallelme.compiler.symboltable.TokenAddress;
 
@@ -54,10 +55,8 @@ public class Operation extends UserLibraryData {
 		this.userFunctionData = userFunctionData;
 	}
 
-	public Variable[] getExternalVariables() {
-		Variable[] ret = new Variable[externalVariables.size()];
-		ret = externalVariables.toArray(ret);
-		return ret;
+	public List<Variable> getExternalVariables() {
+		return externalVariables;
 	}
 
 	public void addExternalVariable(Variable variable) {

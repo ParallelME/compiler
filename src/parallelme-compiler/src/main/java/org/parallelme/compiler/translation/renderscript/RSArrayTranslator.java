@@ -47,9 +47,12 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 
 	private void initParallelME2RSAllocationTypes() {
 		parallelME2RSAllocationTypes = new HashMap<>();
-		parallelME2RSAllocationTypes.put(Int16.getName(), "I16");
-		parallelME2RSAllocationTypes.put(Int32.getName(), "I32");
-		parallelME2RSAllocationTypes.put(Float32.getName(), "F32");
+		parallelME2RSAllocationTypes.put(Int16.getInstance().getClassName(),
+				"I16");
+		parallelME2RSAllocationTypes.put(Int32.getInstance().getClassName(),
+				"I32");
+		parallelME2RSAllocationTypes.put(Float32.getInstance().getClassName(),
+				"F32");
 	}
 
 	/**
@@ -71,7 +74,7 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 		ST st = new ST(templateInputBindObjCreation);
 		// TODO Check if parameters array has size 1, otherwise throw an
 		// exception and abort translation.
-		st.add("inputArray", inputBind.parameters[0]);
+		st.add("inputArray", inputBind.parameters.get(0));
 		st.add("allocation", inputObject);
 		st.add("elementType", parallelME2RSAllocationTypes
 				.get(inputBind.variable.typeParameterName));
@@ -103,7 +106,8 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 	public String translateOutputBindCall(String className,
 			OutputBind outputBind) {
 		StringBuilder ret = new StringBuilder();
-		String inputObject = this.commonDefinitions.getVariableInName(outputBind.variable);
+		String inputObject = this.commonDefinitions
+				.getVariableInName(outputBind.variable);
 		String destinationObject = outputBind.destinationObject.name;
 		// If it is an object assignment, must declare the destination
 		// object type and name.

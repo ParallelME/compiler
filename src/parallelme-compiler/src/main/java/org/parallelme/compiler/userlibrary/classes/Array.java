@@ -18,13 +18,15 @@ import org.parallelme.compiler.userlibrary.UserLibraryCollectionClass;
  * @author Wilson de Carvalho
  */
 public class Array extends UserLibraryCollectionClass {
-	private static String outputBindMethodName = "toJavaArray";
-	private static Array instance = new Array();
+	private static final String outputBindMethodName = "toJavaArray";
+	private static final String className = "Array";
+	private static final String packageName = "org.parallelme.userlibrary";
+	private static final Array instance = new Array();
 
 	private Array() {
 		this.initValidMethodsSet();
 	}
-	
+
 	public static Array getInstance() {
 		return instance;
 	}
@@ -52,11 +54,20 @@ public class Array extends UserLibraryCollectionClass {
 	public String getOutputBindMethodName() {
 		return outputBindMethodName;
 	}
-	
+
 	/**
 	 * {@inheritDoc}
 	 */
-	public static String getName() {
-		return "Array";
+	@Override
+	public String getClassName() {
+		return className;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getPackageName() {
+		return packageName;
 	}
 }

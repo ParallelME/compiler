@@ -58,7 +58,8 @@ public abstract class RSImageTranslator extends RSTranslator implements
 	public String translateOutputBindCall(String className,
 			OutputBind outputBind) {
 		StringBuilder ret = new StringBuilder();
-		String inputObject = this.commonDefinitions.getVariableInName(outputBind.variable);
+		String inputObject = this.commonDefinitions
+				.getVariableInName(outputBind.variable);
 		String outputObject = this.commonDefinitions
 				.getVariableOutName(outputBind.variable);
 		String destinationObject = outputBind.destinationObject.name;
@@ -89,7 +90,8 @@ public abstract class RSImageTranslator extends RSTranslator implements
 		String varType;
 		ST st = new ST(templateOutputBind);
 		st.add("classType", outputBind.variable.typeName);
-		if (outputBind.variable.typeName.equals(HDRImage.getName())) {
+		if (outputBind.variable.typeName.equals(HDRImage.getInstance()
+				.getClassName())) {
 			st.add("multiplyBy", " * 255.0f");
 			varType = "float4";
 		} else {

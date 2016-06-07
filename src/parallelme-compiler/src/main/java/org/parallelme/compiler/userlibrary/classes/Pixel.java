@@ -19,7 +19,9 @@ import org.parallelme.compiler.userlibrary.UserLibraryClass;
  */
 public class Pixel extends UserLibraryClass {
 	private static Pixel instance = new Pixel();
-
+	private static final String className = "Pixel";
+	private static final String packageName = "org.parallelme.userlibrary.image";
+	
 	private Pixel() {
 		this.initValidMethodsSet();
 	}
@@ -43,11 +45,20 @@ public class Pixel extends UserLibraryClass {
 	protected void initValidMethodsSet() {
 		this.validMethods = new HashMap<>();
 	}
-	
+
 	/**
 	 * {@inheritDoc}
 	 */
-	public static String getName() {
-		return "Pixel";
+	@Override
+	public String getClassName() {
+		return className;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getPackageName() {
+		return packageName;
 	}
 }

@@ -18,8 +18,16 @@ import org.parallelme.compiler.userlibrary.UserLibraryClass;
  * @author Wilson de Carvalho
  */
 public class Reduce extends UserLibraryClass {
-	public Reduce() {
+	private static Reduce instance = new Reduce();
+	private static final String className = "Reduce";
+	private static final String packageName = "org.parallelme.userlibrary.function";
+
+	private Reduce() {
 		this.initValidMethodsSet();
+	}
+
+	public static Reduce getInstance() {
+		return instance;
 	}
 
 	/**
@@ -42,7 +50,16 @@ public class Reduce extends UserLibraryClass {
 	/**
 	 * {@inheritDoc}
 	 */
-	public static String getName() {
-		return "Reduce";
+	@Override
+	public String getClassName() {
+		return className;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getPackageName() {
+		return packageName;
 	}
 }

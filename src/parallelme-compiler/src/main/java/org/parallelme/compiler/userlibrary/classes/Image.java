@@ -21,6 +21,7 @@ public abstract class Image extends UserLibraryCollectionClass {
 	private static String outputBindMethodName = "toBitmap";
 	private static String getHeightName = "getHeight";
 	private static String getWidthMethodName = "getWidth";
+	private static final String packageName = "org.parallelme.userlibrary.image";
 
 	public Image() {
 		super();
@@ -59,5 +60,13 @@ public abstract class Image extends UserLibraryCollectionClass {
 
 	public String getWidthMethodName() {
 		return getWidthMethodName;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getPackageName() {
+		return packageName;
 	}
 }

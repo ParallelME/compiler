@@ -25,7 +25,9 @@ JNIEXPORT jlong JNICALL Java_org_parallelme_ParallelMERuntime_nativeInit
 		env->GetJavaVM(&jvm);
 		auto runtimePtr = new ParallelMERuntimeData();
 		runtimePtr->runtime = std::make_shared<Runtime>(jvm, std::make_shared<SchedulerHEFT>());
-		runtimePtr->program = std::make_shared<Program>(runtimePtr->runtime, userKernels);
+		runtimePtr->program = std::make_shared<Program>(runtimePtr->runtime, userKernels,
+			- "-Werror -cl-strict-aliasing -cl-mad-enable -cl-no-signed-zeros "
+			- "-cl-finite-math-only");
 		ret = (jlong) runtimePtr;
 	} catch (const std::runtime_error &e) {
 		__android_log_print(ANDROID_LOG_ERROR, "ParallelME Runtime",
@@ -44,9 +46,8 @@ JNIEXPORT jlong JNICALL Java_org_parallelme_ParallelMERuntime_nativeCreateShortA
 	arrayPtr->length = length;
 	arrayPtr->workSize = length;
 
-	arrayPtr->inputBuffer = std::make_shared<Buffer>(Buffer::sizeGenerator(arrayPtr->workSize, Buffer::SHORT));
-	arrayPtr->inputBuffer->copyFromJNI(env, data);
-	arrayPtr->outputBuffer = std::make_shared<Buffer>(Buffer::sizeGenerator(arrayPtr->workSize, Buffer::SHORT));
+	arrayPtr->buffer = std::make_shared<Buffer>(Buffer::sizeGenerator(arrayPtr->workSize, Buffer::SHORT));
+	arrayPtr->buffer->setJArraySource(env, data);
 
 	return (jlong) arrayPtr;
 }
@@ -56,9 +57,8 @@ JNIEXPORT jlong JNICALL Java_org_parallelme_ParallelMERuntime_nativeCreateIntArr
 	arrayPtr->length = length;
 	arrayPtr->workSize = length;
 
-	arrayPtr->inputBuffer = std::make_shared<Buffer>(Buffer::sizeGenerator(arrayPtr->workSize, Buffer::INT));
-	arrayPtr->inputBuffer->copyFromJNI(env, data);
-	arrayPtr->outputBuffer = std::make_shared<Buffer>(Buffer::sizeGenerator(arrayPtr->workSize, Buffer::INT));
+	arrayPtr->buffer = std::make_shared<Buffer>(Buffer::sizeGenerator(arrayPtr->workSize, Buffer::INT));
+	arrayPtr->buffer->setJArraySource(env, data);
 
 	return (jlong) arrayPtr;
 }
@@ -68,29 +68,28 @@ JNIEXPORT jlong JNICALL Java_org_parallelme_ParallelMERuntime_nativeCreateFloatA
 	arrayPtr->length = length;
 	arrayPtr->workSize = length;
 
-	arrayPtr->inputBuffer = std::make_shared<Buffer>(Buffer::sizeGenerator(arrayPtr->workSize, Buffer::FLOAT));
-	arrayPtr->inputBuffer->copyFromJNI(env, data);
-	arrayPtr->outputBuffer = std::make_shared<Buffer>(Buffer::sizeGenerator(arrayPtr->workSize, Buffer::FLOAT));
+	arrayPtr->buffer = std::make_shared<Buffer>(Buffer::sizeGenerator(arrayPtr->workSize, Buffer::FLOAT));
+	arrayPtr->buffer->setJArraySource(env, data);
 
 	return (jlong) arrayPtr;
 }
 
-JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativeToShortArray(JNIEnv *env, jobject self, jlong arrPtr, jarray data) {
+JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativeToShortArray(JNIEnv *env, jobject self, jlong arrPtr, jshortArray data) {
 	auto arrayPtr = (ArrayData *) arrPtr;
-	arrayPtr->inputBuffer->copyToJNI(env, data);
-	delete arrayPtr;	
+	arrayPtr->buffer->copyToJArray(env, data);
+	delete arrayPtr;
 }
 
-JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativeToIntArray(JNIEnv *env, jobject self, jlong arrPtr, jarray data) {
+JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativeToIntArray(JNIEnv *env, jobject self, jlong arrPtr, jintArray data) {
 	auto arrayPtr = (ArrayData *) arrPtr;
-	arrayPtr->inputBuffer->copyToJNI(env, data);
-	delete arrayPtr;	
+	arrayPtr->buffer->copyToJArray(env, data);
+	delete arrayPtr;
 }
 
-JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativeToFloatArray(JNIEnv *env, jobject self, jlong arrPtr, jarray data) {
+JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativeToFloatArray(JNIEnv *env, jobject self, jlong arrPtr, jfloatArray data) {
 	auto arrayPtr = (ArrayData *) arrPtr;
-	arrayPtr->inputBuffer->copyToJNI(env, data);
-	delete arrayPtr;	
+	arrayPtr->buffer->copyToJArray(env, data);
+	delete arrayPtr;
 }
 
 JNIEXPORT jlong JNICALL Java_org_parallelme_ParallelMERuntime_nativeCreateBitmapImage(JNIEnv *env, jobject self, jlong rtmPtr, jobject data, jint width, jint height) {
@@ -102,7 +101,7 @@ JNIEXPORT jlong JNICALL Java_org_parallelme_ParallelMERuntime_nativeCreateBitmap
 
 	// Num elements * items per element * size of item
 	imagePtr->inputBuffer = std::make_shared<Buffer>(Buffer::sizeGenerator(imagePtr->workSize, Buffer::CHAR4));
-	imagePtr->inputBuffer->copyFromJNI(env, data);
+	imagePtr->inputBuffer->setAndroidBitmapSource(env, data);
 	imagePtr->outputBuffer = std::make_shared<Buffer>(Buffer::sizeGenerator(imagePtr->workSize, Buffer::FLOAT4));
 
 	auto task = std::make_unique<Task>(runtimePtr->program);
@@ -132,7 +131,7 @@ JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativeToBitmapBitma
 	});
 	runtimePtr->runtime->submitTask(std::move(task));
 	runtimePtr->runtime->finish();
-	imagePtr->inputBuffer->copyToJNI(env, bitmap);
+	imagePtr->inputBuffer->copyToAndroidBitmap(env, bitmap);
 
 	delete imagePtr;
 }
@@ -146,7 +145,7 @@ JNIEXPORT jlong JNICALL Java_org_parallelme_ParallelMERuntime_nativeCreateHDRIma
 
 	// Num elements * items per element * size of item
 	imagePtr->inputBuffer = std::make_shared<Buffer>(Buffer::sizeGenerator(imagePtr->workSize, Buffer::RGBA));
-	imagePtr->inputBuffer->copyFromJNI(env, data);
+	imagePtr->inputBuffer->setJArraySource(env, data);
 	imagePtr->outputBuffer = std::make_shared<Buffer>(Buffer::sizeGenerator(imagePtr->workSize, Buffer::FLOAT4));
 
 	auto task = std::make_unique<Task>(runtimePtr->program);
@@ -176,7 +175,7 @@ JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativeToBitmapHDRIm
 	});
 	runtimePtr->runtime->submitTask(std::move(task));
 	runtimePtr->runtime->finish();
-	imagePtr->inputBuffer->copyToJNI(env, bitmap);
+	imagePtr->inputBuffer->copyToAndroidBitmap(env, bitmap);
 
 	delete imagePtr;
 }

@@ -15,19 +15,21 @@ package org.parallelme.compiler.userlibrary.classes;
  */
 public class BitmapImage extends Image {
 	private static BitmapImage instance = new BitmapImage();
+	private static final String className = "BitmapImage";
 
 	private BitmapImage() {
 		super();
 	}
-	
+
 	public static BitmapImage getInstance() {
 		return instance;
 	}
-	
+
 	/**
 	 * {@inheritDoc}
 	 */
-	public static String getName() {
-		return "BitmapImage";
+	@Override
+	public String getClassName() {
+		return className;
 	}
 }

@@ -19,15 +19,17 @@ import org.parallelme.compiler.userlibrary.UserLibraryClass;
  */
 public class Int16 extends UserLibraryClass {
 	private static Int16 instance = new Int16();
-
+	private static final String className = "Int16";
+	private static final String packageName = "org.parallelme.userlibrary.datatypes";
+	
 	private Int16() {
 		this.initValidMethodsSet();
 	}
 
 	public static Int16 getInstance() {
 		return instance;
-	}	
-	
+	}
+
 	/**
 	 * {@inheritDoc}
 	 */
@@ -43,11 +45,20 @@ public class Int16 extends UserLibraryClass {
 	protected void initValidMethodsSet() {
 		this.validMethods = new HashMap<>();
 	}
-	
+
 	/**
 	 * {@inheritDoc}
 	 */
-	public static String getName() {
-		return "Int16";
+	@Override
+	public String getClassName() {
+		return className;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getPackageName() {
+		return packageName;
 	}
 }

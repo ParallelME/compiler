@@ -24,7 +24,7 @@ struct ImageData {
 };
 
 struct ArrayData {
-    std::shared_ptr<parallelme::Buffer> inputBuffer, outputBuffer;
+    std::shared_ptr<parallelme::Buffer> buffer;
     jint length;
     jint workSize;
 };

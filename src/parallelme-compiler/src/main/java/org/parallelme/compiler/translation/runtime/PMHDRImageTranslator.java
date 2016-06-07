@@ -35,10 +35,12 @@ public class PMHDRImageTranslator extends PMImageTranslator implements
 			+ "\t\tPM_out.s0 = (PM_in.s0 & 0xFF) * PM_f;\n"
 			+ "\t\tPM_out.s1 = (PM_in.s1 & 0xFF) * PM_f;\n"
 			+ "\t\tPM_out.s2 = (PM_in.s2 & 0xFF) * PM_f;\n"
+			+ "\t\tPM_out.s3 = 0.0f;\n"
 			+ "\t} else {\n"
 			+ "\t\tPM_out.s0 = 0.0f;\n"
 			+ "\t\tPM_out.s1 = 0.0f;\n"
 			+ "\t\tPM_out.s2 = 0.0f;\n"
+			+ "\t\tPM_out.s3 = 0.0f;\n"
 			+ "\t}\n"
 			+ "\tPM_dataOut[PM_gid] = PM_out;\n"
 			+ "}\n";

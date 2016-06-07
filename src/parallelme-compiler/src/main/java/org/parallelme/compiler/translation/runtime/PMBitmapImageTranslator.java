@@ -67,7 +67,7 @@ public class PMBitmapImageTranslator extends PMImageTranslator implements
 		ST st = new ST(templateInputBindObjCreation);
 		st.add("imagePointer",
 				this.commonDefinitions.getPointerName(inputBind.variable));
-		Variable variable = (Variable) inputBind.parameters[0];
+		Variable variable = (Variable) inputBind.parameters.get(0);
 		st.add("bitmapName", variable.name);
 		return st.render();
 	}

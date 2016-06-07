@@ -9,12 +9,15 @@
 package org.parallelme.compiler.translation.runtime;
 
 import org.parallelme.compiler.intermediate.MethodCall;
+import org.parallelme.compiler.intermediate.Operation;
+import org.parallelme.compiler.intermediate.Operation.OperationType;
 import org.parallelme.compiler.intermediate.OutputBind;
 import org.parallelme.compiler.intermediate.OutputBind.OutputBindType;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.translation.userlibrary.HDRImageTranslator;
 import org.parallelme.compiler.userlibrary.classes.BitmapImage;
 import org.parallelme.compiler.userlibrary.classes.HDRImage;
+import org.parallelme.compiler.userlibrary.classes.Pixel;
 import org.stringtemplate.v4.ST;
 
 /**
@@ -30,6 +33,10 @@ public abstract class PMImageTranslator extends PMTranslator implements
 			+ "\tParallelMERuntime.getInstance().getHeight(<imagePointer>),\n"
 			+ "\tBitmap.Config.ARGB_8888);\n";
 	private static final String templateOutputBindCall2 = "ParallelMERuntime.getInstance().toBitmap<className>(<imagePointer>, <bitmapName>);";
+	private static final String templateOperationCall = ""
+			+ "<destinationVariable:{var|<var.nativeReturnType>[] <var.name> = new <var.nativeReturnType>[<var.size>];\n}>"
+			+ "<operationName>(<params:{var|<var.name>}; separator=\", \">);"
+			+ "<destinationVariable:{var|\n\nreturn new <var.methodReturnType>(<var.name>[0], <var.name>[1], <var.name>[2], <var.name>[3], -1, -1);}>";
 
 	public PMImageTranslator(CTranslator cCodeTranslator) {
 		super(cCodeTranslator);
@@ -78,5 +85,35 @@ public abstract class PMImageTranslator extends PMTranslator implements
 			return st.render();
 		}
 		return "";
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public String translateOperationCall(String className, Operation operation) {
+		ST st = new ST(templateOperationCall);
+		this.fillOperationCallBaseInfo(st, operation);
+		if (operation.destinationVariable != null) {
+			String nativeReturnType = "";
+			String methodReturnType = "";
+			String size = "";
+			String variableName = this.commonDefinitions.getPrefix()
+					+ operation.destinationVariable.name;
+			// These variables must be set to different values when map and
+			// filter operations are implemented.
+			if (operation.operationType == OperationType.Reduce) {
+				nativeReturnType = this.commonDefinitions
+						.translateType(operation.variable.typeName);
+				methodReturnType = Pixel.getInstance().getClassName();
+				size = "4";
+			}
+			st.addAggr(
+					"destinationVariable.{name, nativeReturnType, methodReturnType, size}",
+					variableName, nativeReturnType, methodReturnType, size);
+			st.addAggr("params.{name}", variableName);
+		} else {
+			st.add("destinationVariable", null);
+		}
+		return st.render();
 	}
 }

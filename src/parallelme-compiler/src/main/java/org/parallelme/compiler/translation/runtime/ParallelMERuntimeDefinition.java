@@ -39,12 +39,12 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	private void initTranslators() {
 		if (super.translators == null) {
 			super.translators = new HashMap<>();
-			super.translators.put(Array.getName(), new PMArrayTranslator(
-					cCodeTranslator));
-			super.translators.put(BitmapImage.getName(),
+			super.translators.put(Array.getInstance().getClassName(),
+					new PMArrayTranslator(cCodeTranslator));
+			super.translators.put(BitmapImage.getInstance().getClassName(),
 					new PMBitmapImageTranslator(cCodeTranslator));
-			super.translators.put(HDRImage.getName(), new PMHDRImageTranslator(
-					cCodeTranslator));
+			super.translators.put(HDRImage.getInstance().getClassName(),
+					new PMHDRImageTranslator(cCodeTranslator));
 		}
 	}
 
@@ -110,42 +110,62 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 		Variable runtimePtr = new Variable("runtimePtr", "long", "", "", -1);
 		Variable variablePointer = new Variable("varPtr", "long", "", "", -1);
 		for (Operation operation : operations) {
-			Parameter[] parameters;
+			List<Parameter> parameters = new ArrayList<>();
+			parameters.add(runtimePtr);
+			parameters.add(variablePointer);
 			// Sequential operations must create an array for each variable.
-			// This
-			// array will be used to store the output value.
-			Variable[] externalVariables = operation.getExternalVariables();
+			// This array will be used to store the output value.
+			List<Variable> externalVariables = operation.getExternalVariables();
 			if (operation.getExecutionType() == ExecutionType.Sequential) {
-				parameters = new Parameter[externalVariables.length * 2 + 2];
-				parameters[0] = runtimePtr;
-				parameters[1] = variablePointer;
-				int j = 0;
-				for (int i = 2; i < parameters.length; i += 2) {
-					Variable foo = externalVariables[j];
-					parameters[i] = foo;
-					parameters[i + 1] = new Variable(RuntimeCommonDefinitions
+				for (Variable foo : externalVariables) {
+					parameters.add(foo);
+					parameters.add(new Variable(RuntimeCommonDefinitions
 							.getInstance().getPrefix() + foo.name, foo.typeName
-							+ "[]", "", "", -1);
-					j++;
+							+ "[]", "", "", -1));
 				}
 			} else {
-				parameters = new Parameter[externalVariables.length + 2];
-				parameters[0] = runtimePtr;
-				parameters[1] = variablePointer;
-				System.arraycopy(externalVariables, 0, parameters, 2,
-						externalVariables.length);
+				parameters.addAll(externalVariables);
+			}
+			if (operation.destinationVariable != null) {
+				// Last parameter is the destination variable
+				parameters.add(this
+						.createDestinationVariableParameter(operation));
 			}
 			String name = RuntimeCommonDefinitions.getInstance()
 					.getOperationName(operation);
-			String returnType = operation.destinationVariable == null ? "void"
-					: RuntimeCommonDefinitions.getInstance().translateType(
-							operation.destinationVariable.typeName);
 			ret.add(RuntimeCommonDefinitions.getInstance()
-					.createJavaMethodSignature("private native", returnType,
-							name, parameters, false)
+					.createJavaMethodSignature("private native", "void", name,
+							parameters, false)
 					+ ";");
 		}
 		return ret;
+	}
+
+	/**
+	 * Creates a temporary variable that is used to describe the destination
+	 * variable.
+	 */
+	private Variable createDestinationVariableParameter(Operation operation) {
+		Variable variable;
+		if (operation.variable.typeName.equals(BitmapImage.getInstance()
+				.getClassName())
+				|| operation.variable.typeName.equals(HDRImage.getInstance()
+						.getClassName())) {
+			// translateType call must inform the operation variable, not the
+			// destination variable, since it is based on the image class type
+			variable = new Variable(RuntimeCommonDefinitions.getInstance()
+					.getPrefix() + operation.destinationVariable.name,
+					RuntimeCommonDefinitions.getInstance().translateType(
+							operation.variable.typeName)
+							+ "[]", "", "", -1);
+		} else {
+			variable = new Variable(RuntimeCommonDefinitions.getInstance()
+					.getPrefix() + operation.destinationVariable.name,
+					RuntimeCommonDefinitions.getInstance().translateType(
+							operation.destinationVariable.typeName)
+							+ "[]", "", "", -1);
+		}
+		return variable;
 	}
 
 	private List<String> cleanUpPointers(List<InputBind> inputBinds) {

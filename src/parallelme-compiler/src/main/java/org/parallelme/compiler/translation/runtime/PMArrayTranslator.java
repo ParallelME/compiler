@@ -52,7 +52,7 @@ public class PMArrayTranslator extends PMTranslator implements ArrayTranslator {
 		ST st = new ST(templateInputBindObjCreation);
 		st.add("arrayPointer",
 				this.commonDefinitions.getPointerName(inputBind.variable));
-		Variable variable = (Variable) inputBind.parameters[0];
+		Variable variable = (Variable) inputBind.parameters.get(0);
 		st.add("arrayName", variable.name);
 		return st.render();
 	}

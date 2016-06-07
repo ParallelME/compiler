@@ -28,6 +28,8 @@ public class SimpleTranslator implements CTranslator {
 	}
 
 	private String replaceMathFunctions(String javaCode) {
-		return javaCode.replaceAll("Math.", "");
+		javaCode = javaCode.replaceAll("Math.abs", "fabs");
+		javaCode = javaCode.replaceAll("Math.", "");
+		return javaCode;
 	}
 }

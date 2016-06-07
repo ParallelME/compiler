@@ -8,6 +8,8 @@
 
 package org.parallelme.compiler.intermediate;
 
+import java.util.List;
+
 import org.parallelme.compiler.symboltable.TokenAddress;
 
 /**
@@ -16,12 +18,12 @@ import org.parallelme.compiler.symboltable.TokenAddress;
  * @author Wilson de Carvalho
  */
 public class InputBind extends UserLibraryData {
-	public final Parameter[] parameters;
+	public final List<Parameter> parameters;
 	public final TokenAddress declarationStatementAddress;
 	public final TokenAddress creationStatementAddress;
 
 	public InputBind(Variable variable, int sequentialNumber,
-			Parameter[] parameters, TokenAddress declarationStatementAddress,
+			List<Parameter> parameters, TokenAddress declarationStatementAddress,
 			TokenAddress creationStatementAddress) {
 		super(variable, sequentialNumber);
 		this.parameters = parameters;

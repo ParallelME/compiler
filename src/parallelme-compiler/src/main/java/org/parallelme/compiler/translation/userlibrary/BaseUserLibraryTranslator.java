@@ -8,8 +8,12 @@
 
 package org.parallelme.compiler.translation.userlibrary;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.parallelme.compiler.RuntimeCommonDefinitions;
 import org.parallelme.compiler.intermediate.Operation;
+import org.parallelme.compiler.intermediate.Operation.OperationType;
 import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.intermediate.Operation.ExecutionType;
 import org.parallelme.compiler.translation.BoxedTypes;
@@ -65,11 +69,12 @@ public abstract class BaseUserLibraryTranslator implements
 	 */
 	public String translateVariable(Variable variable, String code) {
 		String translatedCode = "";
-		if (variable.typeName.equals(Pixel.getName())) {
+		if (variable.typeName.equals(Pixel.getInstance().getClassName())) {
 			translatedCode = this.translatePixelVariable(variable, code);
-		} else if (variable.typeName.equals(Int16.getName())
-				|| variable.typeName.equals(Int32.getName())
-				|| variable.typeName.equals(Float32.getName())) {
+		} else if (variable.typeName.equals(Int16.getInstance().getClassName())
+				|| variable.typeName.equals(Int32.getInstance().getClassName())
+				|| variable.typeName.equals(Float32.getInstance()
+						.getClassName())) {
 			translatedCode = this.translateNumericVariable(variable, code);
 		} else if (PrimitiveTypes.isPrimitive(variable.typeName)) {
 			translatedCode = code.replaceAll(variable.typeName,
@@ -108,13 +113,31 @@ public abstract class BaseUserLibraryTranslator implements
 	 * {@inheritDoc}
 	 */
 	@Override
-	public String translateOperation(String className, Operation operation) {
-		String ret;
+	public List<String> translateOperation(Operation operation) {
+		List<String> ret = new ArrayList<>();
 		// Translate parallel operations
 		if (operation.getExecutionType() == ExecutionType.Parallel) {
-			ret = this.translateParallelOperation(operation);
+			if (operation.operationType == OperationType.Foreach) {
+				ret.add(this.translateParallelForeach(operation));
+			} else if (operation.operationType == OperationType.Reduce) {
+				// C functions must be declared before used, so user function
+				// must be the first
+				ret.add(this.translateParallelReduceUserFunction(operation));
+				ret.add(this.translateParallelReduceTile(operation));
+				ret.add(this.translateParallelReduce(operation));
+			} else {
+				throw new RuntimeException("Invalid operation: "
+						+ operation.operationType);
+			}
 		} else {
-			ret = this.translateSequentialOperation(operation);
+			if (operation.operationType == OperationType.Foreach) {
+				ret.add(this.translateSequentialForeach(operation));
+			} else if (operation.operationType == OperationType.Reduce) {
+				ret.add(this.translateSequentialReduce(operation));
+			} else {
+				throw new RuntimeException("Invalid operation: "
+						+ operation.operationType);
+			}
 		}
 		return ret;
 	}
@@ -127,7 +150,38 @@ public abstract class BaseUserLibraryTranslator implements
 	 *            Operation that must be translated.
 	 * @return C code with operation's user code compatible with this runtime.
 	 */
-	abstract protected String translateParallelOperation(Operation operation);
+	abstract protected String translateParallelForeach(Operation operation);
+
+	/**
+	 * Translates a tile operation returning a C code compatible with this
+	 * runtime.
+	 * 
+	 * @param operation
+	 *            Operation that must be translated.
+	 * @return C code with operation's user code compatible with this runtime.
+	 */
+	abstract protected String translateParallelReduce(Operation operation);
+
+	/**
+	 * Translates a tile operation returning a C code compatible with this
+	 * runtime.
+	 * 
+	 * @param operation
+	 *            Operation that must be translated.
+	 * @return C code with operation's user code compatible with this runtime.
+	 */
+	abstract protected String translateParallelReduceTile(Operation operation);
+
+	/**
+	 * Translates the user code that will be used for composing parallel and
+	 * tile operations.
+	 * 
+	 * @param operation
+	 *            Operation that must be translated.
+	 * @return C code with operation's user code compatible with this runtime.
+	 */
+	abstract protected String translateParallelReduceUserFunction(
+			Operation operation);
 
 	/**
 	 * Translates a sequential operation returning a C code compatible with this
@@ -137,5 +191,15 @@ public abstract class BaseUserLibraryTranslator implements
 	 *            Operation that must be translated.
 	 * @return C code with operation's user code compatible with this runtime.
 	 */
-	abstract protected String translateSequentialOperation(Operation operation);
+	abstract protected String translateSequentialForeach(Operation operation);
+
+	/**
+	 * Translates a sequential operation returning a C code compatible with this
+	 * runtime.
+	 * 
+	 * @param operation
+	 *            Operation that must be translated.
+	 * @return C code with operation's user code compatible with this runtime.
+	 */
+	abstract protected String translateSequentialReduce(Operation operation);
 }

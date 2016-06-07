@@ -19,7 +19,9 @@ import org.parallelme.compiler.userlibrary.UserLibraryClass;
  */
 public class Int32 extends UserLibraryClass {
 	private static Int32 instance = new Int32();
-
+	private static final String className = "Int32";
+	private static final String packageName = "org.parallelme.userlibrary.datatypes";
+	
 	private Int32() {
 		this.initValidMethodsSet();
 	}
@@ -43,11 +45,20 @@ public class Int32 extends UserLibraryClass {
 	protected void initValidMethodsSet() {
 		this.validMethods = new HashMap<>();
 	}
-	
+
 	/**
 	 * {@inheritDoc}
 	 */
-	public static String getName() {
-		return "Int32";
+	@Override
+	public String getClassName() {
+		return className;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getPackageName() {
+		return packageName;
 	}
 }

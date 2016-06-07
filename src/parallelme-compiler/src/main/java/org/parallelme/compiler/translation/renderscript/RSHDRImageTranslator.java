@@ -47,7 +47,10 @@ public class RSHDRImageTranslator extends RSImageTranslator implements
 			+ "\n\t} else {"
 			+ "\n\t\tPM_out.s0 = 0.0f;"
 			+ "\n\t\tPM_out.s1 = 0.0f;"
-			+ "\n\t\tPM_out.s2 = 0.0f;" + "\n\t}" + "\n\treturn PM_out;" + "\n}";
+			+ "\n\t\tPM_out.s2 = 0.0f;"
+			+ "\n\t}"
+			+ "\n\treturn PM_out;"
+			+ "\n}";
 
 	public RSHDRImageTranslator(CTranslator cCodeTranslator) {
 		super(cCodeTranslator);
@@ -115,18 +118,16 @@ public class RSHDRImageTranslator extends RSImageTranslator implements
 	public String translateMethodCall(String className, MethodCall methodCall) {
 		// TODO Throw an exception whenever a non supported method is provided.
 		String ret = "return ";
-		if (methodCall.variable.typeName.equals(HDRImage.getName())) {
-			if (methodCall.methodName.equals(HDRImage.getInstance()
-					.getHeightMethodName())) {
-				ret += this.commonDefinitions
-						.getVariableInName(methodCall.variable)
-						+ ".getType().getY();";
-			} else if (methodCall.methodName.equals(HDRImage.getInstance()
-					.getWidthMethodName())) {
-				ret += this.commonDefinitions
-						.getVariableInName(methodCall.variable)
-						+ ".getType().getX();";
-			}
+		if (methodCall.methodName.equals(HDRImage.getInstance()
+				.getHeightMethodName())) {
+			ret += this.commonDefinitions
+					.getVariableInName(methodCall.variable)
+					+ ".getType().getY();";
+		} else if (methodCall.methodName.equals(HDRImage.getInstance()
+				.getWidthMethodName())) {
+			ret += this.commonDefinitions
+					.getVariableInName(methodCall.variable)
+					+ ".getType().getX();";
 		}
 		return ret;
 	}

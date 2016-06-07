@@ -9,6 +9,8 @@
 package org.parallelme.compiler;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.parallelme.compiler.RuntimeDefinition.TargetRuntime;
 import org.parallelme.compiler.exception.CompilationException;
@@ -21,6 +23,7 @@ import org.parallelme.compiler.userlibrary.UserLibraryClass;
 import org.parallelme.compiler.userlibrary.UserLibraryClassFactory;
 import org.parallelme.compiler.userlibrary.UserLibraryCollectionClass;
 import org.parallelme.compiler.userlibrary.classes.Array;
+import org.parallelme.compiler.userlibrary.classes.BitmapImage;
 import org.parallelme.compiler.userlibrary.classes.Float32;
 import org.parallelme.compiler.userlibrary.classes.HDRImage;
 import org.parallelme.compiler.userlibrary.classes.Int16;
@@ -35,7 +38,7 @@ import org.stringtemplate.v4.ST;
  */
 public class RuntimeCommonDefinitions {
 	private static RuntimeCommonDefinitions instance = new RuntimeCommonDefinitions();
-	private final String templateMethodSignature = "<modifier> <returnType> <name>(<params:{var|<var.type> <var.name>}; separator=\", \">)";
+	private final String templateMethodSignature = "<modifier:{var|<var.value> }><returnType> <name>(<params:{var|<var.type> <var.name>}; separator=\", \">)";
 	private final String inSuffix = "In";
 	private final String outSuffix = "Out";
 	private final String inputBindName = "inputBind";
@@ -84,7 +87,7 @@ public class RuntimeCommonDefinitions {
 	}
 
 	/**
-	 * Return an unique operation name base on its sequential number.
+	 * Return an unique operation name based on its sequential number.
 	 */
 	public String getOperationName(Operation operation) {
 		if (operation.operationType == OperationType.Foreach) {
@@ -94,6 +97,22 @@ public class RuntimeCommonDefinitions {
 			return UserLibraryCollectionClass.getReduceMethodName()
 					+ operation.sequentialNumber;
 		}
+	}
+
+	/**
+	 * Return an unique name for operation tile function base on its sequential
+	 * number.
+	 */
+	public String getOperationTileFunctionName(Operation operation) {
+		return this.getOperationName(operation) + "_tile";
+	}
+
+	/**
+	 * Return an unique name for operation user function base on its sequential
+	 * number.
+	 */
+	public String getOperationUserFunctionName(Operation operation) {
+		return this.getOperationName(operation) + "_func";
 	}
 
 	/**
@@ -145,11 +164,12 @@ public class RuntimeCommonDefinitions {
 	 *            Array of parameters.
 	 * @return Comma separated string with parameters.
 	 */
-	public String toCommaSeparatedString(Parameter[] parameters) {
+	public <T extends Parameter> String toCommaSeparatedString(
+			List<T> parameters) {
 		StringBuilder params = new StringBuilder();
-		for (int i = 0; i < parameters.length; i++) {
-			params.append(parameters[i]);
-			if (i != (parameters.length - 1))
+		for (int i = 0; i < parameters.size(); i++) {
+			params.append(parameters.get(i));
+			if (i != (parameters.size() - 1))
 				params.append(", ");
 		}
 		return params.toString();
@@ -250,10 +270,14 @@ public class RuntimeCommonDefinitions {
 	 * @throws CompilationException
 	 *             Exception thrown in case any of invalid parameter type.
 	 */
-	public String createJavaMethodSignature(String modifier, String returnType,
-			String name, Parameter[] parameters, boolean asArrayVariables) {
+	public <T extends Parameter> String createJavaMethodSignature(
+			String modifier, String returnType, String name,
+			List<T> parameters, boolean asArrayVariables) {
 		ST st = new ST(templateMethodSignature);
-		st.add("modifier", modifier);
+		if (modifier.isEmpty())
+			st.add("modifier", null);
+		else
+			st.addAggr("modifier.{value}", modifier);
 		st.add("returnType", returnType);
 		st.add("name", name);
 		st.add("params", null);
@@ -282,53 +306,70 @@ public class RuntimeCommonDefinitions {
 
 	/**
 	 * Creates a Java method signature for a given input bind.
+	 * 
+	 * @param inputBind
+	 *            Input bind that will have a signature method created.
+	 * @param isInterface
+	 *            True if the signature is being created for a java interface,
+	 *            false for a class.
 	 */
-	public String createJavaMethodSignature(InputBind inputBind)
-			throws CompilationException {
-		return this.createJavaMethodSignature("public", "void",
+	public String createJavaMethodSignature(InputBind inputBind,
+			boolean isInterface) throws CompilationException {
+		String modifier = isInterface ? "" : "public";
+		return this.createJavaMethodSignature(modifier, "void",
 				this.getInputBindName(inputBind),
-				this.createJavaImplParameters(inputBind), false);
+				this.createJavaImplParameters(inputBind), isInterface);
 	}
 
 	/**
 	 * Creates a Java default list of parameters for a given input bind to be
 	 * used for method declaration in Java implementation classes.
 	 */
-	public Parameter[] createJavaImplParameters(InputBind inputBind)
+	public List<Parameter> createJavaImplParameters(InputBind inputBind)
 			throws CompilationException {
-		Parameter[] parameters = inputBind.parameters;
-		if (inputBind.variable.typeName.equals(Array.getName())) {
-			if (inputBind.parameters.length != 2)
+		List<Parameter> parameters = inputBind.parameters;
+		if (inputBind.variable.typeName.equals(Array.getInstance()
+				.getClassName())) {
+			if (inputBind.parameters.size() != 2)
 				throw new CompilationException(
 						"Array constructor must have 2 arguments: primitive type array and NumericalData class.");
 			// Second element (NumericalData class) in original parameters is
 			// not used
-			parameters = new Parameter[1];
-			parameters[0] = inputBind.parameters[0];
-		} else if (inputBind.variable.typeName.equals(HDRImage.getName())) {
-			if (inputBind.parameters.length != 3)
+			parameters = new ArrayList<>();
+			parameters.add(inputBind.parameters.get(0));
+		} else if (inputBind.variable.typeName.equals(HDRImage.getInstance()
+				.getClassName())) {
+			if (inputBind.parameters.size() != 3)
 				throw new CompilationException(
 						"HDRImage constructor must have 3 arguments: byte array, width and height.");
-			parameters = new Parameter[3];
-			parameters[0] = new Variable("data", "byte[]", "", "", -1);
-			parameters[1] = new Variable("width", "int", "", "", -1);
-			parameters[2] = new Variable("height", "int", "", "", -1);
+			parameters = new ArrayList<>();
+			parameters.add(new Variable("data", "byte[]", "", "", -1));
+			parameters.add(new Variable("width", "int", "", "", -1));
+			parameters.add(new Variable("height", "int", "", "", -1));
 		}
 		return parameters;
 	}
 
 	/**
 	 * Creates a Java method signature for a given operation.
+	 * 
+	 * @param operation
+	 *            Operation that will have a signature method created.
+	 * @param isInterface
+	 *            True if the signature is being created for a java interface,
+	 *            false for a class.
 	 */
-	public String createJavaMethodSignature(Operation operation) {
+	public String createJavaMethodSignature(Operation operation,
+			boolean isInterface) {
 		String returnType = operation.destinationVariable == null ? "void"
 				: operation.destinationVariable.typeName;
+		String modifier = isInterface ? "" : "public";
 		if (operation.getExecutionType() == ExecutionType.Sequential) {
-			return this.createJavaMethodSignature("public", returnType,
+			return this.createJavaMethodSignature(modifier, returnType,
 					this.getOperationName(operation),
 					operation.getExternalVariables(), true);
 		} else {
-			return this.createJavaMethodSignature("public", returnType,
+			return this.createJavaMethodSignature(modifier, returnType,
 					this.getOperationName(operation),
 					operation.getExternalVariables(), false);
 		}
@@ -336,42 +377,64 @@ public class RuntimeCommonDefinitions {
 
 	/**
 	 * Creates a Java method signature for a given output bind.
+	 * 
+	 * @param outputBind
+	 *            Output bind that will have a signature method created.
+	 * @param isInterface
+	 *            True if the signature is being created for a java interface,
+	 *            false for a class.
 	 */
-	public String createJavaMethodSignature(OutputBind outputBind) {
-		return this.createJavaMethodSignature("public", "void",
-				this.getOutputBindName(outputBind),
-				new Variable[] { outputBind.destinationObject }, false);
+	public String createJavaMethodSignature(OutputBind outputBind,
+			boolean isInterface) {
+		ArrayList<Variable> parameters = new ArrayList<>();
+		parameters.add(outputBind.destinationObject);
+		String modifier = isInterface ? "" : "public";
+		return this.createJavaMethodSignature(modifier, "void",
+				this.getOutputBindName(outputBind), parameters, isInterface);
 	}
 
 	/**
 	 * Creates a Java method signature for a given method call.
+	 * 
+	 * @param methodCall
+	 *            Method call that will have a signature method created.
+	 * @param isInterface
+	 *            True if the signature is being created for a java interface,
+	 *            false for a class.
 	 */
-	public String createJavaMethodSignature(MethodCall methodCall) {
+	public String createJavaMethodSignature(MethodCall methodCall,
+			boolean isInterface) {
 		UserLibraryClass userLibrary = UserLibraryClassFactory
-				.create(methodCall.variable.typeName);
-		return this.createJavaMethodSignature("public",
+				.getClass(methodCall.variable.typeName);
+		String modifier = isInterface ? "" : "public";
+		return this.createJavaMethodSignature(modifier,
 				userLibrary.getReturnType(methodCall.methodName),
-				this.getMethodCallName(methodCall), new Variable[0], false);
+				this.getMethodCallName(methodCall), new ArrayList<Variable>(),
+				isInterface);
 	}
+
 	/**
 	 * Translates a given type to an equivalent runtime type. Example: translate
-	 * RGB type to float3 on RenderScript.
+	 * RGB type to float3 in RenderScript.
 	 * 
 	 * @param typeName
 	 *            Type that must be translated.
-	 * @param targetRuntime
-	 *            Target runtime.
-	 * @return A string with the equivalent type for the given runtime.
+	 * @return A string with the equivalent type for RenderScript and ParallelME
+	 *         runtimes.
 	 */
 	public String translateType(String typeName) {
 		String translatedType = "";
-		if (typeName.equals(Pixel.getName())) {
+		if (typeName.equals(Pixel.getInstance().getClassName())) {
 			translatedType = "float4";
-		} else if (typeName.equals(Int16.getName())) {
+		} else if (typeName.equals(HDRImage.getInstance().getClassName())) {
+			translatedType = "float";
+		} else if (typeName.equals(BitmapImage.getInstance().getClassName())) {
+			translatedType = "float";
+		} else if (typeName.equals(Int16.getInstance().getClassName())) {
 			translatedType = "short";
-		} else if (typeName.equals(Int32.getName())) {
+		} else if (typeName.equals(Int32.getInstance().getClassName())) {
 			translatedType = "int";
-		} else if (typeName.equals(Float32.getName())) {
+		} else if (typeName.equals(Float32.getInstance().getClassName())) {
 			translatedType = "float";
 		} else if (PrimitiveTypes.isPrimitive(typeName)) {
 			translatedType = PrimitiveTypes.getCType(typeName);

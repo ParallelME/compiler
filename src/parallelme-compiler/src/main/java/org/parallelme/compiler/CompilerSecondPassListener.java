@@ -206,16 +206,15 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 				throw new RuntimeException("Operation with no method body.");
 			}
 			if (!method.arguments.isEmpty()) {
-				Variable[] variables = new Variable[method.arguments.size()];
-				int i = 0;
+				ArrayList<Variable> variables = new ArrayList<>();
 				for (Symbol argument : method.arguments) {
 					if (argument instanceof VariableSymbol) {
 						VariableSymbol argumentVariable = (VariableSymbol) argument;
-						variables[i++] = new Variable(argumentVariable.name,
+						variables.add(new Variable(argumentVariable.name,
 								argumentVariable.typeName,
 								argumentVariable.typeParameterName,
 								argumentVariable.modifier,
-								argumentVariable.identifier);
+								argumentVariable.identifier));
 					}
 				}
 				String originalMethodContent = tokenStream.getText(
@@ -257,7 +256,7 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 			UserLibraryVariableSymbol variable = (UserLibraryVariableSymbol) this.userLibraryVariablesUnderScope
 					.get(expression);
 			UserLibraryClass userLibraryClass = UserLibraryClassFactory
-					.create(variable.typeName);
+					.getClass(variable.typeName);
 			// Check if the declared object is a collection
 			if (userLibraryClass instanceof UserLibraryCollectionClass) {
 				if (this.isOperation(variable, ctx)) {

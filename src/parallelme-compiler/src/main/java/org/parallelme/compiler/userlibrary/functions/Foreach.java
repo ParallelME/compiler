@@ -18,8 +18,16 @@ import org.parallelme.compiler.userlibrary.UserLibraryClass;
  * @author Wilson de Carvalho
  */
 public class Foreach extends UserLibraryClass {
-	public Foreach() {
+	private static Foreach instance = new Foreach();
+	private static final String className = "Foreach";
+	private static final String packageName = "org.parallelme.userlibrary.function";
+
+	private Foreach() {
 		this.initValidMethodsSet();
+	}
+
+	public static Foreach getInstance() {
+		return instance;
 	}
 
 	/**
@@ -42,7 +50,16 @@ public class Foreach extends UserLibraryClass {
 	/**
 	 * {@inheritDoc}
 	 */
-	public static String getName() {
-		return "Foreach";
+	@Override
+	public String getClassName() {
+		return className;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getPackageName() {
+		return packageName;
 	}
 }

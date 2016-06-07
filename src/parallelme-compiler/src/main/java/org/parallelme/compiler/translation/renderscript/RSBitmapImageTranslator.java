@@ -37,8 +37,7 @@ public class RSBitmapImageTranslator extends RSImageTranslator implements
 			+ "\n\tfloat3 PM_out;"
 			+ "\n\tPM_out.s0 = (float) PM_in.r;"
 			+ "\n\tPM_out.s1 = (float) PM_in.g;"
-			+ "\n\tPM_out.s2 = (float) PM_in.b;"
-			+ "\n\treturn PM_out;" + "\n}";
+			+ "\n\tPM_out.s2 = (float) PM_in.b;" + "\n\treturn PM_out;" + "\n}";
 
 	public RSBitmapImageTranslator(CTranslator cCodeTranslator) {
 		super(cCodeTranslator);
@@ -70,7 +69,7 @@ public class RSBitmapImageTranslator extends RSImageTranslator implements
 		st.add("dataTypeInputObject", dataTypeInputObject);
 		st.add("inputObject", inputObject);
 		st.add("outputObject", outputObject);
-		st.add("param", inputBind.parameters[0]);
+		st.add("param", inputBind.parameters.get(0));
 		st.add("kernelName", this.commonDefinitions.getKernelName(className));
 		st.add("classType", inputBind.variable.typeName);
 		return st.render();
@@ -100,18 +99,16 @@ public class RSBitmapImageTranslator extends RSImageTranslator implements
 	public String translateMethodCall(String className, MethodCall methodCall) {
 		// TODO Throw an exception whenever a non supported method is provided.
 		String ret = "return ";
-		if (methodCall.variable.typeName.equals(BitmapImage.getName())) {
-			if (methodCall.methodName.equals(BitmapImage.getInstance()
-					.getHeightMethodName())) {
-				ret += this.commonDefinitions
-						.getVariableInName(methodCall.variable)
-						+ ".getType().getY();";
-			} else if (methodCall.methodName.equals(BitmapImage.getInstance()
-					.getWidthMethodName())) {
-				ret += this.commonDefinitions
-						.getVariableInName(methodCall.variable)
-						+ ".getType().getX();";
-			}
+		if (methodCall.methodName.equals(BitmapImage.getInstance()
+				.getHeightMethodName())) {
+			ret += this.commonDefinitions
+					.getVariableInName(methodCall.variable)
+					+ ".getType().getY();";
+		} else if (methodCall.methodName.equals(BitmapImage.getInstance()
+				.getWidthMethodName())) {
+			ret += this.commonDefinitions
+					.getVariableInName(methodCall.variable)
+					+ ".getType().getX();";
 		}
 		return ret;
 	}

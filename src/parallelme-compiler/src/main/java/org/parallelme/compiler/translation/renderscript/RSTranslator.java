@@ -87,7 +87,7 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 			st.add("kernelName", kernelName);
 			st.add("functionName", functionName);
 			st.add("externalVariables", null);
-			if (operation.getExternalVariables().length > 0) {
+			if (!operation.getExternalVariables().isEmpty()) {
 				for (Variable variable : operation.getExternalVariables()) {
 					String gVariable = this.getGlobalVariableName(
 							variable.name, operation);
@@ -125,13 +125,16 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 			String prefix = this.commonDefinitions.getPrefix();
 			st.addAggr("inputSize.{name, XYZ}", prefix + "gInputXSize"
 					+ operationName, "X");
-			if (operation.variable.typeName.equals(BitmapImage.getName())
-					|| operation.variable.typeName.equals(HDRImage.getName())) {
+			if (operation.variable.typeName.equals(BitmapImage.getInstance()
+					.getClassName())
+					|| operation.variable.typeName.equals(HDRImage
+							.getInstance().getClassName())) {
 				st.addAggr("inputSize.{name, XYZ}", prefix + "gInputYSize"
 						+ operationName, "Y");
 			}
 		}
-		if (operation.variable.typeName.equals(Array.getName()))
+		if (operation.variable.typeName.equals(Array.getInstance()
+				.getClassName()))
 			st.add("allocationName", this.commonDefinitions
 					.getVariableInName(operation.variable));
 		else
@@ -144,8 +147,9 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 	 * {@inheritDoc}
 	 */
 	@Override
-	protected String translateParallelOperation(Operation operation) {
-		Variable userFunctionVariable = operation.getUserFunctionData().arguments[0];
+	protected String translateParallelForeach(Operation operation) {
+		Variable userFunctionVariable = operation.getUserFunctionData().arguments
+				.get(0);
 		String code2Translate = operation.getUserFunctionData().Code.trim();
 		// Remove the last curly brace
 		code2Translate = code2Translate.substring(0,
@@ -175,8 +179,33 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 	 * {@inheritDoc}
 	 */
 	@Override
-	protected String translateSequentialOperation(Operation operation) {
-		Variable userFunctionVariable = operation.getUserFunctionData().arguments[0];
+	protected String translateParallelReduce(Operation operation) {
+		return "";
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	protected String translateParallelReduceTile(Operation operation) {
+		return "";
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	protected String translateParallelReduceUserFunction(Operation operation) {
+		return "";
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	protected String translateSequentialForeach(Operation operation) {
+		Variable userFunctionVariable = operation.getUserFunctionData().arguments
+				.get(0);
 		String code2Translate = operation.getUserFunctionData().Code.trim();
 		// Remove the last curly brace
 		code2Translate = code2Translate.substring(0,
@@ -224,8 +253,10 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 		stForBody.add("userCode", cCode);
 		stForBody.add("param", null);
 		// BitmapImage and HDRImage types contains two for loops
-		if (operation.variable.typeName.equals(BitmapImage.getName())
-				|| operation.variable.typeName.equals(HDRImage.getName())) {
+		if (operation.variable.typeName.equals(BitmapImage.getInstance()
+				.getClassName())
+				|| operation.variable.typeName.equals(HDRImage.getInstance()
+						.getClassName())) {
 			stForBody.addAggr("param.{name}", prefix + "y");
 			ST stFor2 = new ST(templateForLoop);
 			stFor2.add("varName", prefix + "y");
@@ -241,6 +272,14 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 	}
 
 	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	protected String translateSequentialReduce(Operation operation) {
+		return "";
+	}
+
+	/**
 	 * Create the function signature for a given operation.
 	 * 
 	 * @param operation
@@ -252,17 +291,19 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 	protected String getOperationFunctionSignature(Operation operation) {
 		String functionSignature = "";
 		String parameterTypeTranslated = this.commonDefinitions
-				.translateType(operation.getUserFunctionData().arguments[0].typeName);
+				.translateType(operation.getUserFunctionData().arguments.get(0).typeName);
 		if (operation.getExecutionType() == ExecutionType.Parallel) {
 			ST st = new ST(templateOperationParallelFunctionSignature);
 			st.add("parameterTypeTranslated", parameterTypeTranslated);
 			st.add("parameterName",
-					operation.getUserFunctionData().arguments[0].name);
+					operation.getUserFunctionData().arguments.get(0).name);
 			st.add("userFunctionName",
 					this.commonDefinitions.getOperationName(operation));
 			st.add("params", null);
-			if (operation.variable.typeName.equals(BitmapImage.getName())
-					|| operation.variable.typeName.equals(HDRImage.getName())) {
+			if (operation.variable.typeName.equals(BitmapImage.getInstance()
+					.getClassName())
+					|| operation.variable.typeName.equals(HDRImage
+							.getInstance().getClassName())) {
 				st.addAggr("params.{type, name}", "uint32_t", "y");
 			}
 			functionSignature = st.render();

@@ -48,7 +48,7 @@ public class CompilerCodeTranslator {
 			+ "package <packageName>;\n\n"
 			+ "<imports:{var|import <var.statement>;\n}>\n"
 			+ "public interface <interfaceName> {\n"
-			+ "\tpublic boolean isValid();\n\n"
+			+ "\tboolean isValid();\n\n"
 			+ "\t<methods:{var|<var.signature>;}; separator=\"\\n\\n\">"
 			+ "\n}\n";
 	private final static String templateJavaClass = "<introductoryMsg>\n\n"
@@ -195,31 +195,25 @@ public class CompilerCodeTranslator {
 				.getHeaderComment());
 		st.add("packageName", packageName);
 		st.add("interfaceName", interfaceName);
-		Set<String> userLibraryClasses = new HashSet<String>();
 		for (InputBind inputBind : operationAndBinds.inputBinds) {
 			st.addAggr("methods.{signature}", RuntimeCommonDefinitions
-					.getInstance().createJavaMethodSignature(inputBind));
-			userLibraryClasses.add(inputBind.variable.typeName);
+					.getInstance().createJavaMethodSignature(inputBind, true));
 		}
 		for (Operation operation : operationAndBinds.operations) {
 			st.addAggr("methods.{signature}", RuntimeCommonDefinitions
-					.getInstance().createJavaMethodSignature(operation));
-			userLibraryClasses.add(operation.variable.typeName);
+					.getInstance().createJavaMethodSignature(operation, true));
 		}
 		for (OutputBind outputBind : operationAndBinds.outputBinds) {
 			st.addAggr("methods.{signature}", RuntimeCommonDefinitions
-					.getInstance().createJavaMethodSignature(outputBind));
-			userLibraryClasses.add(outputBind.variable.typeName);
+					.getInstance().createJavaMethodSignature(outputBind, true));
 		}
 		for (MethodCall methodCall : methodCalls) {
 			st.addAggr("methods.{signature}", RuntimeCommonDefinitions
-					.getInstance().createJavaMethodSignature(methodCall));
-			userLibraryClasses.add(methodCall.variable.typeName);
+					.getInstance().createJavaMethodSignature(methodCall, true));
 		}
-		Set<String> imports = this.getImports(userLibraryClasses,
+		Set<String> imports = this.getImports(operationAndBinds,
 				this.rsRuntime, true);
-		imports.addAll(this
-				.getImports(userLibraryClasses, this.pmRuntime, true));
+		imports.addAll(this.getImports(operationAndBinds, this.pmRuntime, true));
 		this.addImportStatements(imports, st);
 		FileWriter.writeFile(
 				interfaceName + ".java",
@@ -240,12 +234,29 @@ public class CompilerCodeTranslator {
 	 *            Specifies if imports will be inserted in an interface (true)
 	 *            or a class (false).
 	 */
-	private Set<String> getImports(Set<String> userLibraryClasses,
+	private Set<String> getImports(OperationsAndBinds operationsAndBinds,
 			RuntimeDefinition targetRuntime, boolean isInterface)
 			throws CompilationException {
+		Set<String> collectionClasses = new HashSet<>();
+		Set<String> destinationVariablesClasses = new HashSet<>();
+		// We must check all binds and operations because the user may call some
+		// input binds and do not create operations for a given variable.
+		for (InputBind inputBind : operationsAndBinds.inputBinds) {
+			if (!collectionClasses.contains(inputBind.variable.typeName))
+				collectionClasses.add(inputBind.variable.typeName);
+		}
+		for (Operation operation : operationsAndBinds.operations) {
+			if (!collectionClasses.contains(operation.variable.typeName))
+				collectionClasses.add(operation.variable.typeName);
+			if (operation.destinationVariable != null
+					&& !destinationVariablesClasses
+							.contains(operation.destinationVariable.typeName))
+				destinationVariablesClasses
+						.add(operation.destinationVariable.typeName);
+		}
 		// Using a TreeSet here in order to keep imports sorted
 		TreeSet<String> importStatements = new TreeSet<>();
-		for (String userLibraryClass : userLibraryClasses) {
+		for (String userLibraryClass : collectionClasses) {
 			if (isInterface) {
 				importStatements.addAll(targetRuntime.getTranslator(
 						userLibraryClass).getJavaInterfaceImports());
@@ -253,6 +264,10 @@ public class CompilerCodeTranslator {
 				importStatements.addAll(targetRuntime.getTranslator(
 						userLibraryClass).getJavaClassImports());
 			}
+		}
+		for (String destinationVariableClass : destinationVariablesClasses) {
+			importStatements.add(UserLibraryClassFactory.getClass(
+					destinationVariableClass).getFullyQualifiedName());
 		}
 		return importStatements;
 	}
@@ -307,18 +322,16 @@ public class CompilerCodeTranslator {
 		st.add("interfaceName", interfaceName);
 		st.add("className", javaClassName);
 		st.add("classDeclarations", null);
-		Set<String> userLibraryClasses = new HashSet<String>();
 		for (InputBind inputBind : operationsAndBinds.inputBinds) {
 			UserLibraryTranslatorDefinition translator = targetRuntime
 					.getTranslator(inputBind.variable.typeName);
 			st.addAggr("classDeclarations.{line}",
 					translator.translateInputBindObjDeclaration(inputBind));
 			String methodSignature = RuntimeCommonDefinitions.getInstance()
-					.createJavaMethodSignature(inputBind);
+					.createJavaMethodSignature(inputBind, false);
 			String body = translator.translateInputBindObjCreation(
 					javaClassName, inputBind);
 			st.addAggr("methods.{signature, body}", methodSignature, body);
-			userLibraryClasses.add(inputBind.variable.typeName);
 		}
 		for (String line : targetRuntime.getIsValidBody()) {
 			st.add("isValidBody", line);
@@ -329,33 +342,30 @@ public class CompilerCodeTranslator {
 		}
 		for (Operation operation : operationsAndBinds.operations) {
 			String methodSignature = RuntimeCommonDefinitions.getInstance()
-					.createJavaMethodSignature(operation);
+					.createJavaMethodSignature(operation, false);
 			String body = targetRuntime.getTranslator(
 					operation.variable.typeName).translateOperationCall(
 					javaClassName, operation);
 			st.addAggr("methods.{signature, body}", methodSignature, body);
-			userLibraryClasses.add(operation.variable.typeName);
 		}
 		for (OutputBind outputBind : operationsAndBinds.outputBinds) {
 			String methodSignature = RuntimeCommonDefinitions.getInstance()
-					.createJavaMethodSignature(outputBind);
+					.createJavaMethodSignature(outputBind, false);
 			String body = targetRuntime.getTranslator(
 					outputBind.variable.typeName).translateOutputBindCall(
 					javaClassName, outputBind);
 			st.addAggr("methods.{signature, body}", methodSignature, body);
-			userLibraryClasses.add(outputBind.variable.typeName);
 		}
 		for (MethodCall methodCall : methodCalls) {
 			String methodSignature = RuntimeCommonDefinitions.getInstance()
-					.createJavaMethodSignature(methodCall);
+					.createJavaMethodSignature(methodCall, false);
 			String body = targetRuntime.getTranslator(
 					methodCall.variable.typeName).translateMethodCall(
 					javaClassName, methodCall);
 			st.addAggr("methods.{signature, body}", methodSignature, body);
-			userLibraryClasses.add(methodCall.variable.typeName);
 		}
 		this.addImportStatements(
-				this.getImports(userLibraryClasses, targetRuntime, false), st);
+				this.getImports(operationsAndBinds, targetRuntime, false), st);
 		this.addImportStatements(targetRuntime.getImports(), st);
 
 		FileWriter.writeFile(
@@ -619,7 +629,7 @@ public class CompilerCodeTranslator {
 					.getSymbolUnderScope(creator.attributedObjectName,
 							UserLibraryVariableSymbol.class);
 			if (variable != null) {
-				if (UserLibraryClassFactory.create(variable.typeName) instanceof UserLibraryCollectionClass) {
+				if (UserLibraryClassFactory.getClass(variable.typeName) instanceof UserLibraryCollectionClass) {
 					variables.add(new Pair<>(variable, creator));
 				}
 			}
@@ -635,11 +645,11 @@ public class CompilerCodeTranslator {
 	 *            Collection of arguments' symbols.
 	 * @return Symbols' values converted to variable descriptors.
 	 */
-	private Parameter[] argumentsToVariableParameter(
+	private List<Parameter> argumentsToVariableParameter(
 			Collection<Symbol> arguments) {
 		Object[] argumentsArray = arguments.toArray();
-		Parameter[] ret = new Parameter[argumentsArray.length];
-		for (int i = 0; i < ret.length; i++) {
+		ArrayList<Parameter> ret = new ArrayList<>();
+		for (int i = 0; i < argumentsArray.length; i++) {
 			Symbol argument = (Symbol) argumentsArray[i];
 			if (argument instanceof LiteralSymbol<?>) {
 				LiteralSymbol<?> literal = (LiteralSymbol<?>) argument;
@@ -654,15 +664,15 @@ public class CompilerCodeTranslator {
 					type = "int";
 				else if (literal instanceof LiteralStringSymbol)
 					type = "String";
-				ret[i] = new Literal(literal.value.toString(), type);
+				ret.add(new Literal(literal.value.toString(), type));
 			} else if (argument instanceof VariableSymbol) {
 				VariableSymbol variable = (VariableSymbol) argument;
-				ret[i] = new Variable(variable.name, variable.typeName,
+				ret.add(new Variable(variable.name, variable.typeName,
 						variable.typeParameterName, variable.modifier,
-						variable.identifier);
+						variable.identifier));
 			} else if (argument instanceof ExpressionSymbol) {
 				ExpressionSymbol expression = (ExpressionSymbol) argument;
-				ret[i] = new Expression(expression.name);
+				ret.add(new Expression(expression.name));
 			} else {
 				// TODO Must throw an error in case argument is not literal nor
 				// literal.
@@ -703,7 +713,7 @@ public class CompilerCodeTranslator {
 			Variable variable = new Variable(variableSymbol.name,
 					variableSymbol.typeName, variableSymbol.typeParameterName,
 					variableSymbol.modifier, variableSymbol.identifier);
-			Parameter[] arguments = this
+			List<Parameter> arguments = this
 					.argumentsToVariableParameter(pair.right.arguments);
 			inputBinds.add(new InputBind(variable, ++inputBindCount, arguments,
 					pair.left.statementAddress, pair.right.statementAddress));
@@ -718,11 +728,11 @@ public class CompilerCodeTranslator {
 	 * sequential versions in the target runtime.
 	 */
 	private void setOperationType(Operation operation) {
-		Variable[] variables = operation.getExternalVariables();
+		List<Variable> variables = operation.getExternalVariables();
 		Operation.ExecutionType executionType = ExecutionType.Parallel;
-		for (int i = 0; i < variables.length
+		for (int i = 0; i < variables.size()
 				&& executionType == ExecutionType.Parallel; i++) {
-			if (!variables[i].isFinal()) {
+			if (!variables.get(i).isFinal()) {
 				SimpleLogger
 						.warn("Operation with non-final external variable in line "
 								+ operation.statementAddress.start.getLine()
@@ -741,14 +751,12 @@ public class CompilerCodeTranslator {
 		String templateAndroidMKFile = "<introductoryMsg>\n\n"
 				+ "LOCAL_PATH := $(call my-dir)\n"
 				+ "include $(CLEAR_VARS)\n"
-				+ "LOCAL_MODULE := libParallelMEGenerated\n"
-				+ "LOCAL_ARM_MODE := arm\n"
+				+ "LOCAL_MODULE := ParallelMEGenerated\n"
 				+ "LOCAL_C_INCLUDES := $(LOCAL_PATH)/../runtime/include\n"
-				+ "LOCAL_CFLAGS := -O3 -Wall -Wextra -Werror -Wno-unused-parameter -Wno-extern-c-compat\n"
-				+ "LOCAL_CPPFLAGS := -O3 -std=c++14 -fexceptions\n"
+				+ "LOCAL_CPPFLAGS := -Ofast -Wall -Wextra -Werror -Wno-unused-parameter -std=c++14 -fexceptions\n"
 				+ "LOCAL_CPP_FEATURES += exceptions\n"
-				+ "LOCAL_LDLIBS := -llog -ljnigraphics\n"
-				+ "LOCAL_SHARED_LIBRARIES := libParallelMERuntime\n"
+				+ "LOCAL_LDLIBS := -llog\n"
+				+ "LOCAL_SHARED_LIBRARIES := ParallelMERuntime\n"
 				+ "LOCAL_SRC_FILES := <files:{var|<var.name>}; separator=\" \\\\\n\t\">\n"
 				+ "include $(BUILD_SHARED_LIBRARY)\n";
 		ST st = new ST(templateAndroidMKFile);
@@ -767,4 +775,13 @@ public class CompilerCodeTranslator {
 				RuntimeCommonDefinitions.getInstance().getJNIDestinationFolder(
 						outputDestinationFolder), st.render());
 	}
+
+	// private void errorChecking(OperationsAndBinds operationsAndBinds) {
+	// if (operation.getUserFunctionData().arguments.size() != 2)
+	// throw new RuntimeException(
+	// "Reduce operations must have two input arguments.");
+	// if (!inputVar1.typeName.equals(inputVar2.typeName))
+	// throw new RuntimeException(
+	// "Reduce operations must have two input arguments of the same type.");
+	// }
 }

@@ -15,6 +15,7 @@ package org.parallelme.compiler.userlibrary.classes;
  */
 public class HDRImage extends Image {
 	private static HDRImage instance = new HDRImage();
+	private static final String className = "HDRImage";
 
 	private HDRImage() {
 		super();
@@ -27,7 +28,8 @@ public class HDRImage extends Image {
 	/**
 	 * {@inheritDoc}
 	 */
-	public static String getName() {
-		return "HDRImage";
+	@Override
+	public String getClassName() {
+		return className;
 	}
 }

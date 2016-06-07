@@ -27,7 +27,7 @@ public abstract class UserLibraryClass {
 	 * @return True if this class was designed to work with type arguments.
 	 */
 	abstract public boolean isTyped();
-	
+
 	/**
 	 * List all valid methods for this class, EXCEPT output bind and operation
 	 * methods. These last methods names must be returned in specific methods.
@@ -39,7 +39,8 @@ public abstract class UserLibraryClass {
 	}
 
 	/**
-	 * Get the return type of a valid method (non-operation and non-output bind).
+	 * Get the return type of a valid method (non-operation and non-output
+	 * bind).
 	 */
 	public String getReturnType(String methodName) {
 		if (this.isValidMethod(methodName))
@@ -55,4 +56,27 @@ public abstract class UserLibraryClass {
 	public boolean isValidMethod(String methodName) {
 		return this.validMethods.containsKey(methodName);
 	}
+
+	/**
+	 * Gets class name.
+	 * 
+	 * @return Class name.
+	 */
+	abstract public String getClassName();
+
+	/**
+	 * Gets package name.
+	 * 
+	 * @return Package name.
+	 */
+	abstract public String getPackageName();
+
+	/**
+	 * Gets class fully qualified name (package + class names).
+	 * 
+	 * @return Fully qualified name.
+	 */
+	public String getFullyQualifiedName() {
+		return this.getPackageName() + "." + this.getClassName();
+	}	
 }

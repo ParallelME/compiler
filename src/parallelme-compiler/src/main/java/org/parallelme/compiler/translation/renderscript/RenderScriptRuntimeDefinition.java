@@ -44,12 +44,12 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 	private void initTranslators() {
 		if (super.translators == null) {
 			super.translators = new HashMap<>();
-			super.translators.put(Array.getName(), new RSArrayTranslator(
-					cCodeTranslator));
-			super.translators.put(BitmapImage.getName(),
+			super.translators.put(Array.getInstance().getClassName(),
+					new RSArrayTranslator(cCodeTranslator));
+			super.translators.put(BitmapImage.getInstance().getClassName(),
 					new RSBitmapImageTranslator(cCodeTranslator));
-			super.translators.put(HDRImage.getName(), new RSHDRImageTranslator(
-					cCodeTranslator));
+			super.translators.put(HDRImage.getInstance().getClassName(),
+					new RSHDRImageTranslator(cCodeTranslator));
 		}
 	}
 
@@ -119,7 +119,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 		st.add("introductoryMsg", RuntimeCommonDefinitions.getInstance()
 				.getHeaderComment());
 		st.add("header", "#pragma version(1)\n#pragma rs java_package_name("
-				+ packageName + ")");
+				+ packageName + ")\n#pragma rs_fp_imprecise");
 		// 2. Translate input binds
 		Set<String> inputBindTypes = new HashSet<String>();
 		for (InputBind inputBind : operationsAndBinds.inputBinds) {
@@ -135,7 +135,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 			if (operation.operationType == OperationType.Foreach) {
 				st.add("functions",
 						this.translators.get(operation.variable.typeName)
-								.translateOperation(className, operation));
+								.translateOperation(operation));
 			}
 		}
 		// 4. Translate outputbinds
