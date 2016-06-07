@@ -8,13 +8,16 @@
 
 package org.parallelme.compiler.translation.runtime;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.parallelme.compiler.intermediate.Operation;
 import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.intermediate.Operation.ExecutionType;
+import org.parallelme.compiler.intermediate.Operation.OperationType;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.translation.PrimitiveTypes;
 import org.parallelme.compiler.translation.userlibrary.BaseUserLibraryTranslator;
-import org.parallelme.compiler.userlibrary.classes.Array;
 import org.parallelme.compiler.userlibrary.classes.BitmapImage;
 import org.parallelme.compiler.userlibrary.classes.HDRImage;
 import org.stringtemplate.v4.ST;
@@ -26,7 +29,7 @@ import org.stringtemplate.v4.ST;
  */
 public abstract class PMTranslator extends BaseUserLibraryTranslator {
 	protected static final String templateCallJNIFunction = "<jniJavaClassName>.getInstance().<functionName>(<params:{var|<var.name>}; separator=\", \">)";
-	private static final String templateKernelDecl = "__kernel void <functionName>(<params:{var|<var.type> <var.name>}; separator=\", \">)";
+	private static final String templateFunctionDecl = "<isKernel:{var|__kernel}> <returnType> <functionName>(<params:{var|<var.type> <var.name>}; separator=\", \">)";
 	private static final String templateForLoop = "for (int <varName> = 0; <varName> \\< <varMaxVal>; ++<varName>) {\n\t<body>}\n";
 	private static final String templateOperationCall = ""
 			+ "<destinationVariable:{var|<var.type> <var.name> = new <var.type>();\n"
@@ -40,6 +43,10 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 
 	protected CTranslator cCodeTranslator;
 
+	private enum FunctionType {
+		BaseOperation, Tile, UserCode;
+	}
+
 	public PMTranslator(CTranslator cCodeTranslator) {
 		this.cCodeTranslator = cCodeTranslator;
 	}
@@ -48,74 +55,181 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 	 * {@inheritDoc}
 	 */
 	@Override
-	protected String translateParallelOperation(Operation operation) {
-		Variable userFunctionVariable = operation.getUserFunctionData().arguments[0];
+	protected String translateParallelForeach(Operation operation) {
 		String code2Translate = operation.getUserFunctionData().Code.trim();
 		code2Translate = this.removeCurlyBraces(code2Translate);
-		String ret;
-		String gidDeclaration = String.format(
-				"int PM_gid = get_global_id(0);\n" + "\t%s %s = %s[PM_gid];",
-				this.commonDefinitions
-						.translateType(userFunctionVariable.typeName),
-				userFunctionVariable.name, this.getDataVariableName());
-		String dataOutReturn = String.format("%s[PM_gid] = %s;\n",
-				this.getDataVariableName(), userFunctionVariable.name);
-		ret = String.format("%s {\n\t%s %s %s\n}", this
-				.getOperationFunctionSignature(operation), gidDeclaration, this
-				.translateVariable(userFunctionVariable,
-						this.cCodeTranslator.translate(code2Translate)),
-				dataOutReturn);
-		return ret;
+		List<String> variableDeclarations = new ArrayList<>();
+		List<String> dataReturnStatements = new ArrayList<>();
+		String gid = this.commonDefinitions.getPrefix() + "gid";
+		for (Variable userFunctionVariable : operation.getUserFunctionData().arguments) {
+			variableDeclarations
+					.add(String.format(
+							"%s %s = %s[%s];",
+							this.commonDefinitions
+									.translateType(userFunctionVariable.typeName),
+							userFunctionVariable.name, this
+									.getDataVariableName(), gid));
+			dataReturnStatements
+					.add(String.format("%s[%s] = %s;\n",
+							this.getDataVariableName(), gid,
+							userFunctionVariable.name));
+			code2Translate = this.translateVariable(userFunctionVariable,
+					this.cCodeTranslator.translate(code2Translate));
+		}
+		StringBuilder ret = new StringBuilder();
+		ret.append(this.getOperationFunctionSignature(operation,
+				FunctionType.BaseOperation));
+		ret.append(" {\n");
+		ret.append(String.format("\tint %s = get_global_id(0);\n", gid));
+		for (String variableDeclaration : variableDeclarations) {
+			ret.append("\t" + variableDeclaration);
+			ret.append("\n");
+		}
+		ret.append(code2Translate);
+		ret.append("\n");
+		for (String dataReturnStatement : dataReturnStatements)
+			ret.append("\t" + dataReturnStatement);
+		ret.append("}");
+		return ret.toString();
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
 	@Override
-	protected String translateSequentialOperation(Operation operation) {
-		Variable userFunctionVariable = operation.getUserFunctionData().arguments[0];
+	protected String translateParallelReduce(Operation operation) {
+		String templateParallelReduce = "\t<varType> <inputVar1> = <dataVar>[0];\n"
+				+ "\t<varType> <inputVar2>;\n"
+				+ "\tfor (int i=1; i\\<<sizeVar>; ++i) {\n"
+				+ "\t\t<inputVar2> = <dataVar>[i];\n"
+				+ "\t\t<inputVar1> = <tileFunctionName>(<inputVar1>, <inputVar2>);\n"
+				+ "\t}\n" + "\t*<destinationVar> = <inputVar1>;\n";
+		ST st = new ST(templateParallelReduce);
+		Variable inputVar1 = operation.getUserFunctionData().arguments.get(0);
+		Variable inputVar2 = operation.getUserFunctionData().arguments.get(1);
+		st.add("inputVar1", inputVar1.name);
+		st.add("inputVar2", inputVar2.name);
+		// Takes the first var, since they must be the same for reduce
+		// operations
+		st.add("varType",
+				this.commonDefinitions.translateType(inputVar1.typeName));
+		st.add("tileFunctionName",
+				this.commonDefinitions.getOperationUserFunctionName(operation));
+		st.add("dataVar", this.getTileVariableName());
+		if (operation.variable.typeName.equals(BitmapImage.getInstance().getClassName())
+				|| operation.variable.typeName.equals(HDRImage.getInstance().getClassName())) {
+			st.add("sizeVar", this.getHeightVariableName());
+		} else {
+			// TODO Implement for Array type
+			throw new RuntimeException("Not yet implemented for Array type.");
+		}
+		st.add("destinationVar", this.commonDefinitions.getPrefix()
+				+ operation.destinationVariable.name);
+		return this.createFunction(operation, st.render(),
+				FunctionType.BaseOperation);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	protected String translateParallelReduceTile(Operation operation) {
+		String templateParallelReduceTile = "\tint <gidVar> = get_global_id(0);\n"
+				+ "\tint <baseVar> = <gidVar> * <sizeVar>;\n"
+				+ "\t<varType> <inputVar1> = <dataVar>[<baseVar>];\n"
+				+ "\t<varType> <inputVar2>;\n"
+				+ "\tfor (int i=1; i\\<<sizeVar>; ++i) {\n"
+				+ "\t\t<inputVar2> = <dataVar>[<baseVar> + i];\n"
+				+ "\t\t<inputVar1> = <userFunctionName>(<inputVar1>, <inputVar2>);\n"
+				+ "\t}\n" + "\t<destinationVar>[<gidVar>] = <inputVar1>;\n";
+		ST st = new ST(templateParallelReduceTile);
+		st.add("gidVar", this.commonDefinitions.getPrefix() + "gid");
+		Variable inputVar1 = operation.getUserFunctionData().arguments.get(0);
+		Variable inputVar2 = operation.getUserFunctionData().arguments.get(1);
+		st.add("inputVar1", inputVar1.name);
+		st.add("inputVar2", inputVar2.name);
+		// Takes the first var, since they must be the same for reduce
+		// operations
+		st.add("varType",
+				this.commonDefinitions.translateType(inputVar1.typeName));
+		st.add("userFunctionName",
+				this.commonDefinitions.getOperationUserFunctionName(operation));
+		st.add("dataVar", this.getDataVariableName());
+		st.add("baseVar", this.getBaseVariableName());
+		if (operation.variable.typeName.equals(BitmapImage.getInstance().getClassName())
+				|| operation.variable.typeName.equals(HDRImage.getInstance().getClassName())) {
+			st.add("sizeVar", this.getWidthVariableName());
+		} else {
+			// TODO Implement for Array type
+			throw new RuntimeException("Not yet implemented for Array type.");
+		}
+		st.add("destinationVar", this.getTileVariableName());
+		return this.createFunction(operation, st.render(), FunctionType.Tile);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	protected String translateParallelReduceUserFunction(Operation operation) {
+		String userCode = this.removeCurlyBraces(operation
+				.getUserFunctionData().Code.trim());
+		for (Variable userFunctionVariable : operation.getUserFunctionData().arguments) {
+			userCode = this.translateVariable(userFunctionVariable,
+					this.cCodeTranslator.translate(userCode));
+		}
+		return this.createFunction(operation, userCode, FunctionType.UserCode);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	protected String translateSequentialForeach(Operation operation) {
+		Variable userFunctionVariable = operation.getUserFunctionData().arguments
+				.get(0);
 		String code2Translate = operation.getUserFunctionData().Code.trim();
 		code2Translate = this.removeCurlyBraces(code2Translate);
 		ST st = new ST(templateOperationSequentialFunction);
-		st.add("functionSignature",
-				this.getOperationFunctionSignature(operation));
+		st.add("functionSignature", this.getOperationFunctionSignature(
+				operation, FunctionType.BaseOperation));
 		String cCode = this.translateVariable(userFunctionVariable,
 				this.cCodeTranslator.translate(code2Translate)).trim();
 		ST stForY = new ST(templateForLoop);
 		// BitmapImage and HDRImage types contains two for loops
 		String dataInDeclaration;
 		String dataOutReturn;
-		if (operation.variable.typeName.equals(BitmapImage.getName())
-				|| operation.variable.typeName.equals(HDRImage.getName())) {
-			stForY.add("varName", "PM_y");
+		String prefix = this.commonDefinitions.getPrefix();
+		String x = prefix + "x";
+		String y = prefix + "y";
+		if (operation.variable.typeName.equals(BitmapImage.getInstance().getClassName())
+				|| operation.variable.typeName.equals(HDRImage.getInstance().getClassName())) {
+			stForY.add("varName", x);
 			stForY.add("varMaxVal", this.getHeightVariableName());
-			dataInDeclaration = this.commonDefinitions
-					.translateType(userFunctionVariable.typeName)
-					+ " "
-					+ userFunctionVariable.name
-					+ " = "
-					+ this.getDataVariableName() + "[PM_y*PM_width+PM_x];\n";
-			dataOutReturn = this.getDataVariableName()
-					+ "[PM_y*PM_width+PM_x] = " + userFunctionVariable.name
-					+ ";\n";
+			dataInDeclaration = String.format("%s %s = %s[%s*%s+%s];\n",
+					this.commonDefinitions
+							.translateType(userFunctionVariable.typeName),
+					userFunctionVariable.name, this.getDataVariableName(), y,
+					this.getWidthVariableName(), x);
+			dataOutReturn = String.format("%s[%s*%s+%s] = %s;\n",
+					this.getDataVariableName(), y, this.getWidthVariableName(),
+					x, userFunctionVariable.name);
 			cCode = dataInDeclaration + cCode + "\n" + dataOutReturn;
 			ST stForX = new ST(templateForLoop);
-			stForX.add("varName", "PM_x");
+			stForX.add("varName", x);
 			stForX.add("varMaxVal", this.getWidthVariableName());
 			stForX.add("body", cCode);
 			stForY.add("body", stForX.render());
 		} else {
 			// Array
-			stForY.add("varName", "PM_x");
+			stForY.add("varName", x);
 			stForY.add("varMaxVal", this.getLengthVariableName());
-			dataInDeclaration = this.commonDefinitions
-					.translateType(userFunctionVariable.typeName)
-					+ " "
-					+ userFunctionVariable.name
-					+ " = "
-					+ this.getDataVariableName() + "[PM_x];\n";
-			dataOutReturn = this.getDataVariableName() + "[PM_x] = "
-					+ userFunctionVariable.name + ";\n";
+			dataInDeclaration = String.format("%s = %s[%s];\n",
+					this.commonDefinitions
+							.translateType(userFunctionVariable.typeName),
+					userFunctionVariable.name, this.getDataVariableName(), x);
+			dataOutReturn = String.format("%s[%s] = %s;\n",
+					this.getDataVariableName(), x, userFunctionVariable.name);
 			cCode = dataInDeclaration + cCode + "\n" + dataOutReturn;
 			// Array types
 			stForY.add("body", cCode);
@@ -131,6 +245,14 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 		return st.render();
 	}
 
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	protected String translateSequentialReduce(Operation operation) {
+		return "";
+	}
+
 	private String removeCurlyBraces(String code) {
 		// Remove the last curly brace
 		code = code.substring(0, code.lastIndexOf("}"));
@@ -139,19 +261,109 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 		return code;
 	}
 
+	private ST initializeFunctionSignatureTemplate(Operation operation,
+			FunctionType functionType) {
+		ST st;
+		if (operation.operationType == OperationType.Foreach) {
+			st = new ST(templateFunctionDecl);
+			st.add("returnType", "void");
+			st.add("isKernel", "");
+			st.add("functionName",
+					this.commonDefinitions.getOperationName(operation));
+			st.addAggr("params.{type, name}", String.format("__global %s*",
+					this.commonDefinitions.translateType(operation
+							.getUserFunctionData().arguments.get(0).typeName)),
+					this.getDataVariableName());
+		} else if (operation.operationType == OperationType.Reduce) {
+			st = this
+					.initializeReduceSignatureTemplate(operation, functionType);
+		} else {
+			throw new RuntimeException("Operation not supported: "
+					+ operation.operationType);
+		}
+		return st;
+	}
+
+	private ST initializeReduceSignatureTemplate(Operation operation,
+			FunctionType functionType) {
+		ST st = new ST(templateFunctionDecl);
+		if (functionType == FunctionType.BaseOperation) {
+			st.add("returnType", "void");
+			st.add("isKernel", "");
+			st.add("functionName",
+					this.commonDefinitions.getOperationName(operation));
+			st.addAggr("params.{type, name}", String.format("__global %s*",
+					this.commonDefinitions.translateType(operation
+							.getUserFunctionData().arguments.get(0).typeName)),
+					this.getTileVariableName());
+			st.addAggr("params.{type, name}", String.format("__global %s*",
+					this.commonDefinitions.translateType(operation
+							.getUserFunctionData().arguments.get(0).typeName)),
+					this.commonDefinitions.getPrefix()
+							+ operation.destinationVariable.name);
+			st.addAggr("params.{type, name}", "int",
+					this.getHeightVariableName());
+		} else if (functionType == FunctionType.Tile) {
+			st.add("returnType", "void");
+			st.add("isKernel", "");
+			st.add("functionName", this.commonDefinitions
+					.getOperationTileFunctionName(operation));
+			st.addAggr("params.{type, name}", String.format("__global %s*",
+					this.commonDefinitions.translateType(operation
+							.getUserFunctionData().arguments.get(0).typeName)),
+					this.getDataVariableName());
+			st.addAggr("params.{type, name}", String.format("__global %s*",
+					this.commonDefinitions.translateType(operation
+							.getUserFunctionData().arguments.get(0).typeName)),
+					this.getTileVariableName());
+			if (operation.variable.typeName.equals(BitmapImage.getInstance().getClassName())
+					|| operation.variable.typeName.equals(HDRImage.getInstance().getClassName())) {
+				st.addAggr("params.{type, name}", "int",
+						this.getWidthVariableName());
+			} else {
+				// TODO Implement for Array type
+				throw new RuntimeException(
+						"Not yet implemented for Array type.");
+			}
+		} else {
+			// Considering there are only 3 function types, the third type
+			// is considered here
+			st.add("returnType", this.commonDefinitions
+					.translateType(operation.destinationVariable.typeName));
+			st.add("isKernel", null);
+			st.add("functionName", this.commonDefinitions
+					.getOperationUserFunctionName(operation));
+			Variable inputVar1 = operation.getUserFunctionData().arguments
+					.get(0);
+			Variable inputVar2 = operation.getUserFunctionData().arguments
+					.get(1);
+			st.addAggr("params.{type, name}",
+					this.commonDefinitions.translateType(inputVar1.typeName),
+					inputVar1.name);
+			st.addAggr("params.{type, name}",
+					this.commonDefinitions.translateType(inputVar2.typeName),
+					inputVar2.name);
+		}
+		return st;
+	}
+
+	private String createFunction(Operation operation, String body,
+			FunctionType functionType) {
+		StringBuilder ret = new StringBuilder();
+		ret.append(this.getOperationFunctionSignature(operation, functionType));
+		ret.append(" {\n");
+		ret.append(body);
+		ret.append("}");
+		return ret.toString();
+	}
+
 	/**
 	 * Creates kernel declaration for a given operation.
 	 */
-	private String getOperationFunctionSignature(Operation operation) {
-		ST st = new ST(templateKernelDecl);
-		st.add("return", "void");
-		st.add("functionName",
-				this.commonDefinitions.getOperationName(operation));
-		st.addAggr("params.{type, name}", String.format("__global %s*",
-				this.commonDefinitions.translateType(operation
-						.getUserFunctionData().arguments[0].typeName)), this
-				.getDataVariableName());
-
+	private String getOperationFunctionSignature(Operation operation,
+			FunctionType functionType) {
+		ST st = this.initializeFunctionSignatureTemplate(operation,
+				functionType);
 		// External variables must be declared twice in sequential operations:
 		// 1: A C typed variable with the same name which will be used in
 		// the original user code.
@@ -170,13 +382,13 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 			}
 		}
 		if (operation.getExecutionType() == ExecutionType.Sequential) {
-			if (operation.variable.typeName.equals(BitmapImage.getName())
-					|| operation.variable.typeName.equals(HDRImage.getName())) {
+			if (operation.variable.typeName.equals(BitmapImage.getInstance().getClassName())
+					|| operation.variable.typeName.equals(HDRImage.getInstance().getClassName())) {
 				st.addAggr("params.{type, name}", "int",
 						this.getWidthVariableName());
 				st.addAggr("params.{type, name}", "int",
 						this.getHeightVariableName());
-			} else if (operation.variable.typeName.equals(Array.getName())) {
+			} else {
 				st.addAggr("params.{type, name}", "int",
 						this.getLengthVariableName());
 			}
@@ -191,6 +403,22 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 	 */
 	protected String getDataVariableName() {
 		return this.commonDefinitions.getPrefix() + "data";
+	}
+
+	/**
+	 * Name for tile variable that is used to write temporary tile data in C
+	 * kernel code.
+	 */
+	protected String getTileVariableName() {
+		return this.commonDefinitions.getPrefix() + "tile";
+	}
+
+	/**
+	 * Name for base variable that is used to index allocation data in C kernel
+	 * code.
+	 */
+	protected String getBaseVariableName() {
+		return this.commonDefinitions.getPrefix() + "base";
 	}
 
 	/**
@@ -219,6 +447,23 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 	 */
 	public String translateOperationCall(String className, Operation operation) {
 		ST st = new ST(templateOperationCall);
+		this.fillOperationCallBaseInfo(st, operation);
+		if (operation.destinationVariable != null) {
+			st.addAggr("destinationVariable.{type, name}",
+					operation.destinationVariable.typeName,
+					operation.destinationVariable.name);
+		} else {
+			st.add("destinationVariable", null);
+		}
+		return st.render();
+	}
+
+	/**
+	 * Fill basic information about this operation call in the informed ST
+	 * object. Method created to avoid code duplication in PMTranslator and
+	 * PMImageTranslator.
+	 */
+	protected void fillOperationCallBaseInfo(ST st, Operation operation) {
 		st.add("operationName",
 				this.commonDefinitions.getOperationName(operation));
 		st.addAggr("params.{name}",
@@ -235,13 +480,5 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 				st.addAggr("params.{name}", variable.name);
 			}
 		}
-		if (operation.destinationVariable != null) {
-			st.addAggr("destinationVariable.{type, name}",
-					operation.destinationVariable.typeName,
-					operation.destinationVariable.name);
-		} else {
-			st.add("destinationVariable", null);
-		}
-		return st.render();
 	}
 }
