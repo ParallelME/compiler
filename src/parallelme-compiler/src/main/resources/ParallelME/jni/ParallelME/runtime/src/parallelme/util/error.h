@@ -1,4 +1,4 @@
-/**                                               _    __ ____
+/*                                                _    __ ____
  *   _ __  ___ _____   ___   __  __   ___ __     / |  / /  __/
  *  |  _ \/ _ |  _  | / _ | / / / /  / __/ /    /  | / / /__
  *  |  __/ __ |  ___|/ __ |/ /_/ /__/ __/ /__  / / v  / /__
@@ -16,7 +16,7 @@
 #   define PROGRAM_NAME "ParallelME Runtime"
 #endif
 
-#ifdef RUNTIME_ANDROID // use __android_log_print
+#ifdef PARALLELME_ANDROID // use __android_log_print
 #   include <android/log.h>
 #   define ERROR_PRINTER_FUNC(...) __android_log_print(ANDROID_LOG_ERROR, PROGRAM_NAME, __VA_ARGS__)
 #else // use fprintf

@@ -1,4 +1,4 @@
-/**                                               _    __ ____
+/*                                                _    __ ____
  *   _ __  ___ _____   ___   __  __   ___ __     / |  / /  __/
  *  |  _ \/ _ |  _  | / _ | / / / /  / __/ /    /  | / / /__
  *  |  __/ __ |  ___|/ __ |/ /_/ /__/ __/ /__  / / v  / /__
@@ -6,15 +6,15 @@
  *
  */
 
-#ifndef UTIL_PLATFORM_H
-#define UTIL_PLATFORM_H
+#ifndef PARALLELME_UTIL_PLATFORM_H
+#define PARALLELME_UTIL_PLATFORM_H
 
 // This file defines the current platform the runtime is running on.
 
 // Define if the Runtime is running on Android.
 #if defined(ANDROID) || defined(__ANDROID__)
-#   define RUNTIME_ANDROID
+#   define PARALLELME_ANDROID
 #endif
 
 
-#endif // !PLATFORM_H
+#endif // !PARALLELME_UTIL_PLATFORM_H

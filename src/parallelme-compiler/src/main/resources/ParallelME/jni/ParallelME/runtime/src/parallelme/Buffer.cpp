@@ -1,4 +1,4 @@
-/**                                               _    __ ____
+/*                                                _    __ ____
  *   _ __  ___ _____   ___   __  __   ___ __     / |  / /  __/
  *  |  _ \/ _ |  _  | / _ | / / / /  / __/ /    /  | / / /__
  *  |  __/ __ |  ___|/ __ |/ /_/ /__/ __/ /__  / / v  / /__
@@ -27,7 +27,7 @@ Buffer::~Buffer() {
     }
 }
 
-void Buffer::copyFromJNI(JNIEnv *env, jarray array) {
+void Buffer::setJArraySource(JNIEnv *env, jarray array) {
     releaseCopySources(env);
 
     _copyArray = (jarray) env->NewGlobalRef(array);
@@ -35,7 +35,7 @@ void Buffer::copyFromJNI(JNIEnv *env, jarray array) {
         throw BufferCopyError("Failed to create a new jarray global ref.");
 }
 
-void Buffer::copyFromJNI(JNIEnv *env, jobject bitmap) {
+void Buffer::setAndroidBitmapSource(JNIEnv *env, jobject bitmap) {
     releaseCopySources(env);
 
     _copyBitmap = env->NewGlobalRef(bitmap);
@@ -43,12 +43,12 @@ void Buffer::copyFromJNI(JNIEnv *env, jobject bitmap) {
         throw BufferCopyError("Failed to create a new bitmap global ref.");
 }
 
-void Buffer::copyFrom(void *host) {
+void Buffer::setSource(void *host) {
     // Other copy sources will be released when calling makeCopy().
     _copyPtr = host;
 }
 
-void Buffer::copyToJNI(JNIEnv *env, jarray array) {
+void Buffer::copyToJArray(JNIEnv *env, jarray array) {
     void *ptr = env->GetPrimitiveArrayCritical(array, nullptr);
     if(!ptr)
         throw BufferCopyError("Failed to get primitive array.");
@@ -58,7 +58,7 @@ void Buffer::copyToJNI(JNIEnv *env, jarray array) {
     env->ReleasePrimitiveArrayCritical(array, ptr, 0);
 }
 
-void Buffer::copyToJNI(JNIEnv *env, jobject bitmap) {
+void Buffer::copyToAndroidBitmap(JNIEnv *env, jobject bitmap) {
     void *ptr;
     int err = AndroidBitmap_lockPixels(env, bitmap, &ptr);
     if(err < 0)

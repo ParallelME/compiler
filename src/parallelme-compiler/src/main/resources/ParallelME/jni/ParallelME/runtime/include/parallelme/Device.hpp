@@ -1,4 +1,4 @@
-/**                                               _    __ ____
+/*                                                _    __ ____
  *   _ __  ___ _____   ___   __  __   ___ __     / |  / /  __/
  *  |  _ \/ _ |  _  | / _ | / / / /  / __/ /    /  | / / /__
  *  |  __/ __ |  ___|/ __ |/ /_/ /__/ __/ /__  / / v  / /__
@@ -18,6 +18,8 @@ struct _cl_context;
 struct _cl_command_queue;
 
 namespace parallelme {
+
+class Worker;
 
 /**
  * Exception thrown if the device failed to construct and initialize.
@@ -108,15 +110,16 @@ public:
          return _clQueue;
     }
 
+private:
+    friend class Worker;
+
     /**
-     * @internal
      * Sets the JNIEnv of the device. Only the Worker class should call this.
      */
     inline void setJNIEnv(_JNIEnv *env) {
         _env = env;
     }
 
-private:
     /// Generates a new device ID, starting from 0.
     static inline unsigned genID() {
         static unsigned newID = 0;

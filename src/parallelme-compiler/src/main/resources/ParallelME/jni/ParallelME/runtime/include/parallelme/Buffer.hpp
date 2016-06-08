@@ -1,4 +1,4 @@
-/**                                               _    __ ____
+/*                                                _    __ ____
  *   _ __  ___ _____   ___   __  __   ___ __     / |  / /  __/
  *  |  _ \/ _ |  _  | / _ | / / / /  / __/ /    /  | / / /__
  *  |  __/ __ |  ___|/ __ |/ /_/ /__/ __/ /__  / / v  / /__
@@ -19,6 +19,7 @@ struct _cl_mem;
 namespace parallelme {
 class Device;
 class Worker;
+class Kernel;
 
 /**
  * Exception thrown if the buffer failed to construct and initialize.
@@ -35,6 +36,16 @@ class BufferConstructionError : public std::runtime_error {
 class BufferCopyError : public std::runtime_error {
     using std::runtime_error::runtime_error;
 };
+
+/**
+ * Exception thrown if a copyTo*() function was called and the buffer didn't
+ * have any data saved as a reference or inside the device's buffer.
+ * The error message can be accessed through the what() function.
+ */
+class BufferEmptyError : public std::runtime_error {
+    using std::runtime_error::runtime_error;
+};
+
 
 /**
  * This class represents a buffer that can be used to send and receive data
@@ -86,42 +97,53 @@ public:
 
 
     /**
-     * Helper method to copy size() bytes from a jarray.
-     * This function only saves a global reference of the jarray, and only when
-     * the buffer is set as the argument to a kernel that it is actually copied.
+     * Saves a global reference to a jarray. This reference will be used later
+     * as the data source for the Buffer, supplying the contents that will be
+     * copied to the buffer before a kernel or copyTo* function executes.
+     * Because of this, the jarray must be kept alive until the kernel executes
+     * or the copyTo* function is called (in case the kernel is not executed).
+     * If there is already another source, it will be discarded and this will
+     * be set as the new source.
      */
-    void copyFromJNI(JNIEnv *env, jarray array);
+    void setJArraySource(JNIEnv *env, jarray array);
 
     /**
-     * Helper method to copy size() bytes from an Android bitmap.
-     * This function only saves a global reference of the bitmap, and only when
-     * the buffer is set as the argument to a kernel that it is actually copied.
+     * Saves a global reference to an android bitmap . This reference will be
+     * used later as the data source for the Buffer, supplying the contents that
+     * will be copied to the buffer before a kernel or copyTo* function
+     * executes.
+     * Because of this, the jarray must be kept alive until the kernel executes
+     * or the copyTo* function is called (in case the kernel is not executed).
+     * If there is already another source, it will be discarded and this will
+     * be set as the new source.
      */
-    void copyFromJNI(JNIEnv *env, jobject bitmap);
+    void setAndroidBitmapSource(JNIEnv *env, jobject bitmap);
 
     /**
      * Saves the host pointer to copy  size() bytes to the internal memory.
      * Important: this function only saves the pointer to where the data is,
      * and only actually makes the copy when the buffer is being set as the
      * argument to a kernel or being copied back.
+     * If there is another source already, it will be discarded and this will
+     * be the new source.
      */
-    void copyFrom(void *host);
+    void setSource(void *host);
 
     /**
-     * Helper method to copy size() bytes to a jarray. If the buffer doesn't
-     * have any data this will cause a segfault.
+     * Helper method to copy size() bytes to a jarray. Throws
+     * EmptyBufferError if the buffer doesn't have any data.
      */
-    void copyToJNI(JNIEnv *env, jarray array);
+    void copyToJArray(JNIEnv *env, jarray array);
 
     /**
-     * Helper method to copy size() bytes to an Android bitmap. If the buffer
-     * doesn't have any data this will cause a segfault.
+     * Helper method to copy size() bytes to an Android bitmap. Throws
+     * EmptyBufferError if the buffer doesn't have any data.
      */
-    void copyToJNI(JNIEnv *env, jobject bitmap);
+    void copyToAndroidBitmap(JNIEnv *env, jobject bitmap);
 
     /**
-     * Copies size() bytes to an host pointer. If the buffer doesn't have any
-     * data this will cause a segfault.
+     * Copies size() bytes to an host pointer. Throws
+     * EmptyBufferError if the buffer doesn't have any data.
      */
     void copyTo(void *host);
 
@@ -132,14 +154,15 @@ public:
         return _size;
     }
 
+private:
+    friend class Kernel;
+
     /**
-     * @internal
      * Returns the OpenCL memory object. Creates it if it wasn't created yet.
      * This should only be called by the Kernel class.
      */
     _cl_mem *clMem(std::shared_ptr<Device> device);
 
-private:
     /**
      * Creates an OpenCL memory object on the given device or makes a copy to
      * a memory object on the new device if one already exists and the flag

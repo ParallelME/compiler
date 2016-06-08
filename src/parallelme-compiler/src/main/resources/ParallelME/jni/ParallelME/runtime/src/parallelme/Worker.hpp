@@ -1,4 +1,4 @@
-/**                                               _    __ ____
+/*                                                _    __ ____
  *   _ __  ___ _____   ___   __  __   ___ __     / |  / /  __/
  *  |  _ \/ _ |  _  | / _ | / / / /  / __/ /    /  | / / /__
  *  |  __/ __ |  ___|/ __ |/ /_/ /__/ __/ /__  / / v  / /__
@@ -35,7 +35,7 @@ class Worker {
     bool _running;
 
     /// Executes a given task.
-    void executeTask(std::unique_ptr<Task> task, JNIEnv *env) {
+    void executeTask(std::unique_ptr<Task> task) {
         task->createKernels(_device);
         task->callConfigFunction(_device);
         task->run();
@@ -88,7 +88,7 @@ public:
                 auto task = scheduler->pop(*_device);
 
                 if(task) {
-                    executeTask(std::move(task), env);
+                    executeTask(std::move(task));
                     continue;
                 }
                 if(_kill)
