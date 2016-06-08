@@ -318,7 +318,7 @@ public class RuntimeCommonDefinitions {
 		String modifier = isInterface ? "" : "public";
 		return this.createJavaMethodSignature(modifier, "void",
 				this.getInputBindName(inputBind),
-				this.createJavaImplParameters(inputBind), isInterface);
+				this.createJavaImplParameters(inputBind), false);
 	}
 
 	/**
@@ -390,7 +390,7 @@ public class RuntimeCommonDefinitions {
 		parameters.add(outputBind.destinationObject);
 		String modifier = isInterface ? "" : "public";
 		return this.createJavaMethodSignature(modifier, "void",
-				this.getOutputBindName(outputBind), parameters, isInterface);
+				this.getOutputBindName(outputBind), parameters, false);
 	}
 
 	/**

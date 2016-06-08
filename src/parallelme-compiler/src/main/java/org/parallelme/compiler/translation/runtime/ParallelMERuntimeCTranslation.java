@@ -205,12 +205,6 @@ public class ParallelMERuntimeCTranslation {
 		stKernelHash.add("operationName", operationName);
 		stKernelHashTile.add("operationName", operationTileName);
 		int argIndex = 0;
-		for (Variable variable : operation.getExternalVariables()) {
-			stKernelHash.addAggr("setArgs.{index, name}", ++argIndex,
-					variable.name);
-			stKernelHashTile.addAggr("setArgs.{index, name}", argIndex,
-					variable.name);
-		}
 		String operationBufferName = this.getOperationBufferName(operation);
 		stKernelHashTile.add("fullBufferName", "variablePtr->"
 				+ operationBufferName);
@@ -242,7 +236,6 @@ public class ParallelMERuntimeCTranslation {
 				// Worksize for tiles will be defined by the following function:
 				// floor(sqrt(vector size))
 			}
-			st.addAggr("kernelHash.{body}", stKernelHashTile.render());
 		} else {
 			st.add("destinationVariable", null);
 			stKernelHash.add("fullBufferName", "variablePtr->"
@@ -254,6 +247,14 @@ public class ParallelMERuntimeCTranslation {
 				stKernelHash.add("workSize", "variablePtr->workSize");
 			}
 		}
+		for (Variable variable : operation.getExternalVariables()) {
+			stKernelHash.addAggr("setArgs.{index, name}", ++argIndex,
+					variable.name);
+			stKernelHashTile.addAggr("setArgs.{index, name}", argIndex,
+					variable.name);
+		}
+		if (operation.destinationVariable != null)
+			st.addAggr("kernelHash.{body}", stKernelHashTile.render());
 		st.addAggr("task.{operationName}", operationName);
 		st.addAggr("kernelHash.{body}", stKernelHash.render());
 		return st.render();
@@ -428,8 +429,7 @@ public class ParallelMERuntimeCTranslation {
 		String type;
 		if (operation.variable.typeName.equals(HDRImage.getInstance()
 				.getClassName())
-				|| operation.variable.typeName.equals(BitmapImage
-						.getInstance()
+				|| operation.variable.typeName.equals(BitmapImage.getInstance()
 						.getClassName())) {
 			type = RuntimeCommonDefinitions.getInstance().translateType(
 					operation.variable.typeName);

@@ -40,6 +40,20 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 			+ "\t<forLoop>"
 			+ "\t<externalVariables:{var|*<var.outVariableName> = <var.variableName>;\n}>"
 			+ "}";
+	private static final String templateParallelReduce = "\t<varType> <inputVar1> = <dataVar>[0];\n"
+			+ "\t<varType> <inputVar2>;\n"
+			+ "\tfor (int i=1; i\\<<sizeVar>; ++i) {\n"
+			+ "\t\t<inputVar2> = <dataVar>[i];\n"
+			+ "\t\t<inputVar1> = <tileFunctionName>(<inputVar1>, <inputVar2><params:{var|, <var.name>}>);\n"
+			+ "\t}\n" + "\t*<destinationVar> = <inputVar1>;\n";
+	private static final String templateParallelReduceTile = "\tint <gidVar> = get_global_id(0);\n"
+			+ "\tint <baseVar> = <gidVar> * <sizeVar>;\n"
+			+ "\t<varType> <inputVar1> = <dataVar>[<baseVar>];\n"
+			+ "\t<varType> <inputVar2>;\n"
+			+ "\tfor (int i=1; i\\<<sizeVar>; ++i) {\n"
+			+ "\t\t<inputVar2> = <dataVar>[<baseVar> + i];\n"
+			+ "\t\t<inputVar1> = <userFunctionName>(<inputVar1>, <inputVar2><params:{var|, <var.name>}>);\n"
+			+ "\t}\n" + "\t<destinationVar>[<gidVar>] = <inputVar1>;\n";
 
 	protected CTranslator cCodeTranslator;
 
@@ -98,12 +112,6 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 	 */
 	@Override
 	protected String translateParallelReduce(Operation operation) {
-		String templateParallelReduce = "\t<varType> <inputVar1> = <dataVar>[0];\n"
-				+ "\t<varType> <inputVar2>;\n"
-				+ "\tfor (int i=1; i\\<<sizeVar>; ++i) {\n"
-				+ "\t\t<inputVar2> = <dataVar>[i];\n"
-				+ "\t\t<inputVar1> = <tileFunctionName>(<inputVar1>, <inputVar2>);\n"
-				+ "\t}\n" + "\t*<destinationVar> = <inputVar1>;\n";
 		ST st = new ST(templateParallelReduce);
 		Variable inputVar1 = operation.getUserFunctionData().arguments.get(0);
 		Variable inputVar2 = operation.getUserFunctionData().arguments.get(1);
@@ -116,12 +124,18 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 		st.add("tileFunctionName",
 				this.commonDefinitions.getOperationUserFunctionName(operation));
 		st.add("dataVar", this.getTileVariableName());
-		if (operation.variable.typeName.equals(BitmapImage.getInstance().getClassName())
-				|| operation.variable.typeName.equals(HDRImage.getInstance().getClassName())) {
+		if (operation.variable.typeName.equals(BitmapImage.getInstance()
+				.getClassName())
+				|| operation.variable.typeName.equals(HDRImage.getInstance()
+						.getClassName())) {
 			st.add("sizeVar", this.getHeightVariableName());
 		} else {
 			// TODO Implement for Array type
 			throw new RuntimeException("Not yet implemented for Array type.");
+		}
+		st.add("params", null);
+		for (Variable variable : operation.getExternalVariables()) {
+			st.addAggr("params.{name}", variable.name);
 		}
 		st.add("destinationVar", this.commonDefinitions.getPrefix()
 				+ operation.destinationVariable.name);
@@ -134,14 +148,6 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 	 */
 	@Override
 	protected String translateParallelReduceTile(Operation operation) {
-		String templateParallelReduceTile = "\tint <gidVar> = get_global_id(0);\n"
-				+ "\tint <baseVar> = <gidVar> * <sizeVar>;\n"
-				+ "\t<varType> <inputVar1> = <dataVar>[<baseVar>];\n"
-				+ "\t<varType> <inputVar2>;\n"
-				+ "\tfor (int i=1; i\\<<sizeVar>; ++i) {\n"
-				+ "\t\t<inputVar2> = <dataVar>[<baseVar> + i];\n"
-				+ "\t\t<inputVar1> = <userFunctionName>(<inputVar1>, <inputVar2>);\n"
-				+ "\t}\n" + "\t<destinationVar>[<gidVar>] = <inputVar1>;\n";
 		ST st = new ST(templateParallelReduceTile);
 		st.add("gidVar", this.commonDefinitions.getPrefix() + "gid");
 		Variable inputVar1 = operation.getUserFunctionData().arguments.get(0);
@@ -156,12 +162,18 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 				this.commonDefinitions.getOperationUserFunctionName(operation));
 		st.add("dataVar", this.getDataVariableName());
 		st.add("baseVar", this.getBaseVariableName());
-		if (operation.variable.typeName.equals(BitmapImage.getInstance().getClassName())
-				|| operation.variable.typeName.equals(HDRImage.getInstance().getClassName())) {
+		if (operation.variable.typeName.equals(BitmapImage.getInstance()
+				.getClassName())
+				|| operation.variable.typeName.equals(HDRImage.getInstance()
+						.getClassName())) {
 			st.add("sizeVar", this.getWidthVariableName());
 		} else {
 			// TODO Implement for Array type
 			throw new RuntimeException("Not yet implemented for Array type.");
+		}
+		st.add("params", null);
+		for (Variable variable : operation.getExternalVariables()) {
+			st.addAggr("params.{name}", variable.name);
 		}
 		st.add("destinationVar", this.getTileVariableName());
 		return this.createFunction(operation, st.render(), FunctionType.Tile);
@@ -202,8 +214,10 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 		String prefix = this.commonDefinitions.getPrefix();
 		String x = prefix + "x";
 		String y = prefix + "y";
-		if (operation.variable.typeName.equals(BitmapImage.getInstance().getClassName())
-				|| operation.variable.typeName.equals(HDRImage.getInstance().getClassName())) {
+		if (operation.variable.typeName.equals(BitmapImage.getInstance()
+				.getClassName())
+				|| operation.variable.typeName.equals(HDRImage.getInstance()
+						.getClassName())) {
 			stForY.add("varName", x);
 			stForY.add("varMaxVal", this.getHeightVariableName());
 			dataInDeclaration = String.format("%s %s = %s[%s*%s+%s];\n",
@@ -261,6 +275,58 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 		return code;
 	}
 
+	private String createFunction(Operation operation, String body,
+			FunctionType functionType) {
+		StringBuilder ret = new StringBuilder();
+		ret.append(this.getOperationFunctionSignature(operation, functionType));
+		ret.append(" {\n");
+		ret.append(body);
+		ret.append("}");
+		return ret.toString();
+	}
+
+	/**
+	 * Creates kernel declaration for a given operation.
+	 */
+	private String getOperationFunctionSignature(Operation operation,
+			FunctionType functionType) {
+		ST st = this.initializeFunctionSignatureTemplate(operation,
+				functionType);
+		// External variables must be declared twice in sequential operations:
+		// 1: A C typed variable with the same name which will be used in
+		// the original user code.
+		// 2: A global pointer which will take the processed value to the JVM
+		// again;
+		for (Variable variable : operation.getExternalVariables()) {
+			st.addAggr("params.{type, name}",
+					PrimitiveTypes.getCType(variable.typeName), variable.name);
+			if (operation.getExecutionType() == ExecutionType.Sequential) {
+				st.addAggr(
+						"params.{type, name}",
+						"__global "
+								+ PrimitiveTypes.getCType(variable.typeName)
+								+ "*", this.commonDefinitions.getPrefix()
+								+ variable);
+			}
+		}
+		if (operation.getExecutionType() == ExecutionType.Sequential) {
+			if (operation.variable.typeName.equals(BitmapImage.getInstance()
+					.getClassName())
+					|| operation.variable.typeName.equals(HDRImage
+							.getInstance().getClassName())) {
+				st.addAggr("params.{type, name}", "int",
+						this.getWidthVariableName());
+				st.addAggr("params.{type, name}", "int",
+						this.getHeightVariableName());
+			} else {
+				st.addAggr("params.{type, name}", "int",
+						this.getLengthVariableName());
+			}
+		}
+
+		return st.render();
+	}
+
 	private ST initializeFunctionSignatureTemplate(Operation operation,
 			FunctionType functionType) {
 		ST st;
@@ -316,8 +382,10 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 					this.commonDefinitions.translateType(operation
 							.getUserFunctionData().arguments.get(0).typeName)),
 					this.getTileVariableName());
-			if (operation.variable.typeName.equals(BitmapImage.getInstance().getClassName())
-					|| operation.variable.typeName.equals(HDRImage.getInstance().getClassName())) {
+			if (operation.variable.typeName.equals(BitmapImage.getInstance()
+					.getClassName())
+					|| operation.variable.typeName.equals(HDRImage
+							.getInstance().getClassName())) {
 				st.addAggr("params.{type, name}", "int",
 						this.getWidthVariableName());
 			} else {
@@ -345,56 +413,6 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 					inputVar2.name);
 		}
 		return st;
-	}
-
-	private String createFunction(Operation operation, String body,
-			FunctionType functionType) {
-		StringBuilder ret = new StringBuilder();
-		ret.append(this.getOperationFunctionSignature(operation, functionType));
-		ret.append(" {\n");
-		ret.append(body);
-		ret.append("}");
-		return ret.toString();
-	}
-
-	/**
-	 * Creates kernel declaration for a given operation.
-	 */
-	private String getOperationFunctionSignature(Operation operation,
-			FunctionType functionType) {
-		ST st = this.initializeFunctionSignatureTemplate(operation,
-				functionType);
-		// External variables must be declared twice in sequential operations:
-		// 1: A C typed variable with the same name which will be used in
-		// the original user code.
-		// 2: A global pointer which will take the processed value to the JVM
-		// again;
-		for (Variable variable : operation.getExternalVariables()) {
-			st.addAggr("params.{type, name}",
-					PrimitiveTypes.getCType(variable.typeName), variable.name);
-			if (operation.getExecutionType() == ExecutionType.Sequential) {
-				st.addAggr(
-						"params.{type, name}",
-						"__global "
-								+ PrimitiveTypes.getCType(variable.typeName)
-								+ "*", this.commonDefinitions.getPrefix()
-								+ variable);
-			}
-		}
-		if (operation.getExecutionType() == ExecutionType.Sequential) {
-			if (operation.variable.typeName.equals(BitmapImage.getInstance().getClassName())
-					|| operation.variable.typeName.equals(HDRImage.getInstance().getClassName())) {
-				st.addAggr("params.{type, name}", "int",
-						this.getWidthVariableName());
-				st.addAggr("params.{type, name}", "int",
-						this.getHeightVariableName());
-			} else {
-				st.addAggr("params.{type, name}", "int",
-						this.getLengthVariableName());
-			}
-		}
-
-		return st.render();
 	}
 
 	/**
