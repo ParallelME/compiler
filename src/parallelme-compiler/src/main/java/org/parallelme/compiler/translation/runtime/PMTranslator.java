@@ -36,7 +36,7 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 			+ "<var.name>.value = }>"
 			+ "<operationName>(<params:{var|<var.name>}; separator=\", \">);"
 			+ "<destinationVariable:{var|\n\nreturn <var.name>;}>";
-	private static final String templateOperationSequentialFunction = "<functionSignature>\n {\n"
+	private static final String templateSequentialForeach = "<functionSignature>\n {\n"
 			+ "\t<forLoop>"
 			+ "\t<externalVariables:{var|*<var.outVariableName> = <var.variableName>;\n}>"
 			+ "}";
@@ -44,7 +44,7 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 			+ "\t<varType> <inputVar2>;\n"
 			+ "\tfor (int i=1; i\\<<sizeVar>; ++i) {\n"
 			+ "\t\t<inputVar2> = <dataVar>[i];\n"
-			+ "\t\t<inputVar1> = <tileFunctionName>(<inputVar1>, <inputVar2><params:{var|, <var.name>}>);\n"
+			+ "\t\t<inputVar1> = <userFunctionName>(<inputVar1>, <inputVar2><params:{var|, <var.name>}>);\n"
 			+ "\t}\n" + "\t*<destinationVar> = <inputVar1>;\n";
 	private static final String templateParallelReduceTile = "\tint <gidVar> = get_global_id(0);\n"
 			+ "\tint <baseVar> = <gidVar> * <sizeVar>;\n"
@@ -57,10 +57,6 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 
 	protected CTranslator cCodeTranslator;
 
-	private enum FunctionType {
-		BaseOperation, Tile, UserCode;
-	}
-
 	public PMTranslator(CTranslator cCodeTranslator) {
 		this.cCodeTranslator = cCodeTranslator;
 	}
@@ -71,7 +67,8 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 	@Override
 	protected String translateParallelForeach(Operation operation) {
 		String code2Translate = operation.getUserFunctionData().Code.trim();
-		code2Translate = this.removeCurlyBraces(code2Translate);
+		code2Translate = this.commonDefinitions
+				.removeCurlyBraces(code2Translate);
 		List<String> variableDeclarations = new ArrayList<>();
 		List<String> dataReturnStatements = new ArrayList<>();
 		String gid = this.commonDefinitions.getPrefix() + "gid";
@@ -121,7 +118,7 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 		// operations
 		st.add("varType",
 				this.commonDefinitions.translateType(inputVar1.typeName));
-		st.add("tileFunctionName",
+		st.add("userFunctionName",
 				this.commonDefinitions.getOperationUserFunctionName(operation));
 		st.add("dataVar", this.getTileVariableName());
 		if (operation.variable.typeName.equals(BitmapImage.getInstance()
@@ -139,7 +136,7 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 		}
 		st.add("destinationVar", this.commonDefinitions.getPrefix()
 				+ operation.destinationVariable.name);
-		return this.createFunction(operation, st.render(),
+		return this.createKernelFunction(operation, st.render(),
 				FunctionType.BaseOperation);
 	}
 
@@ -176,7 +173,8 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 			st.addAggr("params.{name}", variable.name);
 		}
 		st.add("destinationVar", this.getTileVariableName());
-		return this.createFunction(operation, st.render(), FunctionType.Tile);
+		return this.createKernelFunction(operation, st.render(),
+				FunctionType.Tile);
 	}
 
 	/**
@@ -184,13 +182,14 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 	 */
 	@Override
 	protected String translateParallelReduceUserFunction(Operation operation) {
-		String userCode = this.removeCurlyBraces(operation
+		String userCode = this.commonDefinitions.removeCurlyBraces(operation
 				.getUserFunctionData().Code.trim());
 		for (Variable userFunctionVariable : operation.getUserFunctionData().arguments) {
 			userCode = this.translateVariable(userFunctionVariable,
 					this.cCodeTranslator.translate(userCode));
 		}
-		return this.createFunction(operation, userCode, FunctionType.UserCode);
+		return this.createKernelFunction(operation, userCode,
+				FunctionType.UserCode);
 	}
 
 	/**
@@ -201,8 +200,9 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 		Variable userFunctionVariable = operation.getUserFunctionData().arguments
 				.get(0);
 		String code2Translate = operation.getUserFunctionData().Code.trim();
-		code2Translate = this.removeCurlyBraces(code2Translate);
-		ST st = new ST(templateOperationSequentialFunction);
+		code2Translate = this.commonDefinitions
+				.removeCurlyBraces(code2Translate);
+		ST st = new ST(templateSequentialForeach);
 		st.add("functionSignature", this.getOperationFunctionSignature(
 				operation, FunctionType.BaseOperation));
 		String cCode = this.translateVariable(userFunctionVariable,
@@ -267,28 +267,11 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 		return "";
 	}
 
-	private String removeCurlyBraces(String code) {
-		// Remove the last curly brace
-		code = code.substring(0, code.lastIndexOf("}"));
-		// Remove the first curly brace
-		code = code.substring(code.indexOf("{") + 1, code.length());
-		return code;
-	}
-
-	private String createFunction(Operation operation, String body,
-			FunctionType functionType) {
-		StringBuilder ret = new StringBuilder();
-		ret.append(this.getOperationFunctionSignature(operation, functionType));
-		ret.append(" {\n");
-		ret.append(body);
-		ret.append("}");
-		return ret.toString();
-	}
-
 	/**
 	 * Creates kernel declaration for a given operation.
 	 */
-	private String getOperationFunctionSignature(Operation operation,
+	@Override
+	protected String getOperationFunctionSignature(Operation operation,
 			FunctionType functionType) {
 		ST st = this.initializeFunctionSignatureTemplate(operation,
 				functionType);
@@ -353,18 +336,18 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 	private ST initializeReduceSignatureTemplate(Operation operation,
 			FunctionType functionType) {
 		ST st = new ST(templateFunctionDecl);
+		String reduceType = this.commonDefinitions.translateType(operation
+				.getUserFunctionData().arguments.get(0).typeName);
 		if (functionType == FunctionType.BaseOperation) {
 			st.add("returnType", "void");
 			st.add("isKernel", "");
 			st.add("functionName",
 					this.commonDefinitions.getOperationName(operation));
-			st.addAggr("params.{type, name}", String.format("__global %s*",
-					this.commonDefinitions.translateType(operation
-							.getUserFunctionData().arguments.get(0).typeName)),
+			st.addAggr("params.{type, name}",
+					String.format("__global %s*", reduceType),
 					this.getTileVariableName());
-			st.addAggr("params.{type, name}", String.format("__global %s*",
-					this.commonDefinitions.translateType(operation
-							.getUserFunctionData().arguments.get(0).typeName)),
+			st.addAggr("params.{type, name}",
+					String.format("__global %s*", reduceType),
 					this.commonDefinitions.getPrefix()
 							+ operation.destinationVariable.name);
 			st.addAggr("params.{type, name}", "int",
@@ -374,13 +357,11 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 			st.add("isKernel", "");
 			st.add("functionName", this.commonDefinitions
 					.getOperationTileFunctionName(operation));
-			st.addAggr("params.{type, name}", String.format("__global %s*",
-					this.commonDefinitions.translateType(operation
-							.getUserFunctionData().arguments.get(0).typeName)),
+			st.addAggr("params.{type, name}",
+					String.format("__global %s*", reduceType),
 					this.getDataVariableName());
-			st.addAggr("params.{type, name}", String.format("__global %s*",
-					this.commonDefinitions.translateType(operation
-							.getUserFunctionData().arguments.get(0).typeName)),
+			st.addAggr("params.{type, name}",
+					String.format("__global %s*", reduceType),
 					this.getTileVariableName());
 			if (operation.variable.typeName.equals(BitmapImage.getInstance()
 					.getClassName())

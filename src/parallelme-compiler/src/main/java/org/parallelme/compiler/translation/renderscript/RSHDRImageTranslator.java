@@ -13,6 +13,7 @@ import java.util.List;
 
 import org.parallelme.compiler.intermediate.InputBind;
 import org.parallelme.compiler.intermediate.MethodCall;
+import org.parallelme.compiler.intermediate.OutputBind;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.translation.userlibrary.HDRImageTranslator;
 import org.parallelme.compiler.userlibrary.classes.HDRImage;
@@ -44,13 +45,21 @@ public class RSHDRImageTranslator extends RSImageTranslator implements
 			+ "\n\t\tPM_out.s0 = (PM_in.s0 & 0xFF) * f;"
 			+ "\n\t\tPM_out.s1 = (PM_in.s1 & 0xFF) * f;"
 			+ "\n\t\tPM_out.s2 = (PM_in.s2 & 0xFF) * f;"
+			+ "\n\t\tPM_out.s3 = 0.0f;"
 			+ "\n\t} else {"
 			+ "\n\t\tPM_out.s0 = 0.0f;"
 			+ "\n\t\tPM_out.s1 = 0.0f;"
 			+ "\n\t\tPM_out.s2 = 0.0f;"
+			+ "\n\t\tPM_out.s3 = 0.0f;"
 			+ "\n\t}"
 			+ "\n\treturn PM_out;"
 			+ "\n}";
+	private static final String templateOutputBind = "\nuchar4 __attribute__((kernel)) toBitmapHDRImage(float4 PM_in, uint32_t x, uint32_t y) {"
+			+ "\n\tuchar4 PM_out;"
+			+ "\n\tPM_out.r = (uchar) (PM_in.s0 * 255.0f);"
+			+ "\n\tPM_out.g = (uchar) (PM_in.s1 * 255.0f);"
+			+ "\n\tPM_out.b = (uchar) (PM_in.s2 * 255.0f);"
+			+ "\n\tPM_out.a = 255;" + "\n\treturn PM_out;\n}";
 
 	public RSHDRImageTranslator(CTranslator cCodeTranslator) {
 		super(cCodeTranslator);
@@ -90,6 +99,14 @@ public class RSHDRImageTranslator extends RSImageTranslator implements
 		st.add("kernelName", this.commonDefinitions.getKernelName(className));
 		st.add("classType", inputBind.variable.typeName);
 		return st.render();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String translateOutputBind(String className, OutputBind outputBind) {
+		return templateOutputBind;
 	}
 
 	/**

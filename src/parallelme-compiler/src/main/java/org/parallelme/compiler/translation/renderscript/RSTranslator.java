@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.parallelme.compiler.intermediate.Operation;
+import org.parallelme.compiler.intermediate.Operation.OperationType;
 import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.intermediate.Operation.ExecutionType;
 import org.parallelme.compiler.translation.CTranslator;
@@ -37,23 +38,36 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 			+ "<inputSize:{var|<kernelName>.set_<var.name>(<allocationName>.getType().get<var.XYZ>());\n}>"
 			+ "<kernelName>.invoke_<functionName>();\n"
 			+ "<externalVariables:{var|<var.allName>.copyTo(<var.name>);}>";
-	private static final String templateOperationSequentialFunction = "rs_allocation <inputData>;\n"
+	private static final String templateAllocations = "rs_allocation <inputData>;\n"
 			+ "<outVariable:{var|rs_allocation <var.name>;\n}>"
-			+ "int PM_gInputXSize<operationName>;\n"
-			+ "int PM_gInputYSize<operationName>;\n"
-			+ "<externalVariables:{var|<var.variableType> <var.variableName>;\n}>"
-			+ "\n<functionSignature>\n {\n"
+			+ "int <inputXSize>;\n"
+			+ "int <inputYSize>;\n"
+			+ "<externalVariables:{var|<var.variableType> <var.variableName>;\n}>\n";
+	private static final String templateSequentialForeach = "<allocation>"
+			+ "<functionSignature>\n {\n"
 			+ "\t<userFunctionVarType> <userFunctionVarName>;\n"
 			+ "\t<forLoop>"
 			+ "\t<externalVariables:{var|rsSetElementAt_<var.variableType>(<var.outVariableName>, <var.variableName>, 0);\n}>"
 			+ "}";
+	private static final String templateParallelReduce = "\t<varType> <inputVar1> = rsGetElementAt_<varType>(<dataVar>, 0);\n"
+			+ "\t<varType> <inputVar2>;\n"
+			+ "\tfor (int i=1; i\\<<sizeVar>; ++i) {\n"
+			+ "\t\t<inputVar2> = rsGetElementAt_<varType>(<dataVar>, i);\n"
+			+ "\t\t<inputVar1> = <userFunctionName>(<inputVar1>, <inputVar2>);\n"
+			+ "\t}\n" + "\treturn <inputVar1>;\n";
+	private static final String templateParallelReduceTile = "\t<varType> <inputVar1> = rsGetElementAt_<varType>(<dataVar>, x, 0);\n"
+			+ "\t<varType> <inputVar2>;\n"
+			+ "\tfor (int i=1; i\\<<sizeVar>; ++i) {\n"
+			+ "\t\t<inputVar2> = rsGetElementAt_<varType>(<dataVar>, x, i);\n"
+			+ "\t\t<inputVar1> = <userFunctionName>(<inputVar1>, <inputVar2>);\n"
+			+ "\t}\n" + "\treturn <inputVar1>;\n";
 
 	private static final String templateForLoop = "for (int <varName> = 0; <varName> \\< <varMaxVal>; <varName>++) {\n\t<body>}\n";
-	private static final String templateForLoopSequentialBody = "<userFunctionVarName> = rsGetElementAt_<userFunctionVarType>(<inputData>, PM_x<param:{var|, <var.name>}>);\n"
+	private static final String templateSequentialForLoopBody = "<userFunctionVarName> = rsGetElementAt_<userFunctionVarType>(<inputData>, PM_x<param:{var|, <var.name>}>);\n"
 			+ "<userCode>\n"
 			+ "rsSetElementAt_<userFunctionVarType>(<inputData>, <userFunctionVarName>, PM_x<param:{var|, <var.name>}>);\n";
-	private static final String templateOperationParallelFunctionSignature = "<parameterTypeTranslated> __attribute__((kernel)) <userFunctionName>(<parameterTypeTranslated> <parameterName>, uint32_t x<params:{var|, <var.type> <var.name>}>)";
-	private static final String templateOperationSequentialFunctionSignature = "void <functionName>()";
+	private static final String templateFunctionDecl = "<modifier:{var|<var.value> }><returnType><isKernel:{var|  __attribute__((kernel))}> <functionName>("
+			+ "<params:{var|<var.type> <var.name>}; separator=\", \">)";
 
 	// Keeps a key-value map of equivalent types from Java to RenderScript
 	// allocation.
@@ -83,55 +97,11 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 		String kernelName = this.commonDefinitions.getKernelName(className);
 		ST st;
 		if (operation.getExecutionType() == ExecutionType.Parallel) {
-			st = new ST(templateOperationParallelCall);
-			st.add("kernelName", kernelName);
-			st.add("functionName", functionName);
-			st.add("externalVariables", null);
-			if (!operation.getExternalVariables().isEmpty()) {
-				for (Variable variable : operation.getExternalVariables()) {
-					String gVariable = this.getGlobalVariableName(
-							variable.name, operation);
-					st.addAggr(
-							"externalVariables.{kernelName, gVariableName, variableName}",
-							kernelName, gVariable, variable.name);
-				}
-			}
+			st = this.translateOperationParallelCall(operation, functionName,
+					kernelName);
 		} else {
-			String inputData = this
-					.getGlobalVariableName(
-							"input"
-									+ this.upperCaseFirstLetter(operation.variable.name),
-							operation);
-			String operationName = this.upperCaseFirstLetter(functionName);
-			st = new ST(templateOperationSequentialCall);
-			st.add("kernelName", kernelName);
-			st.add("functionName", functionName);
-			st.add("inputData", inputData);
-			for (Variable variable : operation.getExternalVariables()) {
-				String gName = this.getGlobalVariableName(variable.name,
-						operation);
-				String allocationName = gName + "_Allocation";
-				String outputData = this.getGlobalVariableName(
-						"output" + this.upperCaseFirstLetter(variable.name),
-						operation);
-				st.addAggr(
-						"externalVariables.{name, gName, allName, elementType, outputData}",
-						variable.name,
-						this.getGlobalVariableName(variable.name, operation),
-						allocationName,
-						java2RSAllocationTypes.get(variable.typeName),
-						outputData);
-			}
-			String prefix = this.commonDefinitions.getPrefix();
-			st.addAggr("inputSize.{name, XYZ}", prefix + "gInputXSize"
-					+ operationName, "X");
-			if (operation.variable.typeName.equals(BitmapImage.getInstance()
-					.getClassName())
-					|| operation.variable.typeName.equals(HDRImage
-							.getInstance().getClassName())) {
-				st.addAggr("inputSize.{name, XYZ}", prefix + "gInputYSize"
-						+ operationName, "Y");
-			}
+			st = this.translateOperationSequentialCall(operation, functionName,
+					kernelName);
 		}
 		if (operation.variable.typeName.equals(Array.getInstance()
 				.getClassName()))
@@ -141,6 +111,55 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 			st.add("allocationName", this.commonDefinitions
 					.getVariableOutName(operation.variable));
 		return st.render();
+	}
+
+	private ST translateOperationParallelCall(Operation operation,
+			String functionName, String kernelName) {
+		ST st;
+		st = new ST(templateOperationParallelCall);
+		st.add("kernelName", kernelName);
+		st.add("functionName", functionName);
+		st.add("externalVariables", null);
+		for (Variable variable : operation.getExternalVariables()) {
+			String gVariable = this.getGlobalVariableName(variable.name,
+					operation);
+			st.addAggr(
+					"externalVariables.{kernelName, gVariableName, variableName}",
+					kernelName, gVariable, variable.name);
+		}
+		return st;
+	}
+
+	private ST translateOperationSequentialCall(Operation operation,
+			String functionName, String kernelName) {
+		ST st;
+		String inputData = this.getInputDataVariableName(operation);
+		st = new ST(templateOperationSequentialCall);
+		st.add("kernelName", kernelName);
+		st.add("functionName", functionName);
+		st.add("inputData", inputData);
+		st.add("externalVariables", null);
+		for (Variable variable : operation.getExternalVariables()) {
+			String gName = this.getGlobalVariableName(variable.name, operation);
+			String allocationName = gName + "_Allocation";
+			String outputData = this.getOutputDataVariableName(operation);
+			st.addAggr(
+					"externalVariables.{name, gName, allName, elementType, outputData}",
+					variable.name,
+					this.getGlobalVariableName(variable.name, operation),
+					allocationName,
+					java2RSAllocationTypes.get(variable.typeName), outputData);
+		}
+		st.addAggr("inputSize.{name, XYZ}",
+				this.getInputXSizeVariableName(operation), "X");
+		if (operation.variable.typeName.equals(BitmapImage.getInstance()
+				.getClassName())
+				|| operation.variable.typeName.equals(HDRImage.getInstance()
+						.getClassName())) {
+			st.addAggr("inputSize.{name, XYZ}",
+					this.getInputYSizeVariableName(operation), "Y");
+		}
+		return st;
 	}
 
 	/**
@@ -155,7 +174,8 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 		code2Translate = code2Translate.substring(0,
 				code2Translate.lastIndexOf("}"));
 		String ret;
-		String returnString = "\treturn " + userFunctionVariable.name + ";";
+		String returnString = String.format("\treturn %s;",
+				userFunctionVariable.name);
 		code2Translate = code2Translate + "\n" + returnString + "\n}";
 		// Insert external variables as global variables
 		StringBuffer externalVariables = new StringBuffer();
@@ -167,9 +187,11 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 			code2Translate = code2Translate.replaceAll(variable.name,
 					gVariableName);
 		}
-		externalVariables.append("\n");
+		if (!operation.getExternalVariables().isEmpty())
+			externalVariables.append("\n");
 		ret = externalVariables.toString()
-				+ this.getOperationFunctionSignature(operation)
+				+ this.getOperationFunctionSignature(operation,
+						FunctionType.BaseOperation)
 				+ this.translateVariable(userFunctionVariable,
 						this.cCodeTranslator.translate(code2Translate));
 		return ret;
@@ -180,7 +202,35 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 	 */
 	@Override
 	protected String translateParallelReduce(Operation operation) {
-		return "";
+		ST st = new ST(templateParallelReduce);
+		Variable inputVar1 = operation.getUserFunctionData().arguments.get(0);
+		Variable inputVar2 = operation.getUserFunctionData().arguments.get(1);
+		st.add("inputVar1", inputVar1.name);
+		st.add("inputVar2", inputVar2.name);
+		// Takes the first var, since they must be the same for reduce
+		// operations
+		st.add("varType",
+				this.commonDefinitions.translateType(inputVar1.typeName));
+		st.add("userFunctionName",
+				this.commonDefinitions.getOperationUserFunctionName(operation));
+		st.add("dataVar", this.getTileVariableName(operation));
+		if (operation.variable.typeName.equals(BitmapImage.getInstance()
+				.getClassName())
+				|| operation.variable.typeName.equals(HDRImage.getInstance()
+						.getClassName())) {
+			st.add("sizeVar", this.getInputXSizeVariableName(operation));
+		} else {
+			// TODO Implement for Array type
+			throw new RuntimeException("Not yet implemented for Array type.");
+		}
+		st.add("params", null);
+		for (Variable variable : operation.getExternalVariables()) {
+			st.addAggr("params.{name}", variable.name);
+		}
+		st.add("destinationVar", this.commonDefinitions.getPrefix()
+				+ operation.destinationVariable.name);
+		return this.createKernelFunction(operation, st.render(),
+				FunctionType.BaseOperation);
 	}
 
 	/**
@@ -188,7 +238,36 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 	 */
 	@Override
 	protected String translateParallelReduceTile(Operation operation) {
-		return "";
+		ST st = new ST(templateParallelReduceTile);
+		Variable inputVar1 = operation.getUserFunctionData().arguments.get(0);
+		Variable inputVar2 = operation.getUserFunctionData().arguments.get(1);
+		st.add("inputVar1", inputVar1.name);
+		st.add("inputVar2", inputVar2.name);
+		// Takes the first var, since they must be the same for reduce
+		// operations
+		st.add("varType",
+				this.commonDefinitions.translateType(inputVar1.typeName));
+		st.add("userFunctionName",
+				this.commonDefinitions.getOperationUserFunctionName(operation));
+		st.add("dataVar",
+				this.getInputDataVariableName(operation));
+		if (operation.variable.typeName.equals(BitmapImage.getInstance()
+				.getClassName())
+				|| operation.variable.typeName.equals(HDRImage.getInstance()
+						.getClassName())) {
+			st.add("sizeVar", this.getInputYSizeVariableName(operation));
+		} else {
+			// TODO Implement for Array type
+			throw new RuntimeException("Not yet implemented for Array type.");
+		}
+		st.add("params", null);
+		for (Variable variable : operation.getExternalVariables()) {
+			st.addAggr("params.{name}", variable.name);
+		}
+		st.add("destinationVar", this.commonDefinitions.getPrefix()
+				+ operation.destinationVariable.name);
+		return this.createKernelFunction(operation, st.render(),
+				FunctionType.Tile);
 	}
 
 	/**
@@ -196,7 +275,15 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 	 */
 	@Override
 	protected String translateParallelReduceUserFunction(Operation operation) {
-		return "";
+		String userCode = this.commonDefinitions.removeCurlyBraces(operation
+				.getUserFunctionData().Code.trim());
+		for (Variable userFunctionVariable : operation.getUserFunctionData().arguments) {
+			userCode = this.translateVariable(userFunctionVariable,
+					this.cCodeTranslator.translate(userCode));
+		}
+		return this.createAllocation(operation)
+				+ this.createKernelFunction(operation, userCode,
+						FunctionType.UserCode);
 	}
 
 	/**
@@ -213,29 +300,24 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 		// Remove the first curly brace
 		code2Translate = code2Translate.substring(
 				code2Translate.indexOf("{") + 1, code2Translate.length());
-		ST st = new ST(templateOperationSequentialFunction);
-		String variableName = this
-				.upperCaseFirstLetter(operation.variable.name);
-		String gNameIn = this.getGlobalVariableName("input" + variableName,
-				operation);
-		String operationName = this.upperCaseFirstLetter(this.commonDefinitions
-				.getOperationName(operation));
-		st.add("inputData", gNameIn);
-		st.add("functionSignature",
-				this.getOperationFunctionSignature(operation));
-		st.add("operationName", operationName);
+		ST st = new ST(templateSequentialForeach);
+		st.add("functionSignature", this.getOperationFunctionSignature(
+				operation, FunctionType.BaseOperation));
 		String userFunctionVarType = this.commonDefinitions
 				.translateType(userFunctionVariable.typeName);
 		st.add("userFunctionVarName", userFunctionVariable.name);
 		st.add("userFunctionVarType", userFunctionVarType);
 		String cCode = this.translateVariable(userFunctionVariable,
 				this.cCodeTranslator.translate(code2Translate)).trim();
+		st.add("allocation", this.createAllocation(operation));
+		st.add("externalVariables", null);
+		// Must replace all user variables names in code by those new global
+		// variables names
 		for (Variable variable : operation.getExternalVariables()) {
+			String gNameVar = this.getGlobalVariableName(variable.name,
+					operation);
 			String gNameOut = this.getGlobalVariableName(
 					"output" + this.upperCaseFirstLetter(variable.name),
-					operation);
-			st.addAggr("outVariable.{name}", gNameOut);
-			String gNameVar = this.getGlobalVariableName(variable.name,
 					operation);
 			st.addAggr(
 					"externalVariables.{ variableType, outVariableName, variableName }",
@@ -245,9 +327,9 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 		String prefix = this.commonDefinitions.getPrefix();
 		ST stFor = new ST(templateForLoop);
 		stFor.add("varName", prefix + "x");
-		stFor.add("varMaxVal", prefix + "gInputXSize" + operationName);
-		ST stForBody = new ST(templateForLoopSequentialBody);
-		stForBody.add("inputData", gNameIn);
+		stFor.add("varMaxVal", this.getInputXSizeVariableName(operation));
+		ST stForBody = new ST(templateSequentialForLoopBody);
+		stForBody.add("inputData", this.getInputDataVariableName(operation));
 		stForBody.add("userFunctionVarName", userFunctionVariable.name);
 		stForBody.add("userFunctionVarType", userFunctionVarType);
 		stForBody.add("userCode", cCode);
@@ -260,7 +342,7 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 			stForBody.addAggr("param.{name}", prefix + "y");
 			ST stFor2 = new ST(templateForLoop);
 			stFor2.add("varName", prefix + "y");
-			stFor2.add("varMaxVal", prefix + "gInputYSize" + operationName);
+			stFor2.add("varMaxVal", this.getInputYSizeVariableName(operation));
 			stFor2.add("body", stForBody.render());
 			stFor.add("body", stFor2.render());
 		} else {
@@ -268,6 +350,33 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 			stFor.add("body", stForBody.render());
 		}
 		st.add("forLoop", stFor.render());
+		return st.render();
+	}
+
+	private String createAllocation(Operation operation) {
+		ST st = new ST(templateAllocations);
+		st.add("inputData", this.getInputDataVariableName(operation));
+		String inputXSize = this.getInputXSizeVariableName(operation);
+		st.add("inputXSize", inputXSize);
+		String inputYSize = this.getInputYSizeVariableName(operation);
+		st.add("inputYSize", inputYSize);
+		st.add("outVariable", null);
+		st.add("externalVariables", null);
+		if (operation.operationType == OperationType.Reduce) {
+			st.addAggr("outVariable.{name}",
+					this.getTileVariableName(operation));
+		}
+		for (Variable variable : operation.getExternalVariables()) {
+			String gNameOut = this.getGlobalVariableName(
+					"output" + this.upperCaseFirstLetter(variable.name),
+					operation);
+			st.addAggr("outVariable.{name}", gNameOut);
+			String gNameVar = this.getGlobalVariableName(variable.name,
+					operation);
+			st.addAggr(
+					"externalVariables.{ variableType, outVariableName, variableName }",
+					variable.typeName, gNameOut, gNameVar);
+		}
 		return st.render();
 	}
 
@@ -280,39 +389,117 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 	}
 
 	/**
-	 * Create the function signature for a given operation.
-	 * 
-	 * @param operation
-	 *            Operation that must be analyzed in order to create a function
-	 *            signature.
-	 * 
-	 * @return Function signature.
+	 * Create a function signature for a given operation.
 	 */
-	protected String getOperationFunctionSignature(Operation operation) {
-		String functionSignature = "";
-		String parameterTypeTranslated = this.commonDefinitions
-				.translateType(operation.getUserFunctionData().arguments.get(0).typeName);
-		if (operation.getExecutionType() == ExecutionType.Parallel) {
-			ST st = new ST(templateOperationParallelFunctionSignature);
-			st.add("parameterTypeTranslated", parameterTypeTranslated);
-			st.add("parameterName",
-					operation.getUserFunctionData().arguments.get(0).name);
-			st.add("userFunctionName",
-					this.commonDefinitions.getOperationName(operation));
-			st.add("params", null);
-			if (operation.variable.typeName.equals(BitmapImage.getInstance()
-					.getClassName())
-					|| operation.variable.typeName.equals(HDRImage
-							.getInstance().getClassName())) {
-				st.addAggr("params.{type, name}", "uint32_t", "y");
-			}
-			functionSignature = st.render();
-		} else {
-			ST st = new ST(templateOperationSequentialFunctionSignature);
+	@Override
+	protected String getOperationFunctionSignature(Operation operation,
+			FunctionType functionType) {
+		Variable inputVar1 = operation.getUserFunctionData().arguments.get(0);
+		String returnType = this.commonDefinitions
+				.translateType(inputVar1.typeName);
+		ST st;
+		if (operation.operationType == OperationType.Foreach) {
+			st = new ST(templateFunctionDecl);
+			st.add("modifier", null);
 			st.add("functionName",
 					this.commonDefinitions.getOperationName(operation));
-			functionSignature = st.render();
+			if (operation.getExecutionType() == ExecutionType.Parallel) {
+				st.add("returnType", returnType);
+				st.add("isKernel", "");
+				st.addAggr("params.{type, name}", returnType, inputVar1.name);
+				st.addAggr("params.{type, name}", "uint32_t", "x");
+				st.addAggr("params.{type, name}", "uint32_t", "y");
+			} else {
+				st.add("returnType", "void");
+				st.add("isKernel", null);
+				st.add("params", null);
+			}
+		} else if (operation.operationType == OperationType.Reduce) {
+			st = this
+					.initializeReduceSignatureTemplate(operation, functionType);
+		} else {
+			throw new RuntimeException("Operation not supported: "
+					+ operation.operationType);
 		}
-		return functionSignature + " ";
+		return st.render();
+	}
+
+	private ST initializeReduceSignatureTemplate(Operation operation,
+			FunctionType functionType) {
+		ST st = new ST(templateFunctionDecl);
+		String returnType = this.commonDefinitions.translateType(operation
+				.getUserFunctionData().arguments.get(0).typeName);
+		st.add("returnType", returnType);
+		st.add("modifier", null);
+		st.add("isKernel", null);
+		st.add("params", null);
+		if (functionType == FunctionType.BaseOperation) {
+			if (operation.getExecutionType() == ExecutionType.Parallel) {
+				st.add("isKernel", "");
+				st.addAggr("params.{type, name}", "uint32_t", "x");
+				st.add("functionName",
+						this.commonDefinitions.getOperationName(operation));
+			} else {
+				st.add("returnType", "void");
+			}
+		} else if (functionType == FunctionType.Tile) {
+			st.add("isKernel", "");
+			st.addAggr("params.{type, name}", "uint32_t", "x");
+			st.add("functionName", this.commonDefinitions
+					.getOperationTileFunctionName(operation));
+		} else {
+			st.addAggr("modifier.{value}", "static");
+			for (Variable inputVar : operation.getUserFunctionData().arguments)
+				st.addAggr(
+						"params.{type, name}",
+						this.commonDefinitions.translateType(inputVar.typeName),
+						inputVar.name);
+			st.add("functionName", this.commonDefinitions
+					.getOperationUserFunctionName(operation));
+		}
+		return st;
+	}
+
+	/**
+	 * Create a global variable name for the given variable following some
+	 * standards. Global variables will be prefixed with "g" followed by an
+	 * upper case letter and sufixed by the operation name, so "max" from
+	 * foreach 2 becomes "gMax_Foreach2"
+	 */
+	protected String getGlobalVariableName(String variableName,
+			Operation operation) {
+		String operationName = this.commonDefinitions
+				.getOperationName(operation);
+		String globalVariableName = this.upperCaseFirstLetter(variableName);
+		return this.commonDefinitions.getPrefix() + "g" + globalVariableName
+				+ this.upperCaseFirstLetter(operationName);
+	}
+
+	/**
+	 * Change the first letter of the informed string to upper case.
+	 */
+	protected String upperCaseFirstLetter(String string) {
+		return string.substring(0, 1).toUpperCase()
+				+ string.substring(1, string.length());
+	}
+
+	protected String getTileVariableName(Operation operation) {
+		return this.getGlobalVariableName("Tile", operation);
+	}
+
+	protected String getInputXSizeVariableName(Operation operation) {
+		return this.getGlobalVariableName("InputXSize", operation);
+	}
+
+	protected String getInputYSizeVariableName(Operation operation) {
+		return this.getGlobalVariableName("InputYSize", operation);
+	}
+
+	protected String getInputDataVariableName(Operation operation) {
+		return this.getGlobalVariableName("Input", operation);
+	}
+
+	protected String getOutputDataVariableName(Operation operation) {
+		return this.getGlobalVariableName("Output", operation);
 	}
 }

@@ -13,7 +13,6 @@ import org.parallelme.compiler.intermediate.OutputBind;
 import org.parallelme.compiler.intermediate.OutputBind.OutputBindType;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.translation.userlibrary.ImageTranslator;
-import org.parallelme.compiler.userlibrary.classes.HDRImage;
 import org.stringtemplate.v4.ST;
 
 /**
@@ -23,16 +22,10 @@ import org.stringtemplate.v4.ST;
  */
 public abstract class RSImageTranslator extends RSTranslator implements
 		ImageTranslator {
-	private static final String templateOutputBindCall1 = "<destinationObject> = Bitmap.createBitmap(<inputAllocation>.getType().getX(), <inputAllocation>.getType().getY(), Bitmap.Config.ARGB_8888);\n";
+	private static final String templateOutputBindCall1 = "<destinationObject> = Bitmap.createBitmap(<inputAllocation>.getType().getX(), "
+			+ "<inputAllocation>.getType().getY(), Bitmap.Config.ARGB_8888);\n";
 	private static final String templateOutputBindCall2 = "<kernelName>.forEach_toBitmap<classType>(<outputObject>, <inputObject>);\n"
 			+ "<inputObject>.copyTo(<destinationObject>);";
-	private static final String templateOutputBind = "\nuchar4 __attribute__((kernel)) toBitmap<classType>(<varType>"
-			+ " PM_in, uint32_t x, uint32_t y) {"
-			+ "\n\tuchar4 PM_out;"
-			+ "\n\tPM_out.r = (uchar) (PM_in.s0<multiplyBy>);"
-			+ "\n\tPM_out.g = (uchar) (PM_in.s1<multiplyBy>);"
-			+ "\n\tPM_out.b = (uchar) (PM_in.s2<multiplyBy>);"
-			+ "\n\tPM_out.a = 255;" + "\n\treturn PM_out;\n}";
 
 	public RSImageTranslator(CTranslator cCodeTranslator) {
 		super(cCodeTranslator);
@@ -80,25 +73,5 @@ public abstract class RSImageTranslator extends RSTranslator implements
 		ret.append(st.render());
 
 		return ret.toString();
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	public String translateOutputBind(String className, OutputBind outputBind) {
-		String varType;
-		ST st = new ST(templateOutputBind);
-		st.add("classType", outputBind.variable.typeName);
-		if (outputBind.variable.typeName.equals(HDRImage.getInstance()
-				.getClassName())) {
-			st.add("multiplyBy", " * 255.0f");
-			varType = "float4";
-		} else {
-			st.add("multiplyBy", null);
-			varType = "float3";
-		}
-		st.add("varType", varType);
-		return st.render();
 	}
 }

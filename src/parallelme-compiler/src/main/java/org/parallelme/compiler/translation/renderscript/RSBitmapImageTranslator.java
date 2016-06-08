@@ -13,6 +13,7 @@ import java.util.List;
 
 import org.parallelme.compiler.intermediate.InputBind;
 import org.parallelme.compiler.intermediate.MethodCall;
+import org.parallelme.compiler.intermediate.OutputBind;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.translation.userlibrary.BitmapImageTranslator;
 import org.parallelme.compiler.userlibrary.classes.BitmapImage;
@@ -38,6 +39,13 @@ public class RSBitmapImageTranslator extends RSImageTranslator implements
 			+ "\n\tPM_out.s0 = (float) PM_in.r;"
 			+ "\n\tPM_out.s1 = (float) PM_in.g;"
 			+ "\n\tPM_out.s2 = (float) PM_in.b;" + "\n\treturn PM_out;" + "\n}";
+	private static final String templateOutputBind = "\nuchar4 __attribute__((kernel)) toBitmapBitmapImage(float3 PM_in, uint32_t x, uint32_t y) {"
+			+ "\n\tuchar4 PM_out;"
+			+ "\n\tPM_out.r = (uchar) (PM_in.s0);"
+			+ "\n\tPM_out.g = (uchar) (PM_in.s1);"
+			+ "\n\tPM_out.b = (uchar) (PM_in.s2);"
+			+ "\n\tPM_out.a = 255;"
+			+ "\n\treturn PM_out;\n}";
 
 	public RSBitmapImageTranslator(CTranslator cCodeTranslator) {
 		super(cCodeTranslator);
@@ -73,6 +81,14 @@ public class RSBitmapImageTranslator extends RSImageTranslator implements
 		st.add("kernelName", this.commonDefinitions.getKernelName(className));
 		st.add("classType", inputBind.variable.typeName);
 		return st.render();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String translateOutputBind(String className, OutputBind outputBind) {
+		return templateOutputBind;
 	}
 
 	/**

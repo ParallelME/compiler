@@ -443,4 +443,12 @@ public class RuntimeCommonDefinitions {
 		}
 		return translatedType;
 	}
+
+	public String removeCurlyBraces(String code) {
+		// Remove the last curly brace
+		code = code.substring(0, code.lastIndexOf("}"));
+		// Remove the first curly brace
+		code = code.substring(code.indexOf("{") + 1, code.length());
+		return code;
+	}
 }

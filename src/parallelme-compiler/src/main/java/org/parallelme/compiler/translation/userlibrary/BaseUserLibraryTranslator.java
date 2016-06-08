@@ -36,25 +36,21 @@ public abstract class BaseUserLibraryTranslator implements
 			.getInstance();
 
 	/**
-	 * Create a global variable name for the given variable following some
-	 * standards. Global variables will be prefixed with "g" followed by an
-	 * upper case letter and sufixed by the operation name, so "max" from
-	 * foreach 2 becomes "gMax_Foreach2"
+	 * Used to determine a given function type as follows:
+	 * 
+	 * <pre>
+	 * BaseOperation: the operation that will be called by the user code and,
+	 * if necessary, call other functions to perform data processing;
+	 * 
+	 * Tile: Function that will process a fraction of the user data;
+	 * 
+	 * UserCode: a function that corresponds exaclty to the user code.  
+	 * It will be used to encapsulate user code to be called by BaseOperation
+	 * and Tile functions.
+	 * </pre>
 	 */
-	protected String getGlobalVariableName(String variable, Operation operation) {
-		String operationName = this.commonDefinitions
-				.getOperationName(operation);
-		String variableName = this.upperCaseFirstLetter(variable);
-		return this.commonDefinitions.getPrefix() + "g" + variableName
-				+ this.upperCaseFirstLetter(operationName);
-	}
-
-	/**
-	 * Change the first letter of the informed string to upper case.
-	 */
-	protected String upperCaseFirstLetter(String string) {
-		return string.substring(0, 1).toUpperCase()
-				+ string.substring(1, string.length());
+	protected enum FunctionType {
+		BaseOperation, Tile, UserCode;
 	}
 
 	/**
@@ -202,4 +198,20 @@ public abstract class BaseUserLibraryTranslator implements
 	 * @return C code with operation's user code compatible with this runtime.
 	 */
 	abstract protected String translateSequentialReduce(Operation operation);
+
+	/**
+	 * Given an operation and its body, creates a String with the equivalent kernelF function. 
+	 */
+	protected String createKernelFunction(Operation operation, String body,
+			FunctionType functionType) {
+		StringBuilder ret = new StringBuilder();
+		ret.append(this.getOperationFunctionSignature(operation, functionType));
+		ret.append(" {\n");
+		ret.append(body);
+		ret.append("}");
+		return ret.toString();
+	}
+
+	abstract protected String getOperationFunctionSignature(
+			Operation operation, FunctionType functionType);
 }
