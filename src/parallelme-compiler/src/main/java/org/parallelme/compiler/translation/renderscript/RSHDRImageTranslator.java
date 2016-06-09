@@ -26,16 +26,16 @@ import org.stringtemplate.v4.ST;
  */
 public class RSHDRImageTranslator extends RSImageTranslator implements
 		HDRImageTranslator {
-	private static final String templateInputBindObjCreation = "Type <dataTypeInputObject> = new Type.Builder(PM_mRS, Element.RGBA_8888(PM_mRS))\n"
+	private static final String templateInputBindObjCreation = "Type <dataTypeInputObject> = new Type.Builder(<rsVarName>, Element.RGBA_8888(<rsVarName>))\n"
 			+ "\t.setX(width)\n"
 			+ "\t.setY(height)\n"
 			+ "\t.create();\n"
-			+ "Type <dataTypeOutputObject> = new Type.Builder(PM_mRS, Element.F32_4(PM_mRS))\n"
+			+ "Type <dataTypeOutputObject> = new Type.Builder(<rsVarName>, Element.F32_4(<rsVarName>))\n"
 			+ "\t.setX(width)\n"
 			+ "\t.setY(height)\n"
 			+ "\t.create();\n"
-			+ "<inputObject> = Allocation.createTyped(PM_mRS, <dataTypeInputObject>, Allocation.MipmapControl.MIPMAP_NONE, Allocation.USAGE_SCRIPT);\n"
-			+ "<outputObject> = Allocation.createTyped(PM_mRS, <dataTypeOutputObject>);\n"
+			+ "<inputObject> = Allocation.createTyped(<rsVarName>, <dataTypeInputObject>, Allocation.MipmapControl.MIPMAP_NONE, Allocation.USAGE_SCRIPT);\n"
+			+ "<outputObject> = Allocation.createTyped(<rsVarName>, <dataTypeOutputObject>);\n"
 			+ "<inputObject>.copyFrom(data);\n"
 			+ "<kernelName>.forEach_toFloat<classType>(<inputObject>, <outputObject>);";
 	private static final String templateInputBind = "\nfloat4 __attribute__((kernel)) toFloat<classType>(uchar4 PM_in, uint32_t x, uint32_t y) {"
@@ -98,6 +98,7 @@ public class RSHDRImageTranslator extends RSImageTranslator implements
 		st.add("outputObject", outputObject);
 		st.add("kernelName", this.commonDefinitions.getKernelName(className));
 		st.add("classType", inputBind.variable.typeName);
+		st.add("rsVarName", this.getRSVariableName());
 		return st.render();
 	}
 
