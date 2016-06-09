@@ -15,6 +15,7 @@ import java.util.Map;
 
 import org.parallelme.compiler.intermediate.InputBind;
 import org.parallelme.compiler.intermediate.MethodCall;
+import org.parallelme.compiler.intermediate.Operation;
 import org.parallelme.compiler.intermediate.OutputBind;
 import org.parallelme.compiler.intermediate.OutputBind.OutputBindType;
 import org.parallelme.compiler.translation.CTranslator;
@@ -150,5 +151,30 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 	@Override
 	public List<String> getJavaClassImports() {
 		return this.getJavaInterfaceImports();
+	}
+
+	@Override
+	protected String getDestinationArraySize(Operation operation) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	protected String getReturnObjectCreation(Operation operation,
+			String variableName) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	protected void fillReduceOperationCall(ST st, Operation operation) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	protected void fillForeachOperationCall(ST st, Operation operation) {
+		// TODO Auto-generated method stub
+		
 	}
 }
