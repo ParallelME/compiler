@@ -25,12 +25,15 @@ public abstract class Symbol {
 	public final String name;
 	public final Symbol enclosingScope;
 	public final TokenAddress tokenAddress;
+	// Symbol's unique identifier
+	public final int identifier;
 
-	public Symbol(String name, Symbol enclosingScope, TokenAddress tokenAddress) {
+	public Symbol(String name, Symbol enclosingScope, TokenAddress tokenAddress, int identifier) {
 		this.innerSymbols = new LinkedHashMap<>();
 		this.name = name;
 		this.enclosingScope = enclosingScope;
 		this.tokenAddress = tokenAddress;
+		this.identifier = identifier;
 	}
 
 	/**

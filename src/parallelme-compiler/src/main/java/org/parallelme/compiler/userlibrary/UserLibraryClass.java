@@ -8,40 +8,75 @@
 
 package org.parallelme.compiler.userlibrary;
 
-import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 /**
- * Describes a User Library class.
- * 
- * This interface and derived classes were solely created to accomplish a first
- * viable version (prototype) of our compiler. Thus in future version we should
- * eliminate explicit user library classes' declaration and move to a
- * parser-based approach in which the compiler would also analyze user library
- * classes in order to evaluate parameters, methods, constructors and so on.
+ * Base class for all user library classes' implementations.
  * 
  * @author Wilson de Carvalho
  */
-public interface UserLibraryClass {
+public abstract class UserLibraryClass {
+	protected Map<String, String> validMethods;
+
+	abstract protected void initValidMethodsSet();
+
 	/**
 	 * Indicates if this class was designed to work with type arguments.
 	 * 
 	 * @return True if this class was designed to work with type arguments.
 	 */
-	public boolean isTyped();
+	abstract public boolean isTyped();
 
 	/**
-	 * List all valid methods for this class, EXCEPT output bind and iterator
+	 * List all valid methods for this class, EXCEPT output bind and operation
 	 * methods. These last methods names must be returned in specific methods.
 	 * 
-	 * @return A HashSet with valid method names.
+	 * @return A Set with valid method names.
 	 */
-	public HashSet<String> getValidMethods();
+	public Set<String> getValidMethods() {
+		return this.validMethods.keySet();
+	}
+
+	/**
+	 * Get the return type of a valid method (non-operation and non-output
+	 * bind).
+	 */
+	public String getReturnType(String methodName) {
+		if (this.isValidMethod(methodName))
+			return this.validMethods.get(methodName);
+		else
+			return "";
+	}
 
 	/**
 	 * Indicates if the method name provided is valid for this user library
 	 * class.
-	 * 
-	 * @return True if the method is valid and false otherwise.
 	 */
-	public boolean isValidMethod(String methodName);
+	public boolean isValidMethod(String methodName) {
+		return this.validMethods.containsKey(methodName);
+	}
+
+	/**
+	 * Gets class name.
+	 * 
+	 * @return Class name.
+	 */
+	abstract public String getClassName();
+
+	/**
+	 * Gets package name.
+	 * 
+	 * @return Package name.
+	 */
+	abstract public String getPackageName();
+
+	/**
+	 * Gets class fully qualified name (package + class names).
+	 * 
+	 * @return Fully qualified name.
+	 */
+	public String getFullyQualifiedName() {
+		return this.getPackageName() + "." + this.getClassName();
+	}	
 }

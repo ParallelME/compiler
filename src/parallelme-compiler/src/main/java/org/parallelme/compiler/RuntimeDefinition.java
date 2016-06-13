@@ -12,11 +12,8 @@ import java.io.IOException;
 import java.util.List;
 
 import org.parallelme.compiler.exception.CompilationException;
-import org.parallelme.compiler.intermediate.InputBind;
-import org.parallelme.compiler.intermediate.Iterator;
+import org.parallelme.compiler.intermediate.OperationsAndBinds;
 import org.parallelme.compiler.intermediate.MethodCall;
-import org.parallelme.compiler.intermediate.OutputBind;
-import org.parallelme.compiler.intermediate.UserLibraryData;
 import org.parallelme.compiler.translation.userlibrary.UserLibraryTranslatorDefinition;
 
 /**
@@ -31,61 +28,54 @@ public interface RuntimeDefinition {
 	}
 
 	/**
+	 * Returns the target runtime for this implementation.
+	 */
+	public TargetRuntime getTargetRuntime();
+
+	/**
+	 * Returns the body for the <b>isValid</b> method in runtime wrapper
+	 * implementation.
+	 */
+	public List<String> getIsValidBody();
+
+	/**
 	 * Get the initialization string for this runtime.
 	 * 
-	 * @param packageName
-	 *            Current package name.
 	 * @param className
 	 *            Current class name.
+	 * @param operationsAndBinds
+	 *            Container with operations and binds.
+	 * @param methodCalls
+	 *            List of method calls to user library objects.
 	 * 
-	 * @return Initialization string.
+	 * @return List with initialization string (each line of the initialization
+	 *         string is an element on the list).
 	 */
-	public String getInitializationString(String packageName, String className)
-			throws CompilationException;
+	public List<String> getInitializationString(String className,
+			OperationsAndBinds operationsAndBinds,
+			List<MethodCall> methodCalls) throws CompilationException;
 
 	/**
 	 * Get the necessary imports for this runtime.
 	 * 
-	 * @param iteratorsAndBinds
-	 *            List of all iterators and binds found in a given class.
-	 * 
-	 * @return String with the necessary imports.
+	 * @return A list where each element is a import statement.
 	 */
-	public String getImports(List<UserLibraryData> iteratorsAndBinds)
-			throws CompilationException;
+	public List<String> getImports() throws CompilationException;
 
 	/**
-	 * Translates a given method call to a runtime-variable equivalent
-	 * operation.
-	 * 
-	 * @param methodCall
-	 *            Method call that must be translated
-	 * @return A string with the new code for method call replacement.
-	 */
-	public String translateMethodCall(MethodCall methodCall)
-			throws CompilationException;
-
-	/**
-	 * Translates a list of iterators.
+	 * Translates a list of operations.
 	 * 
 	 * @param packageName
-	 *            Name of the package of which current data (class, iterators
+	 *            Name of the package of which current data (class, operations
 	 *            and binds) belong.
 	 * @param className
-	 *            Name of the class of which current data (iterators and binds)
+	 *            Name of the class of which current data (operations and binds)
 	 *            belong.
-	 * @param iterators
-	 *            Iterator that must be translated.
-	 * @param inputBinds
-	 *            Input binds that must be translated.
-	 * @param outputBinds
-	 *            Output binds that must be translated.
-	 * 
-	 * @return True if the translation was successful. False otherwise.
+	 * @param operationsAndBinds
+	 *            Container with operations and binds.
 	 */
-	public boolean translateIteratorsAndBinds(String packageName,
-			String className, List<Iterator> iterators,
-			List<InputBind> inputBinds, List<OutputBind> outputBinds)
+	public void translateOperationsAndBinds(String packageName,
+			String className, OperationsAndBinds operationsAndBinds)
 			throws CompilationException;
 
 	/**

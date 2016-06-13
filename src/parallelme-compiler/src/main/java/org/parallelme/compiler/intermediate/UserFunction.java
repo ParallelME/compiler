@@ -8,6 +8,8 @@
 
 package org.parallelme.compiler.intermediate;
 
+import java.util.List;
+
 /**
  * Stores user function data that must be translated to the target runtime.
  * 
@@ -15,15 +17,10 @@ package org.parallelme.compiler.intermediate;
  */
 public class UserFunction {
 	public final String Code;
-	public final Variable variableArgument;
+	public final List<Variable> arguments;
 
-	public UserFunction(String Code, Variable variableArgument) {
+	public UserFunction(String Code, List<Variable> arguments) {
 		this.Code = Code;
-		this.variableArgument = variableArgument;
-	}
-
-	@Override
-	public int hashCode() {
-		return this.Code.hashCode() * 3 + this.variableArgument.hashCode() * 7;
+		this.arguments = arguments;
 	}
 }

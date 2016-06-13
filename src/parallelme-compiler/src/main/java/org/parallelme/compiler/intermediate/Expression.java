@@ -33,9 +33,4 @@ public class Expression implements Parameter {
 	public String toString() {
 		return this.text;
 	}
-
-	@Override
-	public int hashCode() {
-		return this.text.hashCode();
-	}
 }

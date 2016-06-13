@@ -8,8 +8,11 @@
 
 package org.parallelme.compiler.translation.userlibrary;
 
+import java.util.List;
+
 import org.parallelme.compiler.intermediate.InputBind;
-import org.parallelme.compiler.intermediate.Iterator;
+import org.parallelme.compiler.intermediate.Operation;
+import org.parallelme.compiler.intermediate.MethodCall;
 import org.parallelme.compiler.intermediate.OutputBind;
 
 /**
@@ -33,25 +36,10 @@ public interface UserLibraryTranslatorDefinition {
 	public String translateInputBind(String className, InputBind inputBind);
 
 	/**
-	 * Translates a given input bind returning the Java code that will be used
-	 * to call a given runtime code.
-	 * 
-	 * @param className
-	 *            Name of the java class (user class) where the input bind was
-	 *            originally created.
-	 * @param inputBind
-	 *            Input bind information.
-	 * 
-	 * @return A string with the java code for replacement on the original user
-	 *         code written with the user library.
-	 */
-	public String translateInputBindCall(String className, InputBind inputBind);
-
-	/**
 	 * Creates the java code to create the input bind objects (allocations).
 	 * Input bind creation and declaration are separated because the declaration
 	 * must be placed on the user code at the same level of user library objects
-	 * were declared. Differently, input bind creation must be placed on the
+	 * were declared. Differently, input bind creation must be placed in the
 	 * same level where user library objects are instantiated.
 	 * 
 	 * @param className
@@ -110,31 +98,58 @@ public interface UserLibraryTranslatorDefinition {
 			OutputBind outputBind);
 
 	/**
-	 * Translates a given iterator returning the C code compatible for a given
-	 * runtime.
+	 * Translates a given operation returning its C functions compatible for a
+	 * given runtime.
 	 * 
-	 * @param className
-	 *            Name of the java class (user class) where the input bind was
-	 *            originally created.
-	 * @param iterator
-	 *            Iterator information.
+	 * @param operation
+	 *            Operation information.
 	 * 
-	 * @return A string with the C code for the given runtime.
+	 * @return A list where each string represents a function with the C code
+	 *         for the given runtime.
 	 */
-	public String translateIterator(String className, Iterator iterator);
+	public List<String> translateOperation(Operation operation);
 
 	/**
-	 * Translates a given iterator returning the Java code that will be used to
+	 * Translates a given operation returning the Java code that will be used to
 	 * call a given runtime code.
 	 * 
 	 * @param className
 	 *            Name of the java class (user class) where the input bind was
 	 *            originally created.
-	 * @param iterator
-	 *            Iterator information.
+	 * @param operation
+	 *            Operation information.
 	 * 
 	 * @return A string with the java code for replacement on the original user
 	 *         code written with the user library.
 	 */
-	public String translateIteratorCall(String className, Iterator iterator);
+	public String translateOperationCall(String className, Operation operation);
+
+	/**
+	 * Translates a given method call returning the Java code that will be used
+	 * to call a given runtime code.
+	 * 
+	 * @param className
+	 *            Name of the java class (user class) where the input bind was
+	 *            originally created.
+	 * @param methodCall
+	 *            Method call information.
+	 * 
+	 * @return A string with the java code for replacement on the original user
+	 *         code written with the user library.
+	 */
+	public String translateMethodCall(String className, MethodCall methodCall);
+
+	/**
+	 * Return imports that are necessary to create Java wrapper interfaces.
+	 * 
+	 * @return A list where each element is a import statement.
+	 */
+	public List<String> getJavaInterfaceImports();
+
+	/**
+	 * Return imports that are necessary to create Java wrapper implementation.
+	 * 
+	 * @return A list where each element is a import statement.
+	 */
+	public List<String> getJavaClassImports();
 }

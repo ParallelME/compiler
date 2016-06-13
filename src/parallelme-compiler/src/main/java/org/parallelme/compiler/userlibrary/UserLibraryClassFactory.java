@@ -18,33 +18,31 @@ import org.parallelme.compiler.userlibrary.functions.*;
  */
 public class UserLibraryClassFactory {
 	/**
-	 * Create a user library class object.
+	 * Returns an user library class object.
 	 * 
 	 * @param className
 	 *            Name of the desired class.
-	 * @return User librar object if the class name provided is valid. False
+	 * @return User library object if the class name provided is valid. Null
 	 *         otherwise.
 	 */
-	public static UserLibraryClass create(String className) {
-		if (className.equals(BitmapImage.getName()))
+	public static UserLibraryClass getClass(String className) {
+		if (className.equals(BitmapImage.getInstance().getClassName()))
 			return BitmapImage.getInstance();
-		else if (className.equals(HDRImage.getName()))
+		else if (className.equals(HDRImage.getInstance().getClassName()))
 			return HDRImage.getInstance();
-		else if (className.equals(ForeachFunction.getName()))
-			return new ForeachFunction();
-		else if (className.equals(RGB.getName()))
-			return RGB.getInstance();
-		else if (className.equals(RGBA.getName()))
-			return RGBA.getInstance();
-		else if (className.equals(Pixel.getName()))
+		else if (className.equals(Foreach.getInstance().getClassName()))
+			return Foreach.getInstance();
+		else if (className.equals(Reduce.getInstance().getClassName()))
+			return Reduce.getInstance();
+		else if (className.equals(Pixel.getInstance().getClassName()))
 			return Pixel.getInstance();
-		else if (className.equals(Int16.getName()))
+		else if (className.equals(Int16.getInstance().getClassName()))
 			return Int16.getInstance();
-		else if (className.equals(Int32.getName()))
+		else if (className.equals(Int32.getInstance().getClassName()))
 			return Int32.getInstance();
-		else if (className.equals(Float32.getName()))
+		else if (className.equals(Float32.getInstance().getClassName()))
 			return Float32.getInstance();
-		else if (className.equals(Array.getName()))
+		else if (className.equals(Array.getInstance().getClassName()))
 			return Array.getInstance();
 		else
 			return null;
@@ -58,7 +56,7 @@ public class UserLibraryClassFactory {
 	 * @return True if valid. False otherwise.
 	 */
 	public static boolean isValidClass(String className) {
-		return UserLibraryClassFactory.create(className) != null;
+		return UserLibraryClassFactory.getClass(className) != null;
 	}
 
 	/**
@@ -70,7 +68,7 @@ public class UserLibraryClassFactory {
 	 */
 	public static boolean isTyped(String className) {
 		UserLibraryClass userLibraryClass = UserLibraryClassFactory
-				.create(className);
+				.getClass(className);
 		if (userLibraryClass != null) {
 			return userLibraryClass.isTyped();
 		} else {

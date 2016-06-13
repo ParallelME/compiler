@@ -1,3 +1,0 @@
-ParallelME Runtime Environment
-==============================
-

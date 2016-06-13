@@ -8,30 +8,26 @@
 
 package org.parallelme.compiler.intermediate;
 
+import java.util.List;
+
+import org.parallelme.compiler.symboltable.TokenAddress;
+
 /**
  * Intermediate representation for input bind operations.
  * 
  * @author Wilson de Carvalho
  */
 public class InputBind extends UserLibraryData {
-	private Parameter[] parameters;
+	public final List<Parameter> parameters;
+	public final TokenAddress declarationStatementAddress;
+	public final TokenAddress creationStatementAddress;
 
 	public InputBind(Variable variable, int sequentialNumber,
-			Parameter[] parameters) {
+			List<Parameter> parameters, TokenAddress declarationStatementAddress,
+			TokenAddress creationStatementAddress) {
 		super(variable, sequentialNumber);
-		this.setParameters(parameters);
-	}
-
-	public Parameter[] getParameters() {
-		return parameters;
-	}
-
-	public void setParameters(Parameter[] parameters) {
 		this.parameters = parameters;
-	}
-
-	@Override
-	public int hashCode() {
-		return this.parameters.hashCode();
+		this.declarationStatementAddress = declarationStatementAddress;
+		this.creationStatementAddress = creationStatementAddress;
 	}
 }

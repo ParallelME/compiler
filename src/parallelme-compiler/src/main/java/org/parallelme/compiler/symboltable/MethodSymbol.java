@@ -21,8 +21,8 @@ public class MethodSymbol extends Symbol {
 
 	public MethodSymbol(String name, String returnType,
 			Collection<Symbol> arguments, Symbol enclosingScope,
-			TokenAddress tokenAddress) {
-		super(name, enclosingScope, tokenAddress);
+			TokenAddress tokenAddress, int identifier) {
+		super(name, enclosingScope, tokenAddress, identifier);
 		this.returnType = returnType;
 		this.arguments = arguments;
 		for (Symbol argument : arguments)

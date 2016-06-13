@@ -8,24 +8,25 @@
 
 package org.parallelme.compiler.userlibrary.classes;
 
-import java.util.HashSet;
+import java.util.HashMap;
 
-import org.parallelme.compiler.userlibrary.UserLibraryCollectionClassImpl;
+import org.parallelme.compiler.userlibrary.UserLibraryCollectionClass;
 
 /**
  * Defines the user library collection class Array.
  * 
  * @author Wilson de Carvalho
  */
-public class Array extends UserLibraryCollectionClassImpl {
-	private static String iteratorMethodName = "foreach";
-	private static String dataOutputMethodName = "toJavaArray";
-	private static Array instance = new Array();
+public class Array extends UserLibraryCollectionClass {
+	private static final String outputBindMethodName = "toJavaArray";
+	private static final String className = "Array";
+	private static final String packageName = "org.parallelme.userlibrary";
+	private static final Array instance = new Array();
 
 	private Array() {
 		this.initValidMethodsSet();
 	}
-	
+
 	public static Array getInstance() {
 		return instance;
 	}
@@ -35,7 +36,7 @@ public class Array extends UserLibraryCollectionClassImpl {
 	 */
 	@Override
 	protected void initValidMethodsSet() {
-		this.validMethods = new HashSet<>();
+		this.validMethods = new HashMap<>();
 	}
 
 	/**
@@ -50,22 +51,23 @@ public class Array extends UserLibraryCollectionClassImpl {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public String getIteratorMethodName() {
-		return iteratorMethodName;
+	public String getOutputBindMethodName() {
+		return outputBindMethodName;
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
 	@Override
-	public String getDataOutputMethodName() {
-		return dataOutputMethodName;
+	public String getClassName() {
+		return className;
 	}
-	
+
 	/**
 	 * {@inheritDoc}
 	 */
-	public static String getName() {
-		return "Array";
+	@Override
+	public String getPackageName() {
+		return packageName;
 	}
 }

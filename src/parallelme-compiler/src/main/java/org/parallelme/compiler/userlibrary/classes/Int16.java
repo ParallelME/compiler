@@ -8,26 +8,28 @@
 
 package org.parallelme.compiler.userlibrary.classes;
 
-import java.util.HashSet;
+import java.util.HashMap;
 
-import org.parallelme.compiler.userlibrary.UserLibraryClassImpl;
+import org.parallelme.compiler.userlibrary.UserLibraryClass;
 
 /**
  * Defines the user library class Int16.
  * 
  * @author Wilson de Carvalho
  */
-public class Int16 extends UserLibraryClassImpl {
+public class Int16 extends UserLibraryClass {
 	private static Int16 instance = new Int16();
-
+	private static final String className = "Int16";
+	private static final String packageName = "org.parallelme.userlibrary.datatypes";
+	
 	private Int16() {
 		this.initValidMethodsSet();
 	}
 
 	public static Int16 getInstance() {
 		return instance;
-	}	
-	
+	}
+
 	/**
 	 * {@inheritDoc}
 	 */
@@ -41,13 +43,22 @@ public class Int16 extends UserLibraryClassImpl {
 	 */
 	@Override
 	protected void initValidMethodsSet() {
-		this.validMethods = new HashSet<>();
+		this.validMethods = new HashMap<>();
 	}
-	
+
 	/**
 	 * {@inheritDoc}
 	 */
-	public static String getName() {
-		return "Int16";
+	@Override
+	public String getClassName() {
+		return className;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getPackageName() {
+		return packageName;
 	}
 }

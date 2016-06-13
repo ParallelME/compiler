@@ -14,7 +14,8 @@ package org.parallelme.compiler.symboltable;
  * @author Wilson de Carvalho
  */
 public class LiteralIntegerSymbol extends LiteralSymbol<Integer> {
-	public LiteralIntegerSymbol(String name, Symbol enclosingScope, Integer value) {
-		super(name, enclosingScope, value);
+	public LiteralIntegerSymbol(String name, Symbol enclosingScope,
+			Integer value, int identifier) {
+		super(name, enclosingScope, value, identifier);
 	}
 }

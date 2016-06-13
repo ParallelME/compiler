@@ -15,25 +15,17 @@ package org.parallelme.compiler.intermediate;
  * @author Wilson de Carvalho
  */
 public class UserLibraryData {
-	private Variable variable;
-	// A sequential number that is used to uniquely identify this iterator.
+	public final Variable variable;
+	// A sequential number that is used to uniquely identify this user library element.
 	public final int sequentialNumber;
 
 	public UserLibraryData(Variable variable, int sequentialNumber) {
-		this.setVariable(variable);
-		this.sequentialNumber = sequentialNumber;
-	}
-
-	public Variable getVariable() {
-		return variable;
-	}
-
-	public void setVariable(Variable variable) {
 		this.variable = variable;
+		this.sequentialNumber = sequentialNumber;
 	}
 
 	@Override
 	public int hashCode() {
-		return this.variable.hashCode() * 3 + this.sequentialNumber * 7;
+		return this.sequentialNumber;
 	}
 }

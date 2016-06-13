@@ -8,18 +8,20 @@
 
 package org.parallelme.compiler.userlibrary.classes;
 
-import java.util.HashSet;
+import java.util.HashMap;
 
-import org.parallelme.compiler.userlibrary.UserLibraryClassImpl;
+import org.parallelme.compiler.userlibrary.UserLibraryClass;
 
 /**
  * Defines the user library class Int32.
  * 
  * @author Wilson de Carvalho
  */
-public class Int32 extends UserLibraryClassImpl {
+public class Int32 extends UserLibraryClass {
 	private static Int32 instance = new Int32();
-
+	private static final String className = "Int32";
+	private static final String packageName = "org.parallelme.userlibrary.datatypes";
+	
 	private Int32() {
 		this.initValidMethodsSet();
 	}
@@ -41,13 +43,22 @@ public class Int32 extends UserLibraryClassImpl {
 	 */
 	@Override
 	protected void initValidMethodsSet() {
-		this.validMethods = new HashSet<>();
+		this.validMethods = new HashMap<>();
 	}
-	
+
 	/**
 	 * {@inheritDoc}
 	 */
-	public static String getName() {
-		return "Int32";
+	@Override
+	public String getClassName() {
+		return className;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getPackageName() {
+		return packageName;
 	}
 }

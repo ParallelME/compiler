@@ -8,17 +8,19 @@
 
 package org.parallelme.compiler.userlibrary.classes;
 
-import java.util.HashSet;
+import java.util.HashMap;
 
-import org.parallelme.compiler.userlibrary.UserLibraryClassImpl;
+import org.parallelme.compiler.userlibrary.UserLibraryClass;
 
 /**
  * Defines the user library class Float32.
  * 
  * @author Wilson de Carvalho
  */
-public class Float32 extends UserLibraryClassImpl {
+public class Float32 extends UserLibraryClass {
 	private static Float32 instance = new Float32();
+	private static final String className = "Float32";
+	private static final String packageName = "org.parallelme.userlibrary.datatypes";
 
 	private Float32() {
 		this.initValidMethodsSet();
@@ -26,8 +28,8 @@ public class Float32 extends UserLibraryClassImpl {
 
 	public static Float32 getInstance() {
 		return instance;
-	}	
-	
+	}
+
 	/**
 	 * {@inheritDoc}
 	 */
@@ -41,13 +43,22 @@ public class Float32 extends UserLibraryClassImpl {
 	 */
 	@Override
 	protected void initValidMethodsSet() {
-		this.validMethods = new HashSet<>();
+		this.validMethods = new HashMap<>();
 	}
-	
+
 	/**
 	 * {@inheritDoc}
 	 */
-	public static String getName() {
-		return "Float32";
+	@Override
+	public String getClassName() {
+		return className;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getPackageName() {
+		return packageName;
 	}
 }
