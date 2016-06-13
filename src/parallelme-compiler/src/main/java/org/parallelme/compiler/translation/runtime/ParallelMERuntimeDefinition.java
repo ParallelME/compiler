@@ -116,12 +116,14 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 			// Sequential operations must create an array for each variable.
 			// This array will be used to store the output value.
 			List<Variable> externalVariables = operation.getExternalVariables();
-			if (operation.getExecutionType() == ExecutionType.Sequential) {
+			boolean isSequential = operation.getExecutionType() == ExecutionType.Sequential;
+			if (isSequential) {
 				for (Variable foo : externalVariables) {
 					parameters.add(foo);
-					parameters.add(new Variable(RuntimeCommonDefinitions
-							.getInstance().getPrefix() + foo.name, foo.typeName
-							+ "[]", "", "", -1));
+					if (!foo.isFinal())
+						parameters.add(new Variable(RuntimeCommonDefinitions
+								.getInstance().getPrefix() + foo.name,
+								foo.typeName + "[]", "", "", -1));
 				}
 			} else {
 				parameters.addAll(externalVariables);

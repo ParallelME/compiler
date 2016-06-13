@@ -57,7 +57,7 @@ public class ParallelMERuntimeCTranslation {
 			+ "\tauto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
 			+ "\tauto variablePtr = (<objectType> *) varPtr;\n"
 			+ "\tauto task = std::make_unique\\<Task>(runtimePtr->program);\n"
-			+ "\t<destinationVariable:{var|auto tileElemSize = sizeof(<var.type>) * env->GetArrayLength(<var.name>);\n"
+			+ "<destinationVariable:{\tvar|auto tileElemSize = sizeof(<var.type>) * env->GetArrayLength(<var.name>);\n"
 			+ "auto tileBuffer = std::make_shared\\<Buffer>(tileElemSize * <var.expression>);\n"
 			+ "auto <var.bufferName> = std::make_shared\\<Buffer>(tileElemSize);\n}>"
 			+ "<task:{var|\t\ttask->addKernel(\"<var.operationName>\");\n}>"
@@ -66,22 +66,22 @@ public class ParallelMERuntimeCTranslation {
 			+ "\n\t\\});\n"
 			+ "\truntimePtr->runtime->submitTask(std::move(task));\n"
 			+ "\truntimePtr->runtime->finish();\n"
-			+ "\t<destinationVariable:{var|<var.bufferName>->copyToJArray(env, <var.name>);\n}>"
+			+ "<destinationVariable:{var|\t<var.bufferName>->copyToJArray(env, <var.name>);\n}>"
 			+ "\\}";
 	private static final String templateSequentialOperation = "<functionDecl> {\n"
 			+ "\tauto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
 			+ "\tauto variablePtr = (<objectType> *) varPtr;\n"
 			+ "\tauto task = std::make_unique\\<Task>(runtimePtr->program, Task::Score(1.0f, 2.0f));\n"
-			+ "\t<destinationVariable:{var|auto <var.bufferName> = std::make_shared\\<Buffer>(sizeof(<var.type>) * GetArrayLength(env, <var.name>));\n}>"
-			+ "\t<buffers:{var|auto <var.bufferName> = std::make_shared\\<Buffer>(sizeof(<var.name>));\n}>"
-			+ "\t<task:{var|task->addKernel(\"<var.operationName>\");\n}>"
+			+ "<destinationVariable:{var|\tauto <var.bufferName> = std::make_shared\\<Buffer>(sizeof(<var.type>) * GetArrayLength(env, <var.name>));\n}>"
+			+ "<buffers:{var|\t\tauto <var.bufferName> = std::make_shared\\<Buffer>(sizeof(<var.name>));\n}>"
+			+ "<task:{var|\t\ttask->addKernel(\"<var.operationName>\");\n}>"
 			+ "\ttask->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
 			+ "\t\t<kernelHash:{var|<var.body>}; separator=\"\n\">"
 			+ "\n\t\\});\n"
 			+ "\truntimePtr->runtime->submitTask(std::move(task));\n"
 			+ "\truntimePtr->runtime->finish();\n"
-			+ "\t<buffers:{var|<var.bufferName>->copyToJArray(env, <var.arrName>);\n}>"
-			+ "\t<destinationVariable:{var|<var.bufferName>->copyToJNI(env, <var.name>);\n}>"
+			+ "<buffers:{var|\t\t<var.bufferName>->copyToJArray(env, <var.arrName>);\n}>"
+			+ "<destinationVariable:{var|\t\t<var.bufferName>->copyToJArray(env, <var.name>);\n}>"
 			+ "\\}";
 	private final static String templateKernelFile = "<introductoryMsg>\n\n"
 			+ "#ifndef USERKERNELS_HPP\n" + "#define USERKERNELS_HPP\n\n"
@@ -295,13 +295,17 @@ public class ParallelMERuntimeCTranslation {
 		stKernelHash.add("setArgs", null);
 		int i = 0;
 		for (Variable variable : operation.getExternalVariables()) {
-			String prefixedVarName = RuntimeCommonDefinitions.getInstance()
-					.getPrefix() + variable.name;
-			String bufferName = variable.name + "Buffer";
-			st.addAggr("buffers.{bufferName, name, arrName}", bufferName,
-					variable.name, prefixedVarName);
-			stKernelHash.addAggr("setArgs.{index, name}", ++i, variable.name);
-			stKernelHash.addAggr("setArgs.{index, name}", ++i, bufferName);
+			if (!variable.isFinal()) {
+				String prefixedVarName = RuntimeCommonDefinitions.getInstance()
+						.getPrefix() + variable.name;
+				String bufferName = variable.name + "Buffer";
+				st.addAggr("buffers.{bufferName, name, arrName}", bufferName,
+						variable.name, prefixedVarName);
+				stKernelHash.addAggr("setArgs.{index, name}", ++i, variable.name);
+				stKernelHash.addAggr("setArgs.{index, name}", ++i, bufferName);
+			} else {
+				stKernelHash.addAggr("setArgs.{index, name}", ++i, variable.name);
+			}
 		}
 		if (operation.destinationVariable != null) {
 			String destVarName = operation.destinationVariable.name;
@@ -397,12 +401,13 @@ public class ParallelMERuntimeCTranslation {
 			st.add("varName", null);
 		else
 			st.add("varName", " ");
+		boolean isSequential = operation.getExecutionType() == ExecutionType.Sequential;
 		for (Variable variable : operation.getExternalVariables()) {
 			String decl = variable.typeName;
 			if (declareVarNames)
 				decl += " " + variable.name;
 			st.addAggr("params.{decl}", decl);
-			if (operation.getExecutionType() == ExecutionType.Sequential) {
+			if (isSequential && !variable.isFinal()) {
 				decl = String.format("j%sArray", variable.typeName);
 				if (declareVarNames)
 					decl += " "

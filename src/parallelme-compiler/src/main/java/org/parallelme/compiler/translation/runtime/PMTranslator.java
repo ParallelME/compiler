@@ -249,12 +249,14 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 			stForY.add("body", cCode);
 		}
 		st.add("forLoop", stForY.render());
-		// Each external variable value must be fill its equivalent output
+		// Each external non-final variable value must fill its equivalent
+		// output
 		// variable so its value can be taken back to JVM.
 		for (Variable variable : operation.getExternalVariables()) {
-			st.addAggr("externalVariables.{outVariableName, variableName}",
-					this.commonDefinitions.getPrefix() + variable.name,
-					variable.name);
+			if (!variable.isFinal())
+				st.addAggr("externalVariables.{outVariableName, variableName}",
+						this.commonDefinitions.getPrefix() + variable.name,
+						variable.name);
 		}
 		return st.render();
 	}
@@ -280,10 +282,11 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 		// the original user code.
 		// 2: A global pointer which will take the processed value to the JVM
 		// again;
+		boolean isSequential = operation.getExecutionType() == ExecutionType.Sequential;
 		for (Variable variable : operation.getExternalVariables()) {
 			st.addAggr("params.{type, name}",
 					PrimitiveTypes.getCType(variable.typeName), variable.name);
-			if (operation.getExecutionType() == ExecutionType.Sequential) {
+			if (isSequential && !variable.isFinal()) {
 				st.addAggr(
 						"params.{type, name}",
 						"__global "
@@ -469,15 +472,11 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 				"ParallelMERuntime.getInstance().runtimePointer");
 		st.addAggr("params.{name}",
 				this.commonDefinitions.getPointerName(operation.variable));
-		if (operation.getExecutionType() == ExecutionType.Sequential) {
-			for (Variable variable : operation.getExternalVariables()) {
+		boolean isSequential = operation.getExecutionType() == ExecutionType.Sequential;
+		for (Variable variable : operation.getExternalVariables()) {
+			if (isSequential && !variable.isFinal())
 				st.addAggr("params.{name}", variable.name + "[0]");
-				st.addAggr("params.{name}", variable.name);
-			}
-		} else {
-			for (Variable variable : operation.getExternalVariables()) {
-				st.addAggr("params.{name}", variable.name);
-			}
+			st.addAggr("params.{name}", variable.name);
 		}
 	}
 }

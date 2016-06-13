@@ -27,18 +27,23 @@ import org.stringtemplate.v4.ST;
  * @author Wilson de Carvalho
  */
 public abstract class RSTranslator extends BaseUserLibraryTranslator {
-	private static final String templateOperationCall = "<allocation:{var|<var.body>\n}>"
-			+ "<variables:{var|<kernelName>.set_<var.gVariableName>(<var.variableName>);\n}>"
-			+ "<inputSize:{var|<kernelName>.set_<var.name>(<allocationName>.getType().get<var.XYZ>());\n}>"
-			+ "<kernels:{var|<kernelName>.<rsOperationName>_<var.functionName>(<var.allocations>);}; separator=\"\\n\">"
+	private static final String templateOperationCall = "<allocation:{var|<var.body>}; separator=\"\\n\">"
+			+ "<variables:{var|\n\n<kernelName>.set_<var.gVariableName>(<var.variableName>);}>"
+			+ "<inputSize:{var|\n\n<kernelName>.set_<var.name>(<allocationName>.getType().get<var.XYZ>());}>"
+			+ "<kernels:{var|\n\n<kernelName>.<rsOperationName>_<var.functionName>(<var.allocations>);}>"
+			+ "<sequentialNonFinalVariables:{var|\n\n<var.allName>.copyTo(<var.arrName>);}>"
 			+ "<destinationVariable:{var|\n\n<var.nativeReturnType>[] <var.tmpName> = new <var.nativeReturnType>[<var.size>];\n"
 			+ "<var.name>.copyTo(<var.tmpName>);\n"
 			+ "return new <var.returnObjectCreation>;}>";
-	private static final String templateAllocations = "rs_allocation <inputData>;\n"
+	private static final String templateSequentialAllocationRSFile = "rs_allocation <inputData>;\n"
 			+ "<outVariable:{var|rs_allocation <var.name>;\n}>"
 			+ "int <inputXSize>;\n"
 			+ "int <inputYSize>;\n"
 			+ "<externalVariables:{var|<var.variableType> <var.variableName>;\n}>\n";
+	private static final String templateSequentialAllocationJavaFile = "<externalVariables:{var|"
+			+ "Allocation <var.allName> = Allocation.createSized(<rsVarName>, Element.<var.elementType>(<rsVarName>), 1);\n"
+			+ "<kernelName>.set_<var.gName>(<var.name>[0]);\n"
+			+ "<kernelName>.set_<var.gNameOut>(<var.allName>);}; separator=\"\\n\">";
 	private static final String templateSequentialForeach = "<allocation>"
 			+ "<functionSignature>\n {\n"
 			+ "\t<userFunctionVarType> <userFunctionVarName>;\n"
@@ -92,8 +97,9 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 	 */
 	public String translateOperationCall(String className, Operation operation) {
 		ST st = new ST(templateOperationCall);
-		st.add("allocationName",
-				this.commonDefinitions.getVariableOutName(operation.variable));
+		String variableAllocation = this.commonDefinitions
+				.getVariableOutName(operation.variable);
+		st.add("allocationName", variableAllocation);
 		st.add("rsVarName", this.getRSVariableName());
 		st.add("kernelName", this.commonDefinitions.getKernelName(className));
 		st.add("allocation", null);
@@ -101,6 +107,7 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 		st.add("inputSize", null);
 		st.add("kernels", null);
 		st.add("destinationVariable", null);
+		st.add("sequentialNonFinalVariables", null);
 		if (operation.getExecutionType() == ExecutionType.Parallel)
 			st.add("rsOperationName", "forEach");
 		else
@@ -129,11 +136,59 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 		}
 		boolean isSequential = operation.getExecutionType() == ExecutionType.Sequential;
 		for (Variable variable : operation.getExternalVariables()) {
-			String varName = isSequential ? variable.name + "[0]"
-					: variable.name;
+			if (!isSequential || variable.isFinal()) {
+				st.addAggr("variables.{gVariableName, variableName}",
+						this.getGlobalVariableName(variable.name, operation),
+						variable.name);
+			} else if (isSequential && !variable.isFinal()) {
+				String allName = this.getAllocationName(variable.name,
+						operation);
+				st.addAggr("sequentialNonFinalVariables.{allName, arrName}",
+						allName, variable.name);
+			}
+		}
+		if (isSequential) {
+			st.addAggr("allocation.{body}", this
+					.createSequentialAllocationJavaFile(className, operation));
+			st.addAggr("inputSize.{name, XYZ}",
+					this.getInputXSizeVariableName(operation), "X");
+			if (operation.variable.typeName.equals(BitmapImage.getInstance()
+					.getClassName())
+					|| operation.variable.typeName.equals(HDRImage
+							.getInstance().getClassName())) {
+				st.addAggr("inputSize.{name, XYZ}",
+						this.getInputYSizeVariableName(operation), "Y");
+			}
 			st.addAggr("variables.{gVariableName, variableName}",
-					this.getGlobalVariableName(variable.name, operation),
-					varName);
+					this.getInputDataVariableName(operation),
+					variableAllocation);
+		}
+		return st.render();
+	}
+
+	/**
+	 * Create allocations for non-final variables in sequential operations.
+	 */
+	private String createSequentialAllocationJavaFile(String className,
+			Operation operation) {
+		ST st = new ST(templateSequentialAllocationJavaFile);
+		st.add("kernelName", this.commonDefinitions.getKernelName(className));
+		st.add("rsVarName", this.getRSVariableName());
+		st.add("externalVariables", null);
+		for (Variable variable : operation.getExternalVariables()) {
+			if (!variable.isFinal()) {
+				String allName = this.getAllocationName(variable.name,
+						operation);
+				String elementType = java2RSAllocationTypes
+						.get(variable.typeName);
+				String gName = this.getGlobalVariableName(variable.name,
+						operation);
+				String gNameOut = this.getOutputVariableName(variable.name,
+						operation);
+				st.addAggr(
+						"externalVariables.{allName, elementType, gName, gNameOut, name}",
+						allName, elementType, gName, gNameOut, variable.name);
+			}
 		}
 		return st.render();
 	}
@@ -294,7 +349,7 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 			userCode = this.translateVariable(userFunctionVariable,
 					this.cCodeTranslator.translate(userCode));
 		}
-		return this.createAllocation(operation)
+		return this.createSequentialAllocationRSFile(operation)
 				+ this.createKernelFunction(operation, userCode,
 						FunctionType.UserCode);
 	}
@@ -322,19 +377,20 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 		st.add("userFunctionVarType", userFunctionVarType);
 		String cCode = this.translateVariable(userFunctionVariable,
 				this.cCodeTranslator.translate(code2Translate)).trim();
-		st.add("allocation", this.createAllocation(operation));
+		st.add("allocation", this.createSequentialAllocationRSFile(operation));
 		st.add("externalVariables", null);
 		// Must replace all user variables names in code by those new global
 		// variables names
 		for (Variable variable : operation.getExternalVariables()) {
 			String gNameVar = this.getGlobalVariableName(variable.name,
 					operation);
-			String gNameOut = this.getGlobalVariableName(
-					"output" + this.upperCaseFirstLetter(variable.name),
-					operation);
-			st.addAggr(
-					"externalVariables.{ variableType, outVariableName, variableName }",
-					variable.typeName, gNameOut, gNameVar);
+			if (!variable.isFinal()) {
+				String gNameOut = this.getOutputVariableName(variable.name,
+						operation);
+				st.addAggr(
+						"externalVariables.{ variableType, outVariableName, variableName }",
+						variable.typeName, gNameOut, gNameVar);
+			}
 			cCode = cCode.replaceAll(variable.name, gNameVar);
 		}
 		String prefix = this.commonDefinitions.getPrefix();
@@ -366,8 +422,8 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 		return st.render();
 	}
 
-	private String createAllocation(Operation operation) {
-		ST st = new ST(templateAllocations);
+	private String createSequentialAllocationRSFile(Operation operation) {
+		ST st = new ST(templateSequentialAllocationRSFile);
 		st.add("inputData", this.getInputDataVariableName(operation));
 		String inputXSize = this.getInputXSizeVariableName(operation);
 		st.add("inputXSize", inputXSize);
@@ -380,10 +436,10 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 					this.getTileVariableName(operation));
 		}
 		for (Variable variable : operation.getExternalVariables()) {
-			String gNameOut = this.getGlobalVariableName(
-					"output" + this.upperCaseFirstLetter(variable.name),
+			String gNameOut = this.getOutputVariableName(variable.name,
 					operation);
-			st.addAggr("outVariable.{name}", gNameOut);
+			if (!variable.isFinal())
+				st.addAggr("outVariable.{name}", gNameOut);
 			String gNameVar = this.getGlobalVariableName(variable.name,
 					operation);
 			st.addAggr(
@@ -518,5 +574,16 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 
 	protected String getRSVariableName() {
 		return this.commonDefinitions.getPrefix() + "mRS";
+	}
+
+	protected String getOutputVariableName(String variableName,
+			Operation operation) {
+		return this.getGlobalVariableName(
+				"output" + this.upperCaseFirstLetter(variableName), operation);
+	}
+
+	protected String getAllocationName(String variableName, Operation operation) {
+		return this.getGlobalVariableName(variableName, operation)
+				+ "_Allocation";
 	}
 }
