@@ -181,7 +181,9 @@ public abstract class BaseTranslator implements UserLibraryTranslatorDefinition 
 		// Translate parallel iterators
 		if (iterator.getType() == IteratorType.Parallel) {
 			ret = this.translateParallelIterator(iterator);
-		} else {
+		}
+		else if(iterator.getEnclosingIterator() != null) ret = this.translateNestedIterator(iterator);
+		else {
 			ret = this.translateSequentialIterator(iterator);
 		}
 		return ret;
@@ -206,5 +208,8 @@ public abstract class BaseTranslator implements UserLibraryTranslatorDefinition 
 	 * @return C code with iterator's user code compatible with this runtime.
 	 */
 	abstract protected String translateSequentialIterator(Iterator iterator);
+	
+	//TODO: JAVADOC
+	abstract protected String translateNestedIterator(Iterator iterator);
 
 }

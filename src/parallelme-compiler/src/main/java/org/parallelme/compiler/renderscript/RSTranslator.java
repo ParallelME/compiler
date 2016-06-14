@@ -11,6 +11,8 @@ package org.parallelme.compiler.renderscript;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.antlr.v4.runtime.TokenStreamRewriter;
+import org.antlr.v4.runtime.misc.Interval;
 import org.parallelme.compiler.intermediate.Iterator;
 import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.intermediate.Iterator.IteratorType;
@@ -149,7 +151,15 @@ public abstract class RSTranslator extends BaseTranslator {
 	@Override
 	protected String translateParallelIterator(Iterator iterator) {
 		Variable userFunctionVariable = iterator.getUserFunctionData().variableArgument;
-		String code2Translate = iterator.getUserFunctionData().Code.trim();
+		//String code2Translate = iterator.getUserFunctionData().Code.trim(); TODO: Code should return what I've wrote below
+		
+		TokenStreamRewriter tokenStreamRewriter = new TokenStreamRewriter(iterator.getTokenStream());
+		for(Iterator nested : iterator.getNestedIterators()){
+			tokenStreamRewriter.replace(nested.getStatementAddress().start,nested.getStatementAddress().stop, this.translateNestedIterator(nested)); //TODO: Insert Nested Loop Generated code here			
+		}
+		
+		String code2Translate = tokenStreamRewriter.getText(Interval.of(iterator.getUserFunctionData().getTokenAddress().start.getTokenIndex(), iterator.getUserFunctionData().getTokenAddress().stop.getTokenIndex()));				
+		
 		// Remove the last curly brace
 		code2Translate = code2Translate.substring(0,
 				code2Translate.lastIndexOf("}"));
@@ -172,6 +182,37 @@ public abstract class RSTranslator extends BaseTranslator {
 				+ this.translateVariable(userFunctionVariable,
 						this.cCodeTranslator.translate(code2Translate));
 		return ret;
+	}
+	
+	protected String translateNestedIterator(Iterator iterator){
+		
+		String iteratorName = this.upperCaseFirstLetter(this.commonDefinitions
+				.getIteratorName(iterator));
+		
+		ST stFor = new ST(templateForLoop);
+		stFor.add("varName", "x");
+		stFor.add("varMaxVal", "gInputXSize" + iteratorName);
+		ST stForBody = new ST(templateForLoopSequentialBody);
+		stForBody.add("inputData", "gNameIn");
+		stForBody.add("userFunctionVarName", "userFunctionVariable.name");
+		stForBody.add("userFunctionVarType", "userFunctionVarType");
+		stForBody.add("userCode", iterator.getUserFunctionData().Code.trim()); //TODO: This code need to be translate
+		stForBody.add("param", null);
+		// BitmapImage and HDRImage types contains two for loops
+		if (iterator.getVariable().typeName.equals(BitmapImage.getName())
+				|| iterator.getVariable().typeName.equals(HDRImage.getName())) {
+			stForBody.addAggr("param.{name}", "y");
+			ST stFor2 = new ST(templateForLoop);
+			stFor2.add("varName", "y");
+			stFor2.add("varMaxVal", "gInputYSize" + iteratorName);
+			stFor2.add("body", stForBody.render());
+			stFor.add("body", stFor2.render());
+		} else {
+			// Array types
+			stFor.add("body", stForBody.render());
+		}
+
+		return stFor.render();
 	}
 
 	/**
@@ -201,8 +242,13 @@ public abstract class RSTranslator extends BaseTranslator {
 				.translateType(userFunctionVariable.typeName);
 		st.add("userFunctionVarName", userFunctionVariable.name);
 		st.add("userFunctionVarType", userFunctionVarType);
+		
+		
 		String cCode = this.translateVariable(userFunctionVariable,
 				this.cCodeTranslator.translate(code2Translate)).trim();
+		
+		
+		
 		for (Variable variable : iterator.getExternalVariables()) {
 			String gNameOut = this.getGlobalVariableName(
 					"output" + this.upperCaseFirstLetter(variable.name),

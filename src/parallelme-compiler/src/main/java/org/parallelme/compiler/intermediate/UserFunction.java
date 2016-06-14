@@ -8,6 +8,8 @@
 
 package org.parallelme.compiler.intermediate;
 
+import org.parallelme.compiler.symboltable.TokenAddress;
+
 /**
  * Stores user function data that must be translated to the target runtime.
  * 
@@ -16,10 +18,16 @@ package org.parallelme.compiler.intermediate;
 public class UserFunction {
 	public final String Code;
 	public final Variable variableArgument;
+	public final TokenAddress tokenAddress;
 
-	public UserFunction(String Code, Variable variableArgument) {
+	public TokenAddress getTokenAddress() {
+		return tokenAddress;
+	}
+
+	public UserFunction(String Code, Variable variableArgument, TokenAddress tokenAddress) {
 		this.Code = Code;
 		this.variableArgument = variableArgument;
+		this.tokenAddress = tokenAddress;
 	}
 
 	@Override

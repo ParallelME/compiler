@@ -155,7 +155,7 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 					&& this.currentIteratorData != null) {
 				this.getIteratorData();
 				this.currentIteratorData = this.currentIteratorData.getEnclosingIterator();
-				this.iteratorExternalVariables = this.stackIteratorExternalVariables.pop();
+				this.stackIteratorExternalVariables.pop();
 			}
 			this.statementTypes.pop();
 		}
@@ -205,7 +205,8 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 									argumentVariable.name,
 									argumentVariable.typeName,
 									argumentVariable.typeParameterName,
-									argumentVariable.modifier));
+									argumentVariable.modifier), new TokenAddress(methodBody.tokenAddress.start,
+											methodBody.tokenAddress.stop));
 					// Add all those external variables found on the iterator to
 					// be used in the second pass.
 					for (VariableSymbol variable : this.stackIteratorExternalVariables.peek()
@@ -218,7 +219,7 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 					}
 					this.currentIteratorData
 							.setUserFunctionData(userFunctionData);
-					this.iteratorsAndBinds.add(this.currentIteratorData);
+					if(this.currentIteratorData.getEnclosingIterator() == null )this.iteratorsAndBinds.add(this.currentIteratorData);
 				}
 			}
 		}
@@ -328,7 +329,7 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 		this.currentIteratorData = new Iterator(variableParameter,
 				this.iteratorsAndBinds.size() + this.lastFunctionCount,
 				new TokenAddress(this.currentStatement.start,
-						this.currentStatement.stop), enclosingIterator);
+						this.currentStatement.stop), enclosingIterator, this.tokenStream);
 	}
 
 	/**

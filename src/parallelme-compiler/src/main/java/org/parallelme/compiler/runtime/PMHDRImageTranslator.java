@@ -9,6 +9,7 @@
 package org.parallelme.compiler.runtime;
 
 import org.parallelme.compiler.intermediate.InputBind;
+import org.parallelme.compiler.intermediate.Iterator;
 import org.parallelme.compiler.intermediate.OutputBind;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.translation.userlibrary.HDRImageTranslator;
@@ -97,5 +98,11 @@ public class PMHDRImageTranslator extends PMImageTranslator implements
 	@Override
 	public String translateOutputBind(String className, OutputBind outputBind) {
 		return templateKernelToBitmap;
+	}
+
+	@Override
+	protected String translateNestedIterator(Iterator iterator) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 }

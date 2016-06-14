@@ -140,19 +140,23 @@ public class CompilerCodeTranslator {
 		for (UserLibraryData userLibraryData : iteratorsAndBinds) {
 			if (userLibraryData instanceof Iterator) {
 				Iterator iterator = (Iterator) userLibraryData;
-				List<Variable> variables = iterator.getExternalVariables();
-				Iterator.IteratorType iteratorType = IteratorType.Parallel;
-				for (int i = 0; i < variables.size()
-						&& iteratorType == IteratorType.Parallel; i++) {
-					if (!variables.get(i).modifier.equals("final")) {
-						SimpleLogger
-								.warn("Iterator with non-final external variable in line "
-										+ iterator.getStatementAddress().start
-												.getLine()
-										+ " will be translated to a sequential iterator in the target runtime.");
-						iteratorType = IteratorType.Sequential;
+				Iterator.IteratorType iteratorType;
+				if(iterator.getEnclosingIterator() == null){ //Most external loop can be parallel
+					List<Variable> variables = iterator.getExternalVariables();
+					iteratorType = IteratorType.Parallel;
+					for (int i = 0; i < variables.size()
+							&& iteratorType == IteratorType.Parallel; i++) {
+						if (!variables.get(i).modifier.equals("final")) {
+							SimpleLogger
+									.warn("Iterator with non-final external variable in line "
+											+ iterator.getStatementAddress().start
+													.getLine()
+											+ " will be translated to a sequential iterator in the target runtime.");
+							iteratorType = IteratorType.Sequential;
+						}
 					}
 				}
+				else iteratorType = IteratorType.Sequential;
 				iterator.setType(iteratorType);
 			}
 		}
@@ -293,6 +297,25 @@ public class CompilerCodeTranslator {
 		}
 		return ret;
 	}
+	
+	private void translateIterator(Iterator iterator, HashSet<Variable> variables, ArrayList<Iterator> iterators, ClassSymbol classSymbol, TokenStreamRewriter tokenStreamRewriter) throws CompilationException{
+		for(Iterator i : iterator.getNestedIterators()) this.translateIterator(i, variables, iterators, classSymbol, tokenStreamRewriter);		
+		// 1. Iterators are translated on a single runtime call,
+		// so they must be grouped on a single list.
+		iterators.add(iterator);
+		// 2. Replace iterator code
+		String iteratorCall = this.runtime.getTranslator(
+				iterator.getVariable().typeName).translateIteratorCall(
+				classSymbol.name, iterator);
+		tokenStreamRewriter.replace(
+				iterator.getStatementAddress().start,
+				iterator.getStatementAddress().stop, iteratorCall);
+		// 3. Control user library variables in order to initialize
+		// allocation and type variables for each of them.
+		if (!variables.contains(iterator.getVariable())) {
+			variables.add(iterator.getVariable());
+		}
+	}
 
 	/**
 	 * Replace iterators and initialize its runtime-equivalent functions.
@@ -314,23 +337,9 @@ public class CompilerCodeTranslator {
 		HashSet<Variable> variables = new HashSet<>();
 		ArrayList<Iterator> iterators = new ArrayList<>();
 		for (UserLibraryData userLibraryData : iteratorsAndBinds) {
-			if (userLibraryData instanceof Iterator) {
+			if (userLibraryData instanceof Iterator) {				
 				Iterator iterator = (Iterator) userLibraryData;
-				// 1. Iterators are translated on a single runtime call,
-				// so they must be grouped on a single list.
-				iterators.add(iterator);
-				// 2. Replace iterator code
-				String iteratorCall = this.runtime.getTranslator(
-						iterator.getVariable().typeName).translateIteratorCall(
-						classSymbol.name, iterator);
-				tokenStreamRewriter.replace(
-						iterator.getStatementAddress().start,
-						iterator.getStatementAddress().stop, iteratorCall);
-				// 3. Control user library variables in order to initialize
-				// allocation and type variables for each of them.
-				if (!variables.contains(iterator.getVariable())) {
-					variables.add(iterator.getVariable());
-				}
+				this.translateIterator(iterator, variables, iterators, classSymbol, tokenStreamRewriter);
 			}
 		}
 		return iterators;

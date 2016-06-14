@@ -11,6 +11,7 @@ package org.parallelme.compiler.intermediate;
 import java.util.ArrayList;
 
 import org.parallelme.compiler.symboltable.TokenAddress;
+import org.antlr.v4.runtime.TokenStream;
 
 /**
  * Intermediate representation for iterators.
@@ -27,18 +28,42 @@ public class Iterator extends UserLibraryData implements Cloneable {
 	private TokenAddress statementAddress;
 	private IteratorType type;
 	private Iterator enclosingIterator;
+	private ArrayList<Iterator> nestedIterators;
+	
+	private TokenStream tokenStream; //Just Token Address is not enough
+
+	public TokenStream getTokenStream() {
+		return tokenStream;
+	}
+
+	public void setTokenStream(TokenStream tokenStream) {
+		this.tokenStream = tokenStream;
+	}
 
 	public Iterator(Variable variableParameter, int sequentialNumber,
-			TokenAddress statementAddress, Iterator enclosingIterator) {
+			TokenAddress statementAddress, Iterator enclosingIterator, TokenStream tokenStream) {
 		super(variableParameter, sequentialNumber);
 		this.externalVariables = new ArrayList<>();
 		this.setType(type);
 		this.setStatementAddress(statementAddress);
-		this.enclosingIterator = enclosingIterator;
+		this.tokenStream = tokenStream;
+		this.nestedIterators = new ArrayList<Iterator>();
+		if(enclosingIterator != null){
+			this.enclosingIterator = enclosingIterator;
+			enclosingIterator.addNestedIterator(this);
+		}
 	}
 	
 	public Iterator getEnclosingIterator(){
 		return this.enclosingIterator;
+	}
+	
+	public void addNestedIterator(Iterator nestedIterator){
+		this.nestedIterators.add(nestedIterator);
+	}
+	
+	public ArrayList<Iterator> getNestedIterators(){
+		return this.nestedIterators;
 	}
 
 	public UserFunction getUserFunctionData() {
@@ -87,4 +112,5 @@ public class Iterator extends UserLibraryData implements Cloneable {
 	        return null; 
 	    }
 	}
+		
 }
