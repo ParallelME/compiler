@@ -164,8 +164,17 @@ public abstract class RSTranslator extends BaseTranslator {
 			
 			//TODO: If it's an image should be two max values
 			//TODO: Remove this "magic string" "gInputXSize". This string should be a constant on this class because it's used in another place too
-			//TODO: "Int32" should be a enumerator inside Variable class so I could use VariableType.INT32
+			//TODO: "int" should be a enumerator (Another case of Magic String)
 			variables.add(new Variable("gInputXSize" + iteratorName, "int", "", "" )); //Add max value of each nested loop as a external variable
+			
+			String variableName = this
+					.upperCaseFirstLetter(iterator.getVariable().name);
+			
+			String gNameIn = this.getGlobalVariableName("input" + variableName,
+					iterator);				
+			
+			variables.add(new Variable(gNameIn, "rs_allocation", "", "" ));
+			
 			tokenStreamRewriter.replace(nested.getStatementAddress().start,nested.getStatementAddress().stop, this.translateNestedIterator(nested)); //TODO: Insert Nested Loop Generated code here			
 		}
 		
@@ -202,11 +211,17 @@ public abstract class RSTranslator extends BaseTranslator {
 		String iteratorName = this.upperCaseFirstLetter(this.commonDefinitions
 				.getIteratorName(iterator));
 		
+		String variableName = this
+				.upperCaseFirstLetter(iterator.getVariable().name);
+		
+		String gNameIn = this.getGlobalVariableName("input" + variableName,
+				iterator);		
+		
 		ST stFor = new ST(templateForLoop);
 		stFor.add("varName", "x");
 		stFor.add("varMaxVal", "gInputXSize" + iteratorName);
 		ST stForBody = new ST(templateForLoopSequentialBody);
-		stForBody.add("inputData", "gNameIn");
+		stForBody.add("inputData", gNameIn);
 		stForBody.add("userFunctionVarName", "userFunctionVariable.name");
 		stForBody.add("userFunctionVarType", "userFunctionVarType");
 		stForBody.add("userCode", iterator.getUserFunctionData().Code.trim()); //TODO: This code need to be translate
