@@ -168,14 +168,19 @@ public abstract class RSTranslator extends BaseTranslator {
 			variables.add(new Variable("gInputXSize" + iteratorName, "int", "", "" )); //Add max value of each nested loop as a external variable
 			
 			String variableName = this
-					.upperCaseFirstLetter(iterator.getVariable().name);
+					.upperCaseFirstLetter(nested.getVariable().name);
 			
 			String gNameIn = this.getGlobalVariableName("input" + variableName,
-					iterator);				
+					nested);				
 			
 			variables.add(new Variable(gNameIn, "rs_allocation", "", "" ));
 			
-			tokenStreamRewriter.replace(nested.getStatementAddress().start,nested.getStatementAddress().stop, this.translateNestedIterator(nested)); //TODO: Insert Nested Loop Generated code here			
+			Variable nestedUserFunctionVariable = nested.getUserFunctionData().variableArgument;
+			
+			String userFunctionVarDeclaration = "\t"+this
+					.translateType(nestedUserFunctionVariable.typeName)+" "+nestedUserFunctionVariable.name+";\n";
+			
+			tokenStreamRewriter.replace(nested.getStatementAddress().start,nested.getStatementAddress().stop, userFunctionVarDeclaration + this.translateNestedIterator(nested)); //TODO: Insert Nested Loop Generated code here			
 		}
 		
 		String code2Translate = tokenStreamRewriter.getText(Interval.of(iterator.getUserFunctionData().getTokenAddress().start.getTokenIndex(), iterator.getUserFunctionData().getTokenAddress().stop.getTokenIndex()));				
@@ -208,6 +213,11 @@ public abstract class RSTranslator extends BaseTranslator {
 	
 	protected String translateNestedIterator(Iterator iterator){
 		
+		Variable userFunctionVariable = iterator.getUserFunctionData().variableArgument;
+		
+		String userFunctionVarType = this
+				.translateType(userFunctionVariable.typeName);
+		
 		String iteratorName = this.upperCaseFirstLetter(this.commonDefinitions
 				.getIteratorName(iterator));
 		
@@ -222,8 +232,8 @@ public abstract class RSTranslator extends BaseTranslator {
 		stFor.add("varMaxVal", "gInputXSize" + iteratorName);
 		ST stForBody = new ST(templateForLoopSequentialBody);
 		stForBody.add("inputData", gNameIn);
-		stForBody.add("userFunctionVarName", "userFunctionVariable.name");
-		stForBody.add("userFunctionVarType", "userFunctionVarType");
+		stForBody.add("userFunctionVarName", userFunctionVariable.name);
+		stForBody.add("userFunctionVarType", userFunctionVarType);
 		stForBody.add("userCode", iterator.getUserFunctionData().Code.trim()); //TODO: This code need to be translate
 		stForBody.add("param", null);
 		// BitmapImage and HDRImage types contains two for loops
