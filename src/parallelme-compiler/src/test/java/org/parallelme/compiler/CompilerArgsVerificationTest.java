@@ -26,7 +26,7 @@ public class CompilerArgsVerificationTest {
 	@Test
 	public void checkValidArgs() throws Exception {
 		String args[] = new String[4];
-		String file = "../samples/BitmapLoaderTest.java";
+		String file = "../samples/BitmapUserLibraryTest.java";
 		String destinationFolder = "./";
 		args[0] = "-f";
 		args[1] = file;
@@ -57,7 +57,7 @@ public class CompilerArgsVerificationTest {
 	@Test
 	public void checkInvalidArgs() throws Exception {
 		String args[] = new String[4];
-		String file = "../samples/BitmapLoaderTest.java";
+		String file = "../samples/BitmapUserLibraryTest.java";
 		String destinationFolder = "./";
 		args[0] = "-f";
 		args[1] = file;
@@ -79,7 +79,7 @@ public class CompilerArgsVerificationTest {
 	@Test(expected = Exception.class)
 	public void checkInvalidPath() throws Exception {
 		String args[] = new String[4];
-		String file = "../samples/BitmapLoaderTest.java";
+		String file = "../samples/BitmapUserLibraryTest.java";
 		String destinationFolder = "./";
 		args[0] = "-f";
 		args[1] = "-o";
@@ -94,7 +94,7 @@ public class CompilerArgsVerificationTest {
 	@Test
 	public void checkInsuficientArgs() throws Exception {
 		String args[] = new String[3];
-		String file = "../samples/BitmapLoaderTest.java";
+		String file = "../samples/BitmapUserLibraryTest.java";
 		String destinationFolder = "./";
 		args[0] = "-f";
 		args[1] = file;
@@ -140,7 +140,7 @@ public class CompilerArgsVerificationTest {
 	@Test(expected = Exception.class)
 	public void checkInvalidOutputFolder() throws Exception {
 		String args[] = new String[4];
-		String file = "../samples/BitmapLoaderTest.java";
+		String file = "../samples/BitmapUserLibraryTest.java";
 		String destinationFolder = "./NotAValidFolderNamePM_";
 		args[0] = "-f";
 		args[1] = file;
