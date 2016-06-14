@@ -177,14 +177,15 @@ public abstract class BaseTranslator implements UserLibraryTranslatorDefinition 
 	 */
 	@Override
 	public String translateIterator(String className, Iterator iterator) {
-		String ret;
+		String ret = "";
 		// Translate parallel iterators
-		if (iterator.getType() == IteratorType.Parallel) {
-			ret = this.translateParallelIterator(iterator);
-		}
-		else if(iterator.getEnclosingIterator() != null) ret = this.translateNestedIterator(iterator);
-		else {
-			ret = this.translateSequentialIterator(iterator);
+		if(iterator.getEnclosingIterator() == null){
+			if (iterator.getType() == IteratorType.Parallel) {
+				ret = this.translateParallelIterator(iterator);
+			}		
+			else {
+				ret = this.translateSequentialIterator(iterator);
+			}
 		}
 		return ret;
 	}
