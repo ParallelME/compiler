@@ -8,6 +8,7 @@
 
 package org.parallelme.compiler.renderscript;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -154,7 +155,17 @@ public abstract class RSTranslator extends BaseTranslator {
 		//String code2Translate = iterator.getUserFunctionData().Code.trim(); TODO: Code should return what I've wrote below
 		
 		TokenStreamRewriter tokenStreamRewriter = new TokenStreamRewriter(iterator.getTokenStream());
+		ArrayList<Variable> variables = iterator.getExternalVariables();
+		
+		
 		for(Iterator nested : iterator.getNestedIterators()){
+			String iteratorName = this.upperCaseFirstLetter(this.commonDefinitions
+					.getIteratorName(nested));
+			
+			//TODO: If it's an image should be two max values
+			//TODO: Remove this "magic string" "gInputXSize". This string should be a constant on this class because it's used in another place too
+			//TODO: "Int32" should be a enumerator inside Variable class so I could use VariableType.INT32
+			variables.add(new Variable("gInputXSize" + iteratorName, "int", "", "" )); //Add max value of each nested loop as a external variable
 			tokenStreamRewriter.replace(nested.getStatementAddress().start,nested.getStatementAddress().stop, this.translateNestedIterator(nested)); //TODO: Insert Nested Loop Generated code here			
 		}
 		
@@ -168,6 +179,8 @@ public abstract class RSTranslator extends BaseTranslator {
 		code2Translate = code2Translate + "\n" + returnString + "\n}";
 		// Insert external variables as global variables
 		StringBuffer externalVariables = new StringBuffer();
+				
+		
 		for (Variable variable : iterator.getExternalVariables()) {
 			String gVariableName = this.getGlobalVariableName(variable.name,
 					iterator);
