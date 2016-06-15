@@ -17,7 +17,7 @@ import org.apache.commons.io.FileUtils;
 import org.parallelme.compiler.SimpleLogger;
 
 /**
- * File writer to be used write translated code.
+ * Offers support for writing translated code.
  * 
  * @author Wilson de Carvalho
  */

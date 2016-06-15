@@ -22,6 +22,7 @@ import org.parallelme.compiler.intermediate.*;
 import org.parallelme.compiler.intermediate.Operation.ExecutionType;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.userlibrary.classes.*;
+import org.parallelme.compiler.util.ResourceWriter;
 import org.stringtemplate.v4.ST;
 
 /**
@@ -224,6 +225,6 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	@Override
 	public void exportInternalLibrary(String packageName,
 			String destinationFolder) throws IOException {
-		this.exportResource("ParallelME", destinationFolder);
+		ResourceWriter.exportResource("ParallelME", destinationFolder);
 	}
 }
