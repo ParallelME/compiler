@@ -333,15 +333,15 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 	 * Gets the operation data from a variable symbol and stores on the
 	 * currentOperationData object.
 	 * 
-	 * @param variable
+	 * @param variableSymbol
 	 *            User library variable symbol that corresponds to the operation
 	 *            variable.
 	 */
-	private void createOperation(UserLibraryVariableSymbol variable,
+	private void createOperation(UserLibraryVariableSymbol variableSymbol,
 			JavaParser.ExpressionContext etx) {
-		Variable variableParameter = new Variable(variable.name,
-				variable.typeName, variable.typeParameterName,
-				variable.modifier, variable.identifier);
+		Variable variable = new Variable(variableSymbol.name,
+				variableSymbol.typeName, variableSymbol.typeParameterName,
+				variableSymbol.modifier, variableSymbol.identifier);
 		OperationType operationType;
 		Variable destinationVariable = null;
 		if (UserLibraryCollectionClass.getOperationMethods().contains(
@@ -349,7 +349,7 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 			if (this.operationName.equals(UserLibraryCollectionClass
 					.getForeachMethodName())) {
 				operationType = OperationType.Foreach;
-				this.currentOperationData = new Operation(variableParameter,
+				this.currentOperationData = new Operation(variable,
 						++operationCount, new TokenAddress(
 								this.currentStatement.start,
 								this.currentStatement.stop), operationType,
@@ -361,7 +361,7 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 						.variableDeclarators().variableDeclarator(0)
 						.variableDeclaratorId().getText();
 				destinationVariable = this.getVariable(variableName);
-				this.currentOperationData = new Operation(variableParameter,
+				this.currentOperationData = new Operation(variable,
 						++operationCount, new TokenAddress(
 								this.currentVariableStatement.start,
 								this.currentVariableStatement.stop),

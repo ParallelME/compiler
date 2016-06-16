@@ -36,10 +36,10 @@ public class Operation extends UserLibraryData {
 
 	private ExecutionType executionType;
 
-	public Operation(Variable variableParameter, int sequentialNumber,
+	public Operation(Variable variable, int sequentialNumber,
 			TokenAddress statementAddress, OperationType operationType,
 			Variable destinationVariable) {
-		super(variableParameter, sequentialNumber);
+		super(variable, sequentialNumber);
 		this.externalVariables = new ArrayList<>();
 		this.setExecutionType(executionType);
 		this.statementAddress = statementAddress;

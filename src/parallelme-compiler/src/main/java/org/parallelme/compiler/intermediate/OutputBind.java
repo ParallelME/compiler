@@ -17,7 +17,13 @@ import org.parallelme.compiler.symboltable.TokenAddress;
  */
 public class OutputBind extends UserLibraryData {
 	public enum OutputBindType {
-		Assignment, DeclarativeAssignment, None;
+		// varName = var.method();
+		// varName = (castType) var.method();
+		Assignment, 
+		// Type varName = var.method();
+		// Type varName = (castType) var.method();		
+		DeclarativeAssignment, 
+		None;
 	}
 
 	public final Variable destinationObject;

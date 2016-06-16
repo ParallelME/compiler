@@ -28,7 +28,7 @@ import org.stringtemplate.v4.ST;
 public abstract class PMImageTranslator extends PMTranslator implements
 		HDRImageTranslator {
 	private static final String templateMethodCall = "return ParallelMERuntime.getInstance().<methodName>(<params:{var|<var.name>}; separator=\", \">);";
-	private static final String templateOutputBindCall1 = "bitmap = Bitmap.createBitmap(\n"
+	private static final String templateOutputBindCall1 = "<bitmapVar> = Bitmap.createBitmap(\n"
 			+ "\tParallelMERuntime.getInstance().getWidth(<imagePointer>),\n"
 			+ "\tParallelMERuntime.getInstance().getHeight(<imagePointer>),\n"
 			+ "\tBitmap.Config.ARGB_8888);\n";
@@ -53,6 +53,7 @@ public abstract class PMImageTranslator extends PMTranslator implements
 		// object type and name.
 		if (outputBind.outputBindType != OutputBindType.None) {
 			ST st = new ST(templateOutputBindCall1);
+			st.add("bitmapVar", outputBind.destinationObject.name);
 			st.add("imagePointer",
 					this.commonDefinitions.getPointerName(outputBind.variable));
 			ret.append(st.render());
