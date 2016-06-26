@@ -28,7 +28,7 @@ import org.stringtemplate.v4.ST;
 public class PMArrayTranslator extends PMTranslator implements ArrayTranslator {
 	private static final String templateInputBindObjCreation = "<arrayPointer> = ParallelMERuntime.getInstance().createArray(<arrayName>);";
 	private static final String templateOutputBindCall1 = "<name> = (<type>) java.lang.reflect.Array.newInstance(<baseType>.class,\n"
-			+ "\tParallelMERuntime.getInstance().getLength(<arrayPointer>);\n";
+			+ "\tParallelMERuntime.getInstance().getLength(<arrayPointer>));\n";
 	private static final String templateOutputBindCall2 = "ParallelMERuntime.getInstance().toArray(<arrayPointer>, <arrayName>);";
 
 	public PMArrayTranslator(CTranslator cCodeTranslator) {

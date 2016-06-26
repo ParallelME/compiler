@@ -111,6 +111,14 @@ public abstract class BaseUserLibraryTranslator implements
 	@Override
 	public List<String> translateOperation(Operation operation) {
 		List<String> ret = new ArrayList<>();
+		// If a given operation contains non-final variables, it will be
+		// translated to a sequential version.
+		for (Variable variable : operation.getExternalVariables()) {
+			if (!variable.isFinal()) {
+				operation.setExecutionType(ExecutionType.Sequential);
+				break;
+			}
+		}
 		// Translate parallel operations
 		if (operation.getExecutionType() == ExecutionType.Parallel) {
 			if (operation.operationType == OperationType.Foreach) {
@@ -200,7 +208,8 @@ public abstract class BaseUserLibraryTranslator implements
 	abstract protected String translateSequentialReduce(Operation operation);
 
 	/**
-	 * Given an operation and its body, creates a String with the equivalent kernelF function. 
+	 * Given an operation and its body, creates a String with the equivalent
+	 * kernelF function.
 	 */
 	protected String createKernelFunction(Operation operation, String body,
 			FunctionType functionType) {

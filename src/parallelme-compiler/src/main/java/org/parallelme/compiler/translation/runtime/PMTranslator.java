@@ -218,7 +218,7 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 				.getClassName())
 				|| operation.variable.typeName.equals(HDRImage.getInstance()
 						.getClassName())) {
-			stForY.add("varName", x);
+			stForY.add("varName", y);
 			stForY.add("varMaxVal", this.getHeightVariableName());
 			dataInDeclaration = String.format("%s %s = %s[%s*%s+%s];\n",
 					this.commonDefinitions
@@ -238,7 +238,7 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 			// Array
 			stForY.add("varName", x);
 			stForY.add("varMaxVal", this.getLengthVariableName());
-			dataInDeclaration = String.format("%s = %s[%s];\n",
+			dataInDeclaration = String.format("%s %s = %s[%s];\n",
 					this.commonDefinitions
 							.translateType(userFunctionVariable.typeName),
 					userFunctionVariable.name, this.getDataVariableName(), x);
@@ -252,6 +252,7 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 		// Each external non-final variable value must fill its equivalent
 		// output
 		// variable so its value can be taken back to JVM.
+		st.add("externalVariables", null);
 		for (Variable variable : operation.getExternalVariables()) {
 			if (!variable.isFinal())
 				st.addAggr("externalVariables.{outVariableName, variableName}",
