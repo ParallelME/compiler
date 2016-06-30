@@ -10,6 +10,8 @@ package org.parallelme.compiler.translation.runtime;
 
 import org.parallelme.compiler.intermediate.MethodCall;
 import org.parallelme.compiler.intermediate.Operation;
+import org.parallelme.compiler.intermediate.Variable;
+import org.parallelme.compiler.intermediate.Operation.ExecutionType;
 import org.parallelme.compiler.intermediate.Operation.OperationType;
 import org.parallelme.compiler.intermediate.OutputBind;
 import org.parallelme.compiler.intermediate.OutputBind.OutputBindType;
@@ -33,8 +35,7 @@ public abstract class PMImageTranslator extends PMTranslator implements
 			+ "\tParallelMERuntime.getInstance().getHeight(<imagePointer>),\n"
 			+ "\tBitmap.Config.ARGB_8888);\n";
 	private static final String templateOutputBindCall2 = "ParallelMERuntime.getInstance().toBitmap<className>(<imagePointer>, <bitmapName>);";
-	private static final String templateOperationCall = ""
-			+ "<destinationVariable:{var|<var.nativeReturnType>[] <var.name> = new <var.nativeReturnType>[<var.size>];\n}>"
+	private static final String templateOperationCall = "<destinationVariable:{var|<var.nativeReturnType>[] <var.name> = new <var.nativeReturnType>[<var.size>];\n}>"
 			+ "<operationName>(<params:{var|<var.name>}; separator=\", \">);"
 			+ "<destinationVariable:{var|\n\nreturn new <var.methodReturnType>(<var.name>[0], <var.name>[1], <var.name>[2], <var.name>[3], -1, -1);}>";
 
@@ -116,5 +117,67 @@ public abstract class PMImageTranslator extends PMTranslator implements
 			st.add("destinationVariable", null);
 		}
 		return st.render();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	protected String translateReduce(Operation operation) {
+		ST st = new ST(templateReduce);
+		ST stForLoop = new ST(templateForLoop);
+		ST stForBody = new ST(templateReduceForBody);
+		String xVar = this.commonDefinitions.getPrefix() + "x";
+		stForLoop.add("varName", xVar);
+		stForBody.add("xVar", xVar);
+		Variable inputVar1 = operation.getUserFunctionData().arguments.get(0);
+		Variable inputVar2 = operation.getUserFunctionData().arguments.get(1);
+		stForBody.add("inputVar1", inputVar1.name);
+		st.add("inputVar1", inputVar1.name);
+		stForBody.add("inputVar2", inputVar2.name);
+		stForBody.add("userFunctionName",
+				this.commonDefinitions.getOperationUserFunctionName(operation));
+		st.add("destinationVar", this.commonDefinitions.getPrefix()
+				+ operation.destinationVariable.name);
+		// Takes the first var, since they must be the same for reduce
+		// operations
+		String varType = this.commonDefinitions
+				.translateType(inputVar1.typeName);
+		boolean isSequential = operation.getExecutionType() == ExecutionType.Sequential;
+		String dataVar = isSequential ? getDataVariableName()
+				: getTileVariableName();
+		stForBody.add("dataVar", dataVar);
+		st.addAggr("decl.{expression}",
+				getExpression(varType, inputVar1.name, dataVar + "[0]"));
+		st.addAggr("decl.{expression}",
+				getExpression(varType, inputVar2.name, ""));
+		if (isSequential)
+			stForLoop.add("varMaxVal", this.getWorkSizeVariableName());
+		else
+			stForLoop.add("varMaxVal", this.getHeightVariableName());
+		if (isSequential) {
+			st.addAggr(
+					"decl.{expression}",
+					getExpression("int", getWorkSizeVariableName(),
+							getHeightVariableName() + "*"
+									+ getWidthVariableName()));
+		}
+		stForBody.add("params", null);
+		for (Variable variable : operation.getExternalVariables()) {
+			stForBody.addAggr("params.{name}", variable.name);
+			if (isSequential && !variable.isFinal()) {
+				stForBody.addAggr("params.{name}",
+						this.commonDefinitions.getPrefix() + variable.name);
+			}
+		}
+		if (isSequential) {
+			stForLoop.add("initValue", "0");
+		} else {
+			stForLoop.add("initValue", "1");
+		}
+		stForLoop.add("body", stForBody.render());
+		st.addAggr("forLoop.{loop}", stForLoop.render());
+		return createKernelFunction(operation, st.render(),
+				FunctionType.BaseOperation);
 	}
 }

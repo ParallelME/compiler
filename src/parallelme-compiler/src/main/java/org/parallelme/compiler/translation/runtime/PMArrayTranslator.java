@@ -13,11 +13,15 @@ import java.util.List;
 
 import org.parallelme.compiler.intermediate.InputBind;
 import org.parallelme.compiler.intermediate.MethodCall;
+import org.parallelme.compiler.intermediate.Operation;
 import org.parallelme.compiler.intermediate.OutputBind;
+import org.parallelme.compiler.intermediate.Operation.ExecutionType;
+import org.parallelme.compiler.intermediate.Operation.OperationType;
 import org.parallelme.compiler.intermediate.OutputBind.OutputBindType;
 import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.translation.userlibrary.ArrayTranslator;
+import org.parallelme.compiler.userlibrary.UserLibraryClassFactory;
 import org.stringtemplate.v4.ST;
 
 /**
@@ -30,6 +34,9 @@ public class PMArrayTranslator extends PMTranslator implements ArrayTranslator {
 	private static final String templateOutputBindCall1 = "<name> = (<type>) java.lang.reflect.Array.newInstance(<baseType>.class,\n"
 			+ "\tParallelMERuntime.getInstance().getLength(<arrayPointer>));\n";
 	private static final String templateOutputBindCall2 = "ParallelMERuntime.getInstance().toArray(<arrayPointer>, <arrayName>);";
+	private static final String templateOperationCall = "<destinationVariable:{var|<var.nativeReturnType>[] <var.name> = new <var.nativeReturnType>[<var.size>];\n}>"
+			+ "<operationName>(<params:{var|<var.name>}; separator=\", \">);"
+			+ "<destinationVariable:{var|\n\nreturn new <var.methodReturnType>(<var.name>[0]);}>";
 
 	public PMArrayTranslator(CTranslator cCodeTranslator) {
 		super(cCodeTranslator);
@@ -106,6 +113,100 @@ public class PMArrayTranslator extends PMTranslator implements ArrayTranslator {
 	 */
 	public String translateMethodCall(String className, MethodCall methodCall) {
 		return "";
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	public String translateOperationCall(String className, Operation operation) {
+		ST st = new ST(templateOperationCall);
+		this.fillOperationCallBaseInfo(st, operation);
+		if (operation.destinationVariable != null) {
+			String nativeReturnType = "";
+			String methodReturnType = "";
+			String size = "";
+			String variableName = this.commonDefinitions.getPrefix()
+					+ operation.destinationVariable.name;
+			// These variables must be set to different values when map and
+			// filter operations are implemented.
+			if (operation.operationType == OperationType.Reduce) {
+				nativeReturnType = this.commonDefinitions
+						.translateType(operation.variable.typeParameterName);
+				methodReturnType = UserLibraryClassFactory.getClass(
+						operation.variable.typeParameterName).getClassName();
+				size = "1";
+			}
+			st.addAggr(
+					"destinationVariable.{name, nativeReturnType, methodReturnType, size}",
+					variableName, nativeReturnType, methodReturnType, size);
+			st.addAggr("params.{name}", variableName);
+		} else {
+			st.add("destinationVariable", null);
+		}
+		return st.render();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	protected String translateReduce(Operation operation) {
+		String templateReduce = "<decl:{var|\t\t<var.expression>;\n}>"
+				+ "\t<forLoop:{var|<var.loop>}>"
+				+ "\t*<destinationVar> = <inputVar1>;\n";
+		ST st = new ST(templateReduce);
+		ST stForLoop = new ST(templateForLoop);
+		ST stForLoop2 = new ST(templateForLoop);
+		ST stForBody = new ST(templateReduceForBody);
+		String xVar = this.commonDefinitions.getPrefix() + "x";
+		stForLoop.add("varName", xVar);
+		stForBody.add("xVar", xVar);
+		Variable inputVar1 = operation.getUserFunctionData().arguments.get(0);
+		Variable inputVar2 = operation.getUserFunctionData().arguments.get(1);
+		stForBody.add("inputVar1", inputVar1.name);
+		st.add("inputVar1", inputVar1.name);
+		stForBody.add("inputVar2", inputVar2.name);
+		stForBody.add("userFunctionName",
+				this.commonDefinitions.getOperationUserFunctionName(operation));
+		// Takes the first var, since they must be the same for reduce
+		// operations
+		String varType = this.commonDefinitions
+				.translateType(inputVar1.typeName);
+		boolean isSequential = operation.getExecutionType() == ExecutionType.Sequential;
+		String dataVar = isSequential ? getDataVariableName()
+				: getTileVariableName();
+		st.add("destinationVar", this.commonDefinitions.getPrefix()
+				+ operation.destinationVariable.name);
+		stForBody.add("dataVar", dataVar);
+		st.addAggr("decl.{expression}",
+				getExpression(varType, inputVar1.name, dataVar + "[0]"));
+		st.addAggr("decl.{expression}",
+				getExpression(varType, inputVar2.name, ""));
+		stForBody.add("params", null);
+		for (Variable variable : operation.getExternalVariables()) {
+			stForBody.addAggr("params.{name}", variable.name);
+			if (isSequential && !variable.isFinal()) {
+				stForBody.addAggr("params.{name}",
+						this.commonDefinitions.getPrefix() + variable.name);
+			}
+		}
+		stForLoop.add("initValue", "1");
+		stForLoop.add("varMaxVal", isSequential ? getLengthVariableName()
+				: getTileSizeVariableName());
+		stForLoop.add("body", stForBody.render());
+		st.addAggr("forLoop.{loop}", stForLoop.render());
+		stForBody.remove("dataVar");
+		stForBody.add("dataVar", getDataVariableName());
+		if (!isSequential) {
+			stForLoop2.add("initValue", String.format(
+					"(int) pow(floor(sqrt(%s)), 2)", getLengthVariableName()));
+			stForLoop2.add("varName", xVar);
+			stForLoop2.add("varMaxVal", getLengthVariableName());
+			stForLoop2.add("body", stForBody.render());
+			st.addAggr("forLoop.{loop}", stForLoop2.render());
+		}
+		return createKernelFunction(operation, st.render(),
+				FunctionType.BaseOperation);
 	}
 
 	/**

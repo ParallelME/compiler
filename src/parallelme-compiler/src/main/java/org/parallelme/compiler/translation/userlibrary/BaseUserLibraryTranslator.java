@@ -126,7 +126,7 @@ public abstract class BaseUserLibraryTranslator implements
 			} else if (operation.operationType == OperationType.Reduce) {
 				// C functions must be declared before used, so user function
 				// must be the first
-				ret.add(this.translateParallelReduceUserFunction(operation));
+				ret.add(this.translateReduceUserFunction(operation));
 				ret.add(this.translateParallelReduceTile(operation));
 				ret.add(this.translateParallelReduce(operation));
 			} else {
@@ -137,6 +137,7 @@ public abstract class BaseUserLibraryTranslator implements
 			if (operation.operationType == OperationType.Foreach) {
 				ret.add(this.translateSequentialForeach(operation));
 			} else if (operation.operationType == OperationType.Reduce) {
+				ret.add(this.translateReduceUserFunction(operation));
 				ret.add(this.translateSequentialReduce(operation));
 			} else {
 				throw new RuntimeException("Invalid operation: "
@@ -177,15 +178,13 @@ public abstract class BaseUserLibraryTranslator implements
 	abstract protected String translateParallelReduceTile(Operation operation);
 
 	/**
-	 * Translates the user code that will be used for composing parallel and
-	 * tile operations.
+	 * Translates the user code that will be used for composing operations.
 	 * 
 	 * @param operation
 	 *            Operation that must be translated.
 	 * @return C code with operation's user code compatible with this runtime.
 	 */
-	abstract protected String translateParallelReduceUserFunction(
-			Operation operation);
+	abstract protected String translateReduceUserFunction(Operation operation);
 
 	/**
 	 * Translates a sequential operation returning a C code compatible with this

@@ -342,7 +342,7 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 	 * {@inheritDoc}
 	 */
 	@Override
-	protected String translateParallelReduceUserFunction(Operation operation) {
+	protected String translateReduceUserFunction(Operation operation) {
 		String userCode = this.commonDefinitions.removeCurlyBraces(operation
 				.getUserFunctionData().Code.trim());
 		for (Variable userFunctionVariable : operation.getUserFunctionData().arguments) {
