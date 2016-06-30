@@ -23,6 +23,7 @@ import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.translation.BaseTranslatorTest;
 import org.parallelme.compiler.translation.userlibrary.BaseUserLibraryTranslator;
 import org.parallelme.compiler.userlibrary.classes.BitmapImage;
+import org.stringtemplate.v4.ST;
 
 /**
  * Base class for image tests.
@@ -182,6 +183,131 @@ public abstract class PMImageTranslatorTest extends BaseTranslatorTest {
 	}
 
 	/**
+	 * Tests foreach operation JNI interface.
+	 */
+	@Test
+	public void translateForeachOperationJNI() throws Exception {
+		// Parallel
+		Operation operation = this
+				.createForeachOperation(ExecutionType.Parallel);
+		ParallelMERuntimeCTranslation cTranslator = new ParallelMERuntimeCTranslation();
+		String translatedFunction = cTranslator.createParallelOperation(
+				operation, this.className);
+		String expectedTranslation = "JNIEXPORT void JNICALL Java_SomeClass_foreach123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr) {\n"
+				+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
+				+ "auto variablePtr = (ImageData *) varPtr;\n"
+				+ "auto task = std::make_unique<Task>(runtimePtr->program);\n"
+				+ "task->addKernel(\"foreach123\");\n"
+				+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+				+ "kernelHash[\"foreach123\"]\n"
+				+ "->setArg(0, variablePtr->outputBuffer)\n"
+				+ "->setWorkSize(variablePtr->workSize);\n"
+				+ "});\n"
+				+ "runtimePtr->runtime->submitTask(std::move(task));\n"
+				+ "runtimePtr->runtime->finish();\n" + "}";
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Parallel with final external variable
+		operation = this.createForeachOperation(ExecutionType.Parallel);
+		Variable finalVar = this.createExternalVariable("final");
+		operation.addExternalVariable(finalVar);
+		translatedFunction = cTranslator.createParallelOperation(operation,
+				this.className);
+		ST st = new ST(
+				"JNIEXPORT void JNICALL Java_SomeClass_foreach123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr, <finalVarType> <finalVar>) {\n"
+						+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
+						+ "auto variablePtr = (ImageData *) varPtr;\n"
+						+ "auto task = std::make_unique\\<Task>(runtimePtr->program);\n"
+						+ "task->addKernel(\"foreach123\");\n"
+						+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"foreach123\"]\n"
+						+ "->setArg(0, variablePtr->outputBuffer)\n"
+						+ "->setArg(1, <finalVar>)\n"
+						+ "->setWorkSize(variablePtr->workSize);\n"
+						+ "});\n"
+						+ "runtimePtr->runtime->submitTask(std::move(task));\n"
+						+ "runtimePtr->runtime->finish();\n" + "}");
+		st.add("finalVarType", finalVar.typeName);
+		st.add("finalVar", finalVar.name);
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Sequential
+		operation = this.createForeachOperation(ExecutionType.Sequential);
+		translatedFunction = cTranslator.createSequentialOperation(operation,
+				this.className);
+		expectedTranslation = "JNIEXPORT void JNICALL Java_SomeClass_foreach123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr) {\n"
+				+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
+				+ "auto variablePtr = (ImageData *) varPtr;\n"
+				+ "auto task = std::make_unique<Task>(runtimePtr->program, Task::Score(1.0f,2.0f));\n"
+				+ "task->addKernel(\"foreach123\");\n"
+				+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+				+ "kernelHash[\"foreach123\"]\n"
+				+ "->setArg(0, variablePtr->outputBuffer)\n"
+				+ "->setArg(1, variablePtr->width)\n"
+				+ "->setArg(2, variablePtr->height)\n"
+				+ "->setWorkSize(1);\n"
+				+ "});\n"
+				+ "runtimePtr->runtime->submitTask(std::move(task));\n"
+				+ "runtimePtr->runtime->finish();\n" + "}";
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Sequential with final variable
+		operation = this.createForeachOperation(ExecutionType.Sequential);
+		operation.addExternalVariable(finalVar);
+		translatedFunction = cTranslator.createSequentialOperation(operation,
+				this.className);
+		st = new ST(
+				"JNIEXPORT void JNICALL Java_SomeClass_foreach123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr, <finalVarType> <finalVar>) {\n"
+						+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
+						+ "auto variablePtr = (ImageData *) varPtr;\n"
+						+ "auto task = std::make_unique\\<Task>(runtimePtr->program, Task::Score(1.0f,2.0f));\n"
+						+ "task->addKernel(\"foreach123\");\n"
+						+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"foreach123\"]\n"
+						+ "->setArg(0, variablePtr->outputBuffer)\n"
+						+ "->setArg(1, variablePtr->width)\n"
+						+ "->setArg(2, variablePtr->height)\n"
+						+ "->setArg(3, <finalVar>)\n"
+						+ "->setWorkSize(1);\n"
+						+ "});\n"
+						+ "runtimePtr->runtime->submitTask(std::move(task));\n"
+						+ "runtimePtr->runtime->finish();\n" + "}");
+		st.add("finalVarType", finalVar.typeName);
+		st.add("finalVar", finalVar.name);
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Sequential with non-final variable
+		operation = this.createForeachOperation(ExecutionType.Sequential);
+		Variable nonFinalVar = this.createExternalVariable("");
+		operation.addExternalVariable(nonFinalVar);
+		translatedFunction = cTranslator.createSequentialOperation(operation,
+				this.className);
+		st = new ST(
+				"JNIEXPORT void JNICALL Java_SomeClass_foreach123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr, "
+						+ "<nonFinalVarType> <nonFinalVar>, j<nonFinalVarType>Array PM_<nonFinalVar>) {\n"
+						+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
+						+ "auto variablePtr = (ImageData *) varPtr;\n"
+						+ "auto task = std::make_unique\\<Task>(runtimePtr->program, Task::Score(1.0f,2.0f));\n"
+						+ "auto <nonFinalVar>Buffer = std::make_shared\\<Buffer>(sizeof(<nonFinalVar>));\n"
+						+ "task->addKernel(\"foreach123\");\n"
+						+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"foreach123\"]\n"
+						+ "->setArg(0, variablePtr->outputBuffer)\n"
+						+ "->setArg(1, variablePtr->width)\n"
+						+ "->setArg(2, variablePtr->height)\n"
+						+ "->setArg(3, <nonFinalVar>)\n"
+						+ "->setArg(4, <nonFinalVar>Buffer)\n"
+						+ "->setWorkSize(1);\n"
+						+ "});\n"
+						+ "runtimePtr->runtime->submitTask(std::move(task));\n"
+						+ "runtimePtr->runtime->finish();\n"
+						+ "<nonFinalVar>Buffer->copyToJArray(env, PM_<nonFinalVar>);"
+						+ "}");
+		st.add("nonFinalVarType", nonFinalVar.typeName);
+		st.add("nonFinalVar", nonFinalVar.name);
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+	}
+
+	/**
 	 * Tests reduce operation translation.
 	 */
 	@Test
@@ -319,11 +445,11 @@ public abstract class PMImageTranslatorTest extends BaseTranslatorTest {
 						+ "for (int PM_x=0; PM_x<PM_workSize; ++PM_x) {"
 						+ "param2 = PM_data[PM_x];"
 						+ "param1 = reduce123_func(param1,param2, %s, %s);"
-						+ "}*%s= param1;}", nonFinalVar.typeName, nonFinalVar.name,
-						nonFinalVar.typeName, tmpVarName, nonFinalVar.typeName,
+						+ "}*%s= param1;}", nonFinalVar.typeName,
 						nonFinalVar.name, nonFinalVar.typeName, tmpVarName,
-						nonFinalVar.name, tmpVarName,
-						this.commonDefinitions.getPrefix()
+						nonFinalVar.typeName, nonFinalVar.name,
+						nonFinalVar.typeName, tmpVarName, nonFinalVar.name,
+						tmpVarName, this.commonDefinitions.getPrefix()
 								+ operation.destinationVariable.name);
 		this.validateTranslation(expectedTranslation, translatedFunction);
 	}
@@ -354,6 +480,178 @@ public abstract class PMImageTranslatorTest extends BaseTranslatorTest {
 		operation = this.createReduceOperation(ExecutionType.Sequential);
 		translatedFunction = translator.translateOperationCall(className,
 				operation);
+		this.validateTranslation(expectedTranslation, translatedFunction);
+	}
+
+	/**
+	 * Tests reduce operation JNI interface.
+	 */
+	@Test
+	public void translateReduceOperationJNI() throws Exception {
+		// Parallel
+		Operation operation = this
+				.createReduceOperation(ExecutionType.Parallel);
+		ParallelMERuntimeCTranslation cTranslator = new ParallelMERuntimeCTranslation();
+		String translatedFunction = cTranslator.createParallelOperation(
+				operation, this.className);
+		ST st = new ST(
+				"JNIEXPORT void JNICALL Java_SomeClass_reduce123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr, jfloatArray <destName>) {\n"
+						+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
+						+ "auto variablePtr = (ImageData *) varPtr;\n"
+						+ "auto task = std::make_unique\\<Task>(runtimePtr->program);\n"
+						+ "auto tileElemSize = sizeof(float)*env->GetArrayLength(<destName>);\n"
+						+ "auto tileBuffer = std::make_shared\\<Buffer>(tileElemSize*variablePtr->height);"
+						+ "auto <destName>Buffer = std::make_shared\\<Buffer>(tileElemSize);\n"
+						+ "task->addKernel(\"reduce123_tile\");\n"
+						+ "task->addKernel(\"reduce123\");\n"
+						+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"reduce123_tile\"]\n"
+						+ "->setArg(0, variablePtr->outputBuffer)\n"
+						+ "->setArg(1, tileBuffer)\n"
+						+ "->setArg(2, variablePtr->width)\n"
+						+ "->setWorkSize(variablePtr->height);\n"
+						+ "kernelHash[\"reduce123\"]\n"
+						+ "->setArg(0, <destName>Buffer)\n"
+						+ "->setArg(1, tileBuffer)\n"
+						+ "->setArg(2, variablePtr->height)\n"
+						+ "->setWorkSize(1);\n"
+						+ "});\n"
+						+ "runtimePtr->runtime->submitTask(std::move(task));\n"
+						+ "runtimePtr->runtime->finish();\n"
+						+ "<destName>Buffer->copyToJArray(env, <destName>);\n"
+						+ "}");
+		st.add("destName", operation.destinationVariable.name);
+		String expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Parallel with final external variable
+		operation = this.createReduceOperation(ExecutionType.Parallel);
+		Variable finalVar = this.createExternalVariable("final");
+		operation.addExternalVariable(finalVar);
+		translatedFunction = cTranslator.createParallelOperation(operation,
+				this.className);
+		st = new ST(
+				"JNIEXPORT void JNICALL Java_SomeClass_reduce123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr, <finalVarType> <finalVar>, jfloatArray <destName>) {\n"
+						+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
+						+ "auto variablePtr = (ImageData *) varPtr;\n"
+						+ "auto task = std::make_unique\\<Task>(runtimePtr->program);\n"
+						+ "auto tileElemSize = sizeof(float)*env->GetArrayLength(<destName>);\n"
+						+ "auto tileBuffer = std::make_shared\\<Buffer>(tileElemSize*variablePtr->height);"
+						+ "auto <destName>Buffer = std::make_shared\\<Buffer>(tileElemSize);\n"
+						+ "task->addKernel(\"reduce123_tile\");\n"
+						+ "task->addKernel(\"reduce123\");\n"
+						+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"reduce123_tile\"]\n"
+						+ "->setArg(0, variablePtr->outputBuffer)\n"
+						+ "->setArg(1, tileBuffer)\n"
+						+ "->setArg(2, variablePtr->width)\n"
+						+ "->setArg(3, <finalVar>)\n"
+						+ "->setWorkSize(variablePtr->height);\n"
+						+ "kernelHash[\"reduce123\"]\n"
+						+ "->setArg(0, <destName>Buffer)\n"
+						+ "->setArg(1, tileBuffer)\n"
+						+ "->setArg(2, variablePtr->height)\n"
+						+ "->setArg(3, <finalVar>)\n"
+						+ "->setWorkSize(1);\n"
+						+ "});\n"
+						+ "runtimePtr->runtime->submitTask(std::move(task));\n"
+						+ "runtimePtr->runtime->finish();\n"
+						+ "<destName>Buffer->copyToJArray(env, <destName>);\n"
+						+ "}");
+		st.add("destName", operation.destinationVariable.name);
+		st.add("finalVarType", finalVar.typeName);
+		st.add("finalVar", finalVar.name);
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Sequential
+		operation = this.createReduceOperation(ExecutionType.Sequential);
+		translatedFunction = cTranslator.createSequentialOperation(operation,
+				this.className);
+		st = new ST(
+				"JNIEXPORT void JNICALL Java_SomeClass_reduce123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr, jfloatArray <destName>) {\n"
+						+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
+						+ "auto variablePtr = (ImageData *) varPtr;\n"
+						+ "auto task = std::make_unique\\<Task>(runtimePtr->program, Task::Score(1.0f,2.0f));\n"
+						+ "auto <destName>Buffer = std::make_shared\\<Buffer>(sizeof(float)*GetArrayLength(env, <destName>));\n"
+						+ "task->addKernel(\"reduce123\");\n"
+						+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"reduce123\"]\n"
+						+ "->setArg(0, <destName>Buffer)\n"
+						+ "->setArg(1, variablePtr->outputBuffer)\n"
+						+ "->setArg(2, variablePtr->width)\n"
+						+ "->setArg(3, variablePtr->height)\n"
+						+ "->setWorkSize(1);\n"
+						+ "});\n"
+						+ "runtimePtr->runtime->submitTask(std::move(task));\n"
+						+ "runtimePtr->runtime->finish();\n"
+						+ "<destName>Buffer->copyToJArray(env, <destName>);\n"
+						+ "}");
+		st.add("destName", operation.destinationVariable.name);
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Sequential with final variable
+		operation = this.createReduceOperation(ExecutionType.Sequential);
+		operation.addExternalVariable(finalVar);
+		translatedFunction = cTranslator.createSequentialOperation(operation,
+				this.className);
+		st = new ST(
+				"JNIEXPORT void JNICALL Java_SomeClass_reduce123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr, <finalVarType> <finalVar>, jfloatArray <destName>) {\n"
+						+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
+						+ "auto variablePtr = (ImageData *) varPtr;\n"
+						+ "auto task = std::make_unique\\<Task>(runtimePtr->program, Task::Score(1.0f,2.0f));\n"
+						+ "auto <destName>Buffer = std::make_shared\\<Buffer>(sizeof(float)*GetArrayLength(env, <destName>));\n"
+						+ "task->addKernel(\"reduce123\");\n"
+						+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"reduce123\"]\n"
+						+ "->setArg(0, <destName>Buffer)\n"
+						+ "->setArg(1, variablePtr->outputBuffer)\n"
+						+ "->setArg(2, variablePtr->width)\n"
+						+ "->setArg(3, variablePtr->height)\n"
+						+ "->setArg(4, <finalVar>)\n"
+						+ "->setWorkSize(1);\n"
+						+ "});\n"
+						+ "runtimePtr->runtime->submitTask(std::move(task));\n"
+						+ "runtimePtr->runtime->finish();\n"
+						+ "<destName>Buffer->copyToJArray(env, <destName>);\n"
+						+ "}");
+		st.add("destName", operation.destinationVariable.name);
+		st.add("finalVarType", finalVar.typeName);
+		st.add("finalVar", finalVar.name);
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Sequential with non-final variable
+		operation = this.createReduceOperation(ExecutionType.Sequential);
+		Variable nonFinalVar = this.createExternalVariable("");
+		operation.addExternalVariable(nonFinalVar);
+		translatedFunction = cTranslator.createSequentialOperation(operation,
+				this.className);
+		st = new ST(
+				"JNIEXPORT void JNICALL Java_SomeClass_reduce123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr, "
+						+ "<nonFinalVarType> <nonFinalVar>, j<nonFinalVarType>Array PM_<nonFinalVar>, jfloatArray <destName>) {\n"
+						+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
+						+ "auto variablePtr = (ImageData *) varPtr;\n"
+						+ "auto task = std::make_unique\\<Task>(runtimePtr->program, Task::Score(1.0f,2.0f));\n"
+						+ "auto <destName>Buffer = std::make_shared\\<Buffer>(sizeof(float)*GetArrayLength(env, <destName>));\n"
+						+ "auto <nonFinalVar>Buffer = std::make_shared\\<Buffer>(sizeof(<nonFinalVar>));\n"
+						+ "task->addKernel(\"reduce123\");\n"
+						+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"reduce123\"]\n"
+						+ "->setArg(0, <destName>Buffer)\n"
+						+ "->setArg(1, variablePtr->outputBuffer)\n"
+						+ "->setArg(2, variablePtr->width)\n"
+						+ "->setArg(3, variablePtr->height)\n"
+						+ "->setArg(4, <nonFinalVar>)\n"
+						+ "->setArg(5, <nonFinalVar>Buffer)\n"
+						+ "->setWorkSize(1);\n"
+						+ "});\n"
+						+ "runtimePtr->runtime->submitTask(std::move(task));\n"
+						+ "runtimePtr->runtime->finish();\n"
+						+ "<nonFinalVar>Buffer->copyToJArray(env, PM_<nonFinalVar>);\n"
+						+ "<destName>Buffer->copyToJArray(env, <destName>);\n"
+						+ "}");
+		st.add("destName", operation.destinationVariable.name);
+		st.add("nonFinalVarType", nonFinalVar.typeName);
+		st.add("nonFinalVar", nonFinalVar.name);
+		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 	}
 

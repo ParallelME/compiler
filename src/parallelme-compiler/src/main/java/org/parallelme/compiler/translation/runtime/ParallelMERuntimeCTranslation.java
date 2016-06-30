@@ -50,7 +50,6 @@ public class ParallelMERuntimeCTranslation {
 	private static final String templateOperationFunctionDecl = "JNIEXPORT void JNICALL Java_<cClassName>_<operationName>\n"
 			+ "\t\t(JNIEnv *<varName:{var|env}>, jobject <varName:{var|self}>, jlong <varName:{var|rtmPtr}>, jlong <varName:{var|varPtr}><params:{var|, <var.decl>}>)";
 	private static final String templateKernelHash = "kernelHash[\"<operationName>\"]\n"
-			+ "\t->setArg(0, <fullBufferName>)\n"
 			+ "<setArgs:{var|\t\t->setArg(<var.index>, <var.name>)\n}>"
 			+ "\t->setWorkSize(<workSize>);";
 	private static final String templateParallelOperation = "<functionDecl> {\n"
@@ -173,11 +172,11 @@ public class ParallelMERuntimeCTranslation {
 		st.add("operation", null);
 		for (Operation operation : operations) {
 			if (operation.getExecutionType() == ExecutionType.Sequential) {
-				st.addAggr("operation.{body}", this
-						.createSequentialOperationBody(operation, cClassName));
+				st.addAggr("operation.{body}",
+						createSequentialOperation(operation, cClassName));
 			} else {
 				st.addAggr("operation.{body}",
-						this.createParallelOperationBody(operation, cClassName));
+						createParallelOperation(operation, cClassName));
 			}
 		}
 		FileWriter.writeFile(
@@ -186,7 +185,7 @@ public class ParallelMERuntimeCTranslation {
 						outputDestinationFolder), st.render());
 	}
 
-	private String createParallelOperationBody(Operation operation,
+	protected String createParallelOperation(Operation operation,
 			String cClassName) {
 		ST st = new ST(templateParallelOperation);
 		st.add("functionDecl",
@@ -206,8 +205,8 @@ public class ParallelMERuntimeCTranslation {
 		stKernelHashTile.add("operationName", operationTileName);
 		int argIndex = 0;
 		String operationBufferName = this.getOperationBufferName(operation);
-		stKernelHashTile.add("fullBufferName", "variablePtr->"
-				+ operationBufferName);
+		stKernelHashTile.addAggr("setArgs.{index, name}", argIndex,
+				"variablePtr->" + operationBufferName);
 		if (operation.destinationVariable != null) {
 			String destVarName = operation.destinationVariable.name;
 			String type = this.getJNIType(operation);
@@ -216,10 +215,10 @@ public class ParallelMERuntimeCTranslation {
 			st.addAggr(
 					"destinationVariable.{bufferName, name, type, expression}",
 					bufferName, destVarName, type, expression);
-			stKernelHash.add("fullBufferName", "tileBuffer");
-			stKernelHash.addAggr("setArgs.{index, name}", ++argIndex,
-					bufferName);
-			stKernelHashTile.addAggr("setArgs.{index, name}", argIndex,
+			stKernelHash.addAggr("setArgs.{index, name}", argIndex, bufferName);
+			stKernelHashTile.addAggr("setArgs.{index, name}", ++argIndex,
+					"tileBuffer");
+			stKernelHash.addAggr("setArgs.{index, name}", argIndex,
 					"tileBuffer");
 			st.addAggr("task.{operationName}", operationTileName);
 			if (operation.variable.typeName.equals(BitmapImage.getInstance()
@@ -238,8 +237,8 @@ public class ParallelMERuntimeCTranslation {
 			}
 		} else {
 			st.add("destinationVariable", null);
-			stKernelHash.add("fullBufferName", "variablePtr->"
-					+ operationBufferName);
+			stKernelHash.addAggr("setArgs.{index, name}", argIndex,
+					"variablePtr->" + operationBufferName);
 			if (operation.variable.typeName.equals(Array.getInstance()
 					.getClassName())) {
 				stKernelHash.add("workSize", "1");
@@ -276,7 +275,7 @@ public class ParallelMERuntimeCTranslation {
 		}
 	}
 
-	private String createSequentialOperationBody(Operation operation,
+	protected String createSequentialOperation(Operation operation,
 			String cClassName) {
 		ST st = new ST(templateSequentialOperation);
 		st.add("functionDecl",
@@ -289,11 +288,35 @@ public class ParallelMERuntimeCTranslation {
 		st.addAggr("task.{operationName}", operationName);
 		ST stKernelHash = new ST(templateKernelHash);
 		stKernelHash.add("workSize", "1");
-		stKernelHash.add("fullBufferName",
-				"variablePtr->" + this.getOperationBufferName(operation));
 		stKernelHash.add("operationName", operationName);
 		stKernelHash.add("setArgs", null);
-		int i = 0;
+		st.add("buffers", null);
+		int argIndex = 0;
+		if (operation.destinationVariable != null) {
+			String destVarName = operation.destinationVariable.name;
+			String type = this.getJNIType(operation);
+			String bufferName = destVarName + "Buffer";
+			st.addAggr("destinationVariable.{bufferName, name, type}",
+					bufferName, destVarName, type);
+			stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
+					bufferName);
+		} else {
+			st.add("destinationVariable", null);
+		}
+		stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
+				"variablePtr->" + this.getOperationBufferName(operation));
+		if (operation.variable.typeName.equals(HDRImage.getInstance()
+				.getClassName())
+				|| operation.variable.typeName.equals(BitmapImage.getInstance()
+						.getClassName())) {
+			stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
+					"variablePtr->width");
+			stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
+					"variablePtr->height");
+		} else {
+			stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
+					"variablePtr->length");
+		}
 		for (Variable variable : operation.getExternalVariables()) {
 			if (!variable.isFinal()) {
 				String prefixedVarName = RuntimeCommonDefinitions.getInstance()
@@ -301,33 +324,14 @@ public class ParallelMERuntimeCTranslation {
 				String bufferName = variable.name + "Buffer";
 				st.addAggr("buffers.{bufferName, name, arrName}", bufferName,
 						variable.name, prefixedVarName);
-				stKernelHash.addAggr("setArgs.{index, name}", ++i, variable.name);
-				stKernelHash.addAggr("setArgs.{index, name}", ++i, bufferName);
+				stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
+						variable.name);
+				stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
+						bufferName);
 			} else {
-				stKernelHash.addAggr("setArgs.{index, name}", ++i, variable.name);
+				stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
+						variable.name);
 			}
-		}
-		if (operation.destinationVariable != null) {
-			String destVarName = operation.destinationVariable.name;
-			String type = this.getJNIType(operation);
-			String bufferName = destVarName + "Buffer";
-			st.addAggr("destinationVariable.{bufferName, name, type}",
-					bufferName, destVarName, type);
-			stKernelHash.addAggr("setArgs.{index, name}", ++i, bufferName);
-		} else {
-			st.add("destinationVariable", null);
-		}
-		if (operation.variable.typeName.equals(HDRImage.getInstance()
-				.getClassName())
-				|| operation.variable.typeName.equals(BitmapImage.getInstance()
-						.getClassName())) {
-			stKernelHash.addAggr("setArgs.{index, name}", ++i,
-					"variablePtr->width");
-			stKernelHash.addAggr("setArgs.{index, name}", ++i,
-					"variablePtr->height");
-		} else {
-			stKernelHash.addAggr("setArgs.{index, name}", ++i,
-					"variablePtr->length");
 		}
 		st.addAggr("kernelHash.{body}", stKernelHash.render());
 		return st.render();
