@@ -67,12 +67,12 @@ public class RSBitmapImageTranslator extends RSImageTranslator implements
 	@Override
 	public String translateInputBindObjCreation(String className,
 			InputBind inputBind) {
-		String inputObject = this.commonDefinitions
+		String inputObject = commonDefinitions
 				.getVariableInName(inputBind.variable);
-		String outputObject = this.commonDefinitions
+		String outputObject = commonDefinitions
 				.getVariableOutName(inputBind.variable);
-		String dataTypeInputObject = this.commonDefinitions.getPrefix()
-				+ inputBind.variable + "InDataType";
+		String dataTypeInputObject = commonDefinitions
+				.getVariableInName(inputBind.variable) + "DataType";
 		ST st = new ST(templateInputBindObjCreation);
 		st.add("dataTypeInputObject", dataTypeInputObject);
 		st.add("inputObject", inputObject);

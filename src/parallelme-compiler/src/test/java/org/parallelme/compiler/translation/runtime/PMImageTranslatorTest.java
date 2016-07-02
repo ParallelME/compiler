@@ -10,54 +10,24 @@ package org.parallelme.compiler.translation.runtime;
 
 import static org.junit.Assert.*;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
 import org.parallelme.compiler.intermediate.Operation;
 import org.parallelme.compiler.intermediate.Operation.ExecutionType;
-import org.parallelme.compiler.intermediate.Operation.OperationType;
 import org.parallelme.compiler.intermediate.MethodCall;
-import org.parallelme.compiler.intermediate.UserFunction;
 import org.parallelme.compiler.intermediate.Variable;
-import org.parallelme.compiler.translation.BaseTranslatorTest;
+import org.parallelme.compiler.translation.ImageTranslatorTest;
 import org.parallelme.compiler.translation.userlibrary.BaseUserLibraryTranslator;
 import org.parallelme.compiler.userlibrary.classes.BitmapImage;
 import org.stringtemplate.v4.ST;
 
 /**
- * Base class for image tests.
+ * Base class for ParallelME run-time image tests.
  * 
  * @author Wilson de Carvalho
  */
-public abstract class PMImageTranslatorTest extends BaseTranslatorTest {
-	protected Operation createForeachOperation(ExecutionType executionType) {
-		Operation operation = new Operation(this.getUserLibraryVar(), 123,
-				null, OperationType.Foreach, null);
-		operation.setExecutionType(executionType);
-		List<Variable> arguments = new ArrayList<>();
-		arguments.add(new Variable("param1", "Pixel", "", "", 10));
-		UserFunction userFunction = new UserFunction(
-				" { param1.rgba.red = 123; }", arguments);
-		operation.setUserFunctionData(userFunction);
-		return operation;
-	}
-
-	protected Operation createReduceOperation(ExecutionType executionType) {
-		Variable destVar = new Variable("destVar", "Pixel", "", "", 999);
-		Operation operation = new Operation(this.getUserLibraryVar(), 123,
-				null, OperationType.Reduce, destVar);
-		operation.setExecutionType(executionType);
-		List<Variable> arguments = new ArrayList<>();
-		arguments.add(new Variable("param1", "Pixel", "", "", 10));
-		arguments.add(new Variable("param2", "Pixel", "", "", 11));
-		UserFunction userFunction = new UserFunction(
-				" { param1.rgba.red = 123; param2.rgba.green = 456; "
-						+ "return param2;}", arguments);
-		operation.setUserFunctionData(userFunction);
-		return operation;
-	}
-
+public abstract class PMImageTranslatorTest extends ImageTranslatorTest {
 	/**
 	 * Tests input bind object declaration.
 	 */
