@@ -26,9 +26,8 @@ import org.stringtemplate.v4.ST;
  * 
  * @author Wilson de Carvalho
  */
-public class RSBitmapImageTranslatorTest extends RSImageTranslatorTest {
-	private Variable imageVar = new Variable("imageVar", "BitmapImage", "", "",
-			1);
+public class RSHDRImageTranslatorTest extends RSImageTranslatorTest {
+	private Variable imageVar = new Variable("imageVar", "HDRImage", "", "", 1);
 
 	@Override
 	protected Variable getUserLibraryVar() {
@@ -37,17 +36,17 @@ public class RSBitmapImageTranslatorTest extends RSImageTranslatorTest {
 
 	@Override
 	protected BaseUserLibraryTranslator getTranslator() {
-		return new RSBitmapImageTranslator(new SimpleTranslator());
+		return new RSHDRImageTranslator(new SimpleTranslator());
 	}
 	
 	@Override
 	protected String getRSType() {
-		return "F32_3";
+		return "F32_4";
 	}
 
 	private InputBind createInputBind() {
 		List<Parameter> parameters = new ArrayList<>();
-		parameters.add(new Variable("dataVar", "Bitmap", "", "", 2));
+		parameters.add(new Variable("dataVar", "byte[]", "", "", 2));
 		parameters.add(new Variable("widthVar", "int", "", "", 3));
 		parameters.add(new Variable("heightVar", "int", "", "", 4));
 		return new InputBind(this.getUserLibraryVar(), 1, parameters, null,
@@ -65,11 +64,21 @@ public class RSBitmapImageTranslatorTest extends RSImageTranslatorTest {
 	 */
 	@Test
 	public void translateInputBind() throws Exception {
-		String expectedTranslation = "float3 __attribute__ ((kernel)) toFloatBitmapImage(uchar4 PM_in, uint32_t x, uint32_t y) {\n"
-				+ "float3 PM_out;\n"
-				+ "PM_out.s0 = (float)PM_in.r;\n"
-				+ "PM_out.s1 = (float)PM_in.g;\n"
-				+ "PM_out.s2 = (float)PM_in.b;\n" + "return PM_out;\n" + "}";
+		String expectedTranslation = "float4 __attribute__ ((kernel)) toFloatHDRImage(uchar4 PM_in, uint32_t x, uint32_t y) {\n"
+				+ "float4 PM_out;\n"
+				+ "if (PM_in.s3!=0) {\n"
+				+ "float f = ldexp(1.0f,(PM_in.s3 & 0xFF)-(128+8));\n"
+				+ "PM_out.s0 = (PM_in.s0 & 0xFF)*f;\n"
+				+ "PM_out.s1 = (PM_in.s1 & 0xFF)*f;\n"
+				+ "PM_out.s2 = (PM_in.s2 & 0xFF)*f;\n"
+				+ "PM_out.s3 = 0.0f;\n"
+				+ "} else {\n"
+				+ "PM_out.s0 = 0.0f;\n"
+				+ "PM_out.s1 = 0.0f;\n"
+				+ "PM_out.s2 = 0.0f;\n"
+				+ "PM_out.s3 = 0.0f;\n"
+				+ "}\n"
+				+ "return PM_out;\n" + "}";
 		InputBind inputBind = this.createInputBind();
 		BaseUserLibraryTranslator translator = this.getTranslator();
 		String translatedFunction = translator.translateInputBind(className,
@@ -87,15 +96,20 @@ public class RSBitmapImageTranslatorTest extends RSImageTranslatorTest {
 		String translatedFunction = translator.translateInputBindObjCreation(
 				className, inputBind);
 		ST st = new ST(
-				"Type <varIn>DataType;\n"
-						+ "<varIn> = Allocation.createFromBitmap(PM_mRS, dataVar, Allocation.MipmapControl.MIPMAP_NONE, "
-						+ "Allocation.USAGE_SCRIPT|Allocation.USAGE_SHARED);\n"
-						+ "<varIn>DataType = newType.Builder(PM_mRS, Element.F32_3(PM_mRS))"
-						+ ".setX(<varIn>.getType().getX())"
-						+ ".setY(<varIn>.getType().getY())"
+				"Type <varIn>DataType = newType.Builder(PM_mRS, Element.RGBA_8888(PM_mRS))"
+						+ ".setX(width)"
+						+ ".setY(height)"
 						+ ".create();\n"
-						+ "<varOut> = Allocation.createTyped(PM_mRS, <varIn>DataType);\n"
-						+ "<kernel>.forEach_toFloatBitmapImage(<varIn>, <varOut>);");
+						+ "Type <varOut>DataType = newType.Builder(PM_mRS,Element.F32_4(PM_mRS))"
+						+ ".setX(width)"
+						+ ".setY(height)"
+						+ ".create();\n"
+						+ "<varIn> = Allocation.createTyped(PM_mRS, <varIn>DataType,"
+						+ "Allocation.MipmapControl.MIPMAP_NONE,"
+						+ "Allocation.USAGE_SCRIPT);\n"
+						+ "<varOut>=Allocation.createTyped(PM_mRS, <varOut>DataType);\n"
+						+ "<varIn>.copyFrom(data);\n"
+						+ "<kernel>.forEach_toFloatHDRImage(<varIn>, <varOut>);");
 		st.add("kernel", commonDefinitions.getKernelName(className));
 		st.add("varIn", commonDefinitions.getVariableInName(inputBind.variable));
 		st.add("varOut",
@@ -126,11 +140,11 @@ public class RSBitmapImageTranslatorTest extends RSImageTranslatorTest {
 	 */
 	@Test
 	public void translateOutputBind() throws Exception {
-		String expectedTranslation = "uchar4 __attribute__ ((kernel)) toBitmapBitmapImage(float3 PM_in, uint32_t x,uint32_t y) {\n"
+		String expectedTranslation = "uchar4 __attribute__ ((kernel)) toBitmapHDRImage(float4 PM_in, uint32_t x,uint32_t y) {\n"
 				+ "uchar4 PM_out;\n"
-				+ "PM_out.r = (uchar)(PM_in.s0);\n"
-				+ "PM_out.g = (uchar)(PM_in.s1);\n"
-				+ "PM_out.b = (uchar)(PM_in.s2);\n"
+				+ "PM_out.r = (uchar)(PM_in.s0*255.0f);\n"
+				+ "PM_out.g = (uchar)(PM_in.s1*255.0f);\n"
+				+ "PM_out.b = (uchar)(PM_in.s2*255.0f);\n"
 				+ "PM_out.a = 255;"
 				+ "return PM_out;\n" + "}";
 		BaseUserLibraryTranslator translator = this.getTranslator();
@@ -151,9 +165,8 @@ public class RSBitmapImageTranslatorTest extends RSImageTranslatorTest {
 				.getVariableInName(outputBind.variable);
 		String varOutName = this.commonDefinitions
 				.getVariableOutName(outputBind.variable);
-		ST st = new ST(
-				"<kernel>.forEach_toBitmapBitmapImage(<varOut>,<varIn>);"
-						+ "<varIn>.copyTo(<varDest>);");
+		ST st = new ST("<kernel>.forEach_toBitmapHDRImage(<varOut>,<varIn>);"
+				+ "<varIn>.copyTo(<varDest>);");
 		st.add("kernel", kernelName);
 		st.add("varIn", varInName);
 		st.add("varOut", varOutName);
@@ -168,7 +181,7 @@ public class RSBitmapImageTranslatorTest extends RSImageTranslatorTest {
 		st = new ST(
 				"<varDest>=Bitmap.createBitmap(<varIn>.getType().getX(), <varIn>.getType().getY(), "
 						+ "Bitmap.Config.ARGB_8888);"
-						+ "<kernel>.forEach_toBitmapBitmapImage(<varOut>,<varIn>);"
+						+ "<kernel>.forEach_toBitmapHDRImage(<varOut>,<varIn>);"
 						+ "<varIn>.copyTo(<varDest>);");
 		st.add("kernel", kernelName);
 		st.add("varIn", varInName);

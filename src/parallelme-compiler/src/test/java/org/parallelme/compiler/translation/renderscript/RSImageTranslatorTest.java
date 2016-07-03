@@ -28,6 +28,8 @@ import org.stringtemplate.v4.ST;
  * @author Wilson de Carvalho
  */
 public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
+	abstract protected String getRSType();
+
 	/**
 	 * Tests input bind object declaration.
 	 */
@@ -308,48 +310,54 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 		BaseUserLibraryTranslator translator = this.getTranslator();
 		String translatedFunction = translator.translateOperationCall(
 				className, operation);
-		ST st = new ST("Type PM_gTileReduce123Type = newType.Builder(PM_mRS, Element.F32_3(PM_mRS))"
-				+ ".setX(<varOut>.getType().getX())"
-				+ ".create();\n"
-				+ "AllocationPM_gTileReduce123 = Allocation.createTyped(PM_mRS, PM_gTileReduce123Type);\n"
-				+ "Type PM_destVarType = new Type.Builder(PM_mRS, Element.F32_3(PM_mRS)).setX(1).create();\n"
-				+ "Allocation PM_destVar = Allocation.createTyped(PM_mRS, PM_destVarType);\n"
-				+ "<kernel>.set_PM_gInputReduce123(<varOut>);\n"
-				+ "<kernel>.set_PM_gTileReduce123(PM_gTileReduce123);\n"
-				+ "<kernel>.set_PM_gInputXSizeReduce123(<varOut>.getType().getX());\n"
-				+ "<kernel>.set_PM_gInputYSizeReduce123(<varOut>.getType().getY());\n"
-				+ "<kernel>.forEach_reduce123_tile(PM_gTileReduce123);\n"
-				+ "<kernel>.forEach_reduce123(PM_destVar);\n"
-				+ "float[] PM_destVarTmp = new float[4];\n"
-				+ "PM_destVar.copyTo(PM_destVarTmp);\n"
-				+ "return new Pixel(PM_destVarTmp[0], PM_destVarTmp[1], PM_destVarTmp[2], PM_destVarTmp[3], -1, -1);");
-		st.add("varOut", commonDefinitions.getVariableOutName(operation.variable));
+		ST st = new ST(
+				"Type PM_gTileReduce123Type = newType.Builder(PM_mRS, Element.<rsType>(PM_mRS))"
+						+ ".setX(<varOut>.getType().getX())"
+						+ ".create();\n"
+						+ "AllocationPM_gTileReduce123 = Allocation.createTyped(PM_mRS, PM_gTileReduce123Type);\n"
+						+ "Type PM_destVarType = new Type.Builder(PM_mRS, Element.<rsType>(PM_mRS)).setX(1).create();\n"
+						+ "Allocation PM_destVar = Allocation.createTyped(PM_mRS, PM_destVarType);\n"
+						+ "<kernel>.set_PM_gInputReduce123(<varOut>);\n"
+						+ "<kernel>.set_PM_gTileReduce123(PM_gTileReduce123);\n"
+						+ "<kernel>.set_PM_gInputXSizeReduce123(<varOut>.getType().getX());\n"
+						+ "<kernel>.set_PM_gInputYSizeReduce123(<varOut>.getType().getY());\n"
+						+ "<kernel>.forEach_reduce123_tile(PM_gTileReduce123);\n"
+						+ "<kernel>.forEach_reduce123(PM_destVar);\n"
+						+ "float[] PM_destVarTmp = new float[4];\n"
+						+ "PM_destVar.copyTo(PM_destVarTmp);\n"
+						+ "return new Pixel(PM_destVarTmp[0], PM_destVarTmp[1], PM_destVarTmp[2], PM_destVarTmp[3], -1, -1);");
+		st.add("varOut",
+				commonDefinitions.getVariableOutName(operation.variable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
+		st.add("rsType", getRSType());
 		String expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential
 		operation = this.createReduceOperation(ExecutionType.Sequential);
 		translatedFunction = translator.translateOperationCall(className,
 				operation);
-		st = new ST("Type PM_gTileReduce123Type = newType.Builder(PM_mRS,Element.F32_3(PM_mRS))"
-				+ ".setX(<varOut>.getType().getX()).create();\n"
-				+ "Allocation PM_gTileReduce123 = Allocation.createTyped(PM_mRS,PM_gTileReduce123Type);\n"
-				+ "Type PM_destVarType = new Type.Builder(PM_mRS,Element.F32_3(PM_mRS)).setX(1).create();\n"
-				+ "Allocation PM_destVar = Allocation.createTyped(PM_mRS, PM_destVarType);\n"
-				+ "<kernel>.set_PM_gInputReduce123(<varOut>);\n"
-				+ "<kernel>.set_PM_gTileReduce123(PM_gTileReduce123);\n"
-				+ "<kernel>.set_PM_gInputReduce123(<varOut>);\n"
-				+ "<kernel>.set_PM_gInputXSizeReduce123(<varOut>.getType().getX());\n"
-				+ "<kernel>.set_PM_gInputYSizeReduce123(<varOut>.getType().getY());\n"
-				+ "<kernel>.set_PM_gInputXSizeReduce123(<varOut>.getType().getX());\n"
-				+ "<kernel>.set_PM_gInputYSizeReduce123(<varOut>.getType().getY());\n"
-				+ "<kernel>.invoke_reduce123_tile(PM_gTileReduce123);\n"
-				+ "<kernel>.invoke_reduce123(PM_destVar);\n"
-				+ "float[] PM_destVarTmp = new float[4];\n"
-				+ "PM_destVar.copyTo(PM_destVarTmp);\n"
-				+ "return new Pixel(PM_destVarTmp[0], PM_destVarTmp[1], PM_destVarTmp[2], PM_destVarTmp[3], -1, -1);");
-		st.add("varOut", commonDefinitions.getVariableOutName(operation.variable));
+		st = new ST(
+				"Type PM_gTileReduce123Type = newType.Builder(PM_mRS,Element.<rsType>(PM_mRS))"
+						+ ".setX(<varOut>.getType().getX()).create();\n"
+						+ "Allocation PM_gTileReduce123 = Allocation.createTyped(PM_mRS,PM_gTileReduce123Type);\n"
+						+ "Type PM_destVarType = new Type.Builder(PM_mRS,Element.<rsType>(PM_mRS)).setX(1).create();\n"
+						+ "Allocation PM_destVar = Allocation.createTyped(PM_mRS, PM_destVarType);\n"
+						+ "<kernel>.set_PM_gInputReduce123(<varOut>);\n"
+						+ "<kernel>.set_PM_gTileReduce123(PM_gTileReduce123);\n"
+						+ "<kernel>.set_PM_gInputReduce123(<varOut>);\n"
+						+ "<kernel>.set_PM_gInputXSizeReduce123(<varOut>.getType().getX());\n"
+						+ "<kernel>.set_PM_gInputYSizeReduce123(<varOut>.getType().getY());\n"
+						+ "<kernel>.set_PM_gInputXSizeReduce123(<varOut>.getType().getX());\n"
+						+ "<kernel>.set_PM_gInputYSizeReduce123(<varOut>.getType().getY());\n"
+						+ "<kernel>.invoke_reduce123_tile(PM_gTileReduce123);\n"
+						+ "<kernel>.invoke_reduce123(PM_destVar);\n"
+						+ "float[] PM_destVarTmp = new float[4];\n"
+						+ "PM_destVar.copyTo(PM_destVarTmp);\n"
+						+ "return new Pixel(PM_destVarTmp[0], PM_destVarTmp[1], PM_destVarTmp[2], PM_destVarTmp[3], -1, -1);");
+		st.add("varOut",
+				commonDefinitions.getVariableOutName(operation.variable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
+		st.add("rsType", getRSType());
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 	}

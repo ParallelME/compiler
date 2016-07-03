@@ -52,8 +52,7 @@ public class RSHDRImageTranslator extends RSImageTranslator implements
 			+ "\n\t\tPM_out.s2 = 0.0f;"
 			+ "\n\t\tPM_out.s3 = 0.0f;"
 			+ "\n\t}"
-			+ "\n\treturn PM_out;"
-			+ "\n}";
+			+ "\n\treturn PM_out;" + "\n}";
 	private static final String templateOutputBind = "\nuchar4 __attribute__((kernel)) toBitmapHDRImage(float4 PM_in, uint32_t x, uint32_t y) {"
 			+ "\n\tuchar4 PM_out;"
 			+ "\n\tPM_out.r = (uchar) (PM_in.s0 * 255.0f);"
@@ -81,24 +80,22 @@ public class RSHDRImageTranslator extends RSImageTranslator implements
 	@Override
 	public String translateInputBindObjCreation(String className,
 			InputBind inputBind) {
-		String inputObject = this.commonDefinitions
+		String inputObject = commonDefinitions
 				.getVariableInName(inputBind.variable);
-		String outputObject = this.commonDefinitions
+		String outputObject = commonDefinitions
 				.getVariableOutName(inputBind.variable);
-		String dataTypeInputObject = this.commonDefinitions.getPrefix()
-				+ inputBind.variable + "InDataType";
-		String dataTypeOutputObject = this.commonDefinitions.getPrefix()
-				+ inputBind.variable + "OutDataType";
+		String dataTypeInputObject = inputObject + "DataType";
+		String dataTypeOutputObject = outputObject + "DataType";
 		ST st = new ST(templateInputBindObjCreation);
-		st.add("params", this.commonDefinitions
-				.toCommaSeparatedString(inputBind.parameters));
+		st.add("params",
+				commonDefinitions.toCommaSeparatedString(inputBind.parameters));
 		st.add("dataTypeInputObject", dataTypeInputObject);
 		st.add("dataTypeOutputObject", dataTypeOutputObject);
 		st.add("inputObject", inputObject);
 		st.add("outputObject", outputObject);
-		st.add("kernelName", this.commonDefinitions.getKernelName(className));
+		st.add("kernelName", commonDefinitions.getKernelName(className));
 		st.add("classType", inputBind.variable.typeName);
-		st.add("rsVarName", this.getRSVariableName());
+		st.add("rsVarName", getRSVariableName());
 		return st.render();
 	}
 
@@ -138,13 +135,11 @@ public class RSHDRImageTranslator extends RSImageTranslator implements
 		String ret = "return ";
 		if (methodCall.methodName.equals(HDRImage.getInstance()
 				.getHeightMethodName())) {
-			ret += this.commonDefinitions
-					.getVariableInName(methodCall.variable)
+			ret += commonDefinitions.getVariableInName(methodCall.variable)
 					+ ".getType().getY();";
 		} else if (methodCall.methodName.equals(HDRImage.getInstance()
 				.getWidthMethodName())) {
-			ret += this.commonDefinitions
-					.getVariableInName(methodCall.variable)
+			ret += commonDefinitions.getVariableInName(methodCall.variable)
 					+ ".getType().getX();";
 		}
 		return ret;
