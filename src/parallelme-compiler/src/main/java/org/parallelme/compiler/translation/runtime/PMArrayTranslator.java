@@ -151,9 +151,6 @@ public class PMArrayTranslator extends PMTranslator implements ArrayTranslator {
 	 */
 	@Override
 	protected String translateReduce(Operation operation) {
-		String templateReduce = "<decl:{var|\t\t<var.expression>;\n}>"
-				+ "\t<forLoop:{var|<var.loop>}>"
-				+ "\t*<destinationVar> = <inputVar1>;\n";
 		ST st = new ST(templateReduce);
 		ST stForLoop = new ST(templateForLoop);
 		ST stForLoop2 = new ST(templateForLoop);
@@ -199,7 +196,7 @@ public class PMArrayTranslator extends PMTranslator implements ArrayTranslator {
 		stForBody.add("dataVar", getDataVariableName());
 		if (!isSequential) {
 			stForLoop2.add("initValue", String.format(
-					"(int) pow(floor(sqrt(%s)), 2)", getLengthVariableName()));
+					"(int) pow(floor(sqrt((float)%s)), 2)", getLengthVariableName()));
 			stForLoop2.add("varName", xVar);
 			stForLoop2.add("varMaxVal", getLengthVariableName());
 			stForLoop2.add("body", stForBody.render());

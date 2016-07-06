@@ -11,9 +11,10 @@ package org.parallelme.compiler.translation.renderscript;
 import org.parallelme.compiler.intermediate.InputBind;
 import org.parallelme.compiler.intermediate.Operation;
 import org.parallelme.compiler.intermediate.OutputBind;
+import org.parallelme.compiler.intermediate.Variable;
+import org.parallelme.compiler.intermediate.Operation.ExecutionType;
 import org.parallelme.compiler.intermediate.Operation.OperationType;
 import org.parallelme.compiler.intermediate.OutputBind.OutputBindType;
-import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.translation.userlibrary.ImageTranslator;
 import org.parallelme.compiler.userlibrary.classes.Pixel;
@@ -30,10 +31,6 @@ public abstract class RSImageTranslator extends RSTranslator implements
 			+ "<inputAllocation>.getType().getY(), Bitmap.Config.ARGB_8888);\n";
 	private static final String templateOutputBindCall2 = "<kernelName>.forEach_toBitmap<classType>(<outputObject>, <inputObject>);\n"
 			+ "<inputObject>.copyTo(<destinationObject>);";
-	private static final String templateAllocation = "Type <typeName>Type = new Type.Builder(<rsVarName>, Element.<rsType>(<rsVarName>))\n"
-			+ "\t.set<XYZ>(<expression>)\n"
-			+ "\t.create();\n"
-			+ "Allocation <varAllocationName> = Allocation.createTyped(<rsVarName>, <typeName>Type);";
 
 	public RSImageTranslator(CTranslator cCodeTranslator) {
 		super(cCodeTranslator);
@@ -117,69 +114,79 @@ public abstract class RSImageTranslator extends RSTranslator implements
 	 */
 	@Override
 	protected void fillReduceOperationCall(ST st, Operation operation) {
-		st.addAggr("allocation.{body}", this.createTileAllocation(operation));
-		st.addAggr("allocation.{body}", this.createReturnAllocation(operation));
-		String tileVariableName = this.getTileVariableName(operation);
-		st.addAggr("kernels.{functionName, allocations}",
-				this.commonDefinitions.getOperationTileFunctionName(operation),
-				tileVariableName);
-		st.addAggr("kernels.{functionName, allocations}",
-				this.commonDefinitions.getOperationName(operation),
-				this.commonDefinitions.getPrefix()
-						+ operation.destinationVariable.name);
-		st.addAggr("variables.{gVariableName, variableName}",
-				this.getInputDataVariableName(operation),
-				this.commonDefinitions.getVariableOutName(operation.variable));
-		st.addAggr("variables.{gVariableName, variableName}", tileVariableName,
-				tileVariableName);
-		st.addAggr("inputSize.{name, XYZ}",
-				this.getInputXSizeVariableName(operation), "X");
-		st.addAggr("inputSize.{name, XYZ}",
-				this.getInputYSizeVariableName(operation), "Y");
+		super.fillReduceOperationCall(st, operation);
+		st.addAggr("inputSize.{name, XYZ, allocationName}",
+				this.getInputYSizeVariableName(operation), "Y",
+				commonDefinitions.getVariableOutName(operation.variable));
+		if (operation.getExecutionType() == ExecutionType.Parallel) {
+			st.addAggr("tileSize.{name, expression}",
+					getTileSizeVariableName(operation), String.format(
+							"%s.getType().getY()", commonDefinitions
+									.getVariableOutName(operation.variable)));
+		}
 	}
 
 	/**
 	 * {@inheritDoc}
 	 */
 	@Override
-	protected void fillForeachOperationCall(ST st, Operation operation) {
-		String outputAllocation = this.commonDefinitions
-				.getVariableOutName(operation.variable);
-		st.addAggr("kernels.{functionName, allocations}",
-				this.commonDefinitions.getOperationName(operation),
-				outputAllocation + ", " + outputAllocation);
-	}
-
-	private String createTileAllocation(Operation operation) {
-		ST st = new ST(templateAllocation);
-		// For typed classes like Array, get the type parameter
-		String javaType = operation.variable.typeParameterName.isEmpty() ? operation.variable.typeName
-				: operation.variable.typeParameterName;
-		String tileVariableName = this.getTileVariableName(operation);
-		st.add("typeName", tileVariableName);
-		st.add("rsVarName", this.getRSVariableName());
-		st.add("rsType", java2RSAllocationTypes.get(javaType));
-		st.add("XYZ", "X");
-		st.add("expression",
-				this.commonDefinitions.getVariableOutName(operation.variable)
-						+ ".getType().getX()");
-		st.add("varAllocationName", tileVariableName);
-		return st.render();
-	}
-
-	private String createReturnAllocation(Operation operation) {
-		ST st = new ST(templateAllocation);
-		// For typed classes like Array, get the type parameter
-		String javaType = operation.variable.typeParameterName.isEmpty() ? operation.variable.typeName
-				: operation.variable.typeParameterName;
-		Variable destvar = operation.destinationVariable;
-		st.add("typeName", this.commonDefinitions.getPrefix() + destvar.name);
-		st.add("rsVarName", this.getRSVariableName());
-		st.add("rsType", java2RSAllocationTypes.get(javaType));
-		st.add("XYZ", "X");
-		st.add("expression", "1");
-		st.add("varAllocationName", this.commonDefinitions.getPrefix()
+	protected String translateReduce(Operation operation) {
+		ST st = new ST(templateReduce);
+		ST stForLoop = new ST(templateForLoop);
+		ST stForBody = new ST(templateReduceForBody);
+		String xVar = commonDefinitions.getPrefix() + "x";
+		stForLoop.add("varName", xVar);
+		stForBody.add("xVar", xVar);
+		Variable inputVar1 = operation.getUserFunctionData().arguments.get(0);
+		Variable inputVar2 = operation.getUserFunctionData().arguments.get(1);
+		stForBody.add("inputVar1", inputVar1.name);
+		st.add("inputVar1", inputVar1.name);
+		stForBody.add("inputVar2", inputVar2.name);
+		st.add("inputVar2", inputVar2.name);
+		stForBody.add("userFunctionName",
+				commonDefinitions.getOperationUserFunctionName(operation));
+		// Takes the first var, since they must be the same for reduce
+		// operations
+		String varType = commonDefinitions.translateType(inputVar1.typeName);
+		st.add("varType", varType);
+		stForBody.add("varType", varType);
+		boolean isSequential = operation.getExecutionType() == ExecutionType.Sequential;
+		String dataVar = isSequential ? getInputDataVariableName(operation)
+				: getTileVariableName(operation);
+		st.add("destinationVar", commonDefinitions.getPrefix()
 				+ operation.destinationVariable.name);
-		return st.render();
+		st.add("dataVar", dataVar);
+		stForBody.add("dataVar", dataVar);
+		stForBody.add("params", null);
+		for (Variable variable : operation.getExternalVariables()) {
+			stForBody.addAggr("params.{name}", variable.name);
+			if (isSequential && !variable.isFinal()) {
+				stForBody.addAggr("params.{name}",
+						commonDefinitions.getPrefix() + variable.name);
+			}
+		}
+		stForLoop.add("initValue", "1");
+		String inputXSize = getInputXSizeVariableName(operation);
+		stForLoop.add("varMaxVal", inputXSize);
+		if (isSequential) {
+			String yVar = commonDefinitions.getPrefix() + "y";
+			stForBody.addAggr("yVar.{name}", yVar);
+			ST stInnerFor = new ST(templateForLoop);
+			stInnerFor.add("varName", yVar);
+			stInnerFor.add("initValue", "1");
+			stInnerFor.add("varMaxVal", getInputYSizeVariableName(operation));
+			stInnerFor.add("body", stForBody.render());
+			stForLoop.add("body", stInnerFor.render());
+		} else {
+			stForBody.add("yVar", null);
+			stForLoop.add("body", stForBody.render());
+		}
+		st.addAggr("forLoop.{loop}", stForLoop.render());
+		stForBody.remove("dataVar");
+		stForBody.add("dataVar", getInputDataVariableName(operation));
+		st.add("destVar",
+				getOutputVariableName(operation.destinationVariable, operation));
+		return createKernelFunction(operation, st.render(),
+				FunctionType.BaseOperation);
 	}
 }

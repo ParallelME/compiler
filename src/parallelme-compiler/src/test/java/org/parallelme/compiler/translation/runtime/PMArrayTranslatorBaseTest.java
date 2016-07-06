@@ -337,7 +337,7 @@ public abstract class PMArrayTranslatorBaseTest extends BaseTranslatorTest {
 						+ "param2 = PM_tile[PM_x];"
 						+ "param1 = reduce123_func(param1, param2);"
 						+ "}"
-						+ "for (int PM_x = (int) pow(floor(sqrt(PM_length)), 2); PM_x \\< PM_length; ++PM_x) {"
+						+ "for (int PM_x = (int) pow(floor(sqrt((float)PM_length)), 2); PM_x \\< PM_length; ++PM_x) {"
 						+ "param2 = PM_data[PM_x];"
 						+ "param1 = reduce123_func(param1, param2);" + "}"
 						+ "*PM_destVar = param1; }");
@@ -371,7 +371,7 @@ public abstract class PMArrayTranslatorBaseTest extends BaseTranslatorTest {
 						+ "param2 = PM_tile[PM_x];"
 						+ "param1 = reduce123_func(param1, param2, <finalVar>);"
 						+ "}"
-						+ "for (int PM_x = (int) pow(floor(sqrt(PM_length)), 2); PM_x \\< PM_length; ++PM_x) {"
+						+ "for (int PM_x = (int) pow(floor(sqrt((float)PM_length)), 2); PM_x \\< PM_length; ++PM_x) {"
 						+ "param2 = PM_data[PM_x];"
 						+ "param1 = reduce123_func(param1, param2, <finalVar>);"
 						+ "}" + "*PM_destVar = param1; }");

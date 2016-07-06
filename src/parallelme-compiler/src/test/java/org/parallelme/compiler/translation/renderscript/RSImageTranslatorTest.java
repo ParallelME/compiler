@@ -75,8 +75,8 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 				+ "int PM_gExternalVarForeach123;\n"
 				+ "void foreach123() {\n"
 				+ "float4 param1;\n"
-				+ "for (int PM_x=0; PM_x<PM_gInputXSizeForeach123; PM_x++) {\n"
-				+ "for (int PM_y=0; PM_y<PM_gInputYSizeForeach123; PM_y++) {\n"
+				+ "for (int PM_x=0; PM_x<PM_gInputXSizeForeach123; ++PM_x) {\n"
+				+ "for (int PM_y=0; PM_y<PM_gInputYSizeForeach123; ++PM_y) {\n"
 				+ "param1 = rsGetElementAt_float4(PM_gInputForeach123, PM_x, PM_y);\n"
 				+ "param1.s0 = 123;\n"
 				+ "rsSetElementAt_float4(PM_gInputForeach123, param1, PM_x, PM_y);\n"
@@ -93,8 +93,8 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 				+ "int PM_gInputYSizeForeach123;\n"
 				+ "void foreach123(){\n"
 				+ "float4 param1;\n"
-				+ "for (int PM_x=0; PM_x<PM_gInputXSizeForeach123; PM_x++) {\n"
-				+ "for (int PM_y=0; PM_y<PM_gInputYSizeForeach123; PM_y++) {\n"
+				+ "for (int PM_x=0; PM_x<PM_gInputXSizeForeach123; ++PM_x) {\n"
+				+ "for (int PM_y=0; PM_y<PM_gInputYSizeForeach123; ++PM_y) {\n"
 				+ "param1 = rsGetElementAt_float4(PM_gInputForeach123, PM_x, PM_y);\n"
 				+ "param1.s0 = 123;\n"
 				+ "rsSetElementAt_float4(PM_gInputForeach123, param1, PM_x, PM_y);\n"
@@ -110,8 +110,8 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 				+ "int PM_gExternalVarForeach123;\n"
 				+ "void foreach123() {\n"
 				+ "float4 param1;\n"
-				+ "for (int PM_x=0; PM_x<PM_gInputXSizeForeach123; PM_x++) {\n"
-				+ "for (int PM_y=0; PM_y<PM_gInputYSizeForeach123; PM_y++) {\n"
+				+ "for (int PM_x=0; PM_x<PM_gInputXSizeForeach123; ++PM_x) {\n"
+				+ "for (int PM_y=0; PM_y<PM_gInputYSizeForeach123; ++PM_y) {\n"
 				+ "param1 = rsGetElementAt_float4(PM_gInputForeach123, PM_x, PM_y);\n"
 				+ "param1.s0 = 123;\n"
 				+ "rsSetElementAt_float4(PM_gInputForeach123, param1, PM_x, PM_y);\n"
@@ -128,8 +128,8 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 				+ "int PM_gExternalVarForeach123;\n"
 				+ "void foreach123() {\n"
 				+ "float4 param1;\n"
-				+ "for (int PM_x=0; PM_x<PM_gInputXSizeForeach123; PM_x++) {\n"
-				+ "for (int PM_y=0; PM_y<PM_gInputYSizeForeach123; PM_y++) {\n"
+				+ "for (int PM_x=0; PM_x<PM_gInputXSizeForeach123; ++PM_x) {\n"
+				+ "for (int PM_y=0; PM_y<PM_gInputYSizeForeach123; ++PM_y) {\n"
 				+ "param1 = rsGetElementAt_float4(PM_gInputForeach123, PM_x, PM_y);\n"
 				+ "param1.s0 = 123;\n"
 				+ "rsSetElementAt_float4(PM_gInputForeach123, param1, PM_x, PM_y);\n"
@@ -187,29 +187,33 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 				.translateOperation(operation);
 		String expectedTranslation = "rs_allocation PM_gInputReduce123;\n"
 				+ "rs_allocation PM_gTileReduce123;\n"
+				+ "rs_allocation PM_gOutputDestVarReduce123;\n"
 				+ "int PM_gInputXSizeReduce123;\n"
 				+ "int PM_gInputYSizeReduce123;\n"
+				+ "int PM_gTileSizeReduce123;\n"
 				+ "static float4 reduce123_func(float4 param1, float4 param2) {\n"
-				+ "param1.s0 = 123;\n"
-				+ "param2.s1 = 456;\n"
+				+ "param1.s0 = 123; \n"
+				+ "param2.s1 = 456; \n"
 				+ "return param2;\n"
 				+ "}\n"
-				+ "float4 __attribute__ ((kernel)) reduce123_tile(uint32_t x) {\n"
+				+ "float4 __attribute__((kernel)) reduce123_tile(uint32_t x) {\n"
 				+ "float4 param1 = rsGetElementAt_float4(PM_gInputReduce123, x, 0);\n"
 				+ "float4 param2;\n"
-				+ "for (int i=1; i<PM_gInputYSizeReduce123; ++i) {\n"
-				+ "param2 = rsGetElementAt_float4(PM_gInputReduce123, x, i);\n"
+				+ "for (int PM_x=1; PM_x<PM_gInputYSizeReduce123; ++PM_x) {\n"
+				+ "param2 = rsGetElementAt_float4(PM_gInputReduce123, x, PM_x);\n"
 				+ "param1 = reduce123_func(param1, param2);\n"
 				+ "}\n"
 				+ "return param1;\n"
-				+ "}\n"
-				+ "float4 __attribute__ ((kernel)) reduce123(uint32_t x) {\n"
+				+ "}"
+				+ "void reduce123() {\n"
 				+ "float4 param1 = rsGetElementAt_float4(PM_gTileReduce123, 0);\n"
 				+ "float4 param2;\n"
-				+ "for (int i=1; i<PM_gInputXSizeReduce123; ++i) {\n"
-				+ "param2 = rsGetElementAt_float4(PM_gTileReduce123, i);\n"
-				+ "param1 = reduce123_func(param1, param2);\n" + "}\n"
-				+ "return param1;\n" + "}";
+				+ "for (int PM_x=1; PM_x<PM_gInputXSizeReduce123; ++PM_x) {\n"
+				+ "param2 = rsGetElementAt_float4(PM_gTileReduce123, PM_x);\n"
+				+ "param1 = reduce123_func(param1, param2);\n"
+				+ "}\n"
+				+ "rsSetElementAt_float4(PM_gOutputDestVarReduce123, param1, 0);\n"
+				+ "}";
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Parallel with final external variable
 		operation = this.createReduceOperation(ExecutionType.Parallel);
@@ -218,30 +222,34 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 		translatedFunction = translator.translateOperation(operation);
 		expectedTranslation = "rs_allocation PM_gInputReduce123;\n"
 				+ "rs_allocation PM_gTileReduce123;\n"
+				+ "rs_allocation PM_gOutputDestVarReduce123;\n"
 				+ "int PM_gInputXSizeReduce123;\n"
 				+ "int PM_gInputYSizeReduce123;\n"
+				+ "int PM_gTileSizeReduce123;\n"
 				+ "int PM_gExternalVarReduce123;\n"
 				+ "static float4 reduce123_func(float4 param1, float4 param2) {\n"
-				+ "param1.s0 = 123;\n"
-				+ "param2.s1 = 456;\n"
+				+ "param1.s0 = 123; \n"
+				+ "param2.s1 = 456; \n"
 				+ "return param2;\n"
 				+ "}\n"
-				+ "float4 __attribute__ ((kernel)) reduce123_tile(uint32_t x) {\n"
+				+ "float4 __attribute__((kernel)) reduce123_tile(uint32_t x) {\n"
 				+ "float4 param1 = rsGetElementAt_float4(PM_gInputReduce123, x, 0);\n"
 				+ "float4 param2;\n"
-				+ "for (int i=1; i<PM_gInputYSizeReduce123; ++i){\n"
-				+ "param2 = rsGetElementAt_float4(PM_gInputReduce123, x, i);\n"
+				+ "for (int PM_x=1; PM_x<PM_gInputYSizeReduce123; ++PM_x) {\n"
+				+ "param2 = rsGetElementAt_float4(PM_gInputReduce123, x, PM_x);\n"
 				+ "param1 = reduce123_func(param1, param2);\n"
 				+ "}\n"
 				+ "return param1;\n"
-				+ "}\n"
-				+ "float4 __attribute__ ((kernel)) reduce123(uint32_t x) {\n"
+				+ "}"
+				+ "void reduce123() {\n"
 				+ "float4 param1 = rsGetElementAt_float4(PM_gTileReduce123, 0);\n"
 				+ "float4 param2;\n"
-				+ "for (int i=1; i<PM_gInputXSizeReduce123; ++i) {\n"
-				+ "param2 = rsGetElementAt_float4(PM_gTileReduce123, i);\n"
-				+ "param1 = reduce123_func(param1, param2);\n" + "}\n"
-				+ "return param1;\n" + "}";
+				+ "for (int PM_x=1; PM_x<PM_gInputXSizeReduce123; ++PM_x) {\n"
+				+ "param2 = rsGetElementAt_float4(PM_gTileReduce123, PM_x);\n"
+				+ "param1 = reduce123_func(param1, param2);\n"
+				+ "}\n"
+				+ "rsSetElementAt_float4(PM_gOutputDestVarReduce123, param1, 0);\n"
+				+ "}";
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Parallel with non-final external variable (will be translated to
 		// sequential code)
@@ -250,52 +258,104 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 		operation.addExternalVariable(nonFinalVar);
 		translatedFunction = translator.translateOperation(operation);
 		expectedTranslation = "rs_allocation PM_gInputReduce123;\n"
-				+ "rs_allocation PM_gTileReduce123;\n"
+				+ "rs_allocation PM_gOutputDestVarReduce123;\n"
 				+ "rs_allocation PM_gOutputExternalVarReduce123;\n"
 				+ "int PM_gInputXSizeReduce123;\n"
 				+ "int PM_gInputYSizeReduce123;\n"
 				+ "int PM_gExternalVarReduce123;\n"
-				+ "static float4 reduce123_func(float4 param1, float4 param2) {\n"
-				+ "param1.s0 = 123;\n" + "param2.s1 = 456;\n"
-				+ "return param2;\n" + "}";
+				+ "float4 reduce123_func(float4 param1, float4 param2) {\n"
+				+ "param1.s0 = 123; \n"
+				+ "param2.s1 = 456; \n"
+				+ "return param2;\n"
+				+ "}\n"
+				+ "void reduce123() {\n"
+				+ "float4 param1 = rsGetElementAt_float4(PM_gInputReduce123, 0);\n"
+				+ "float4 param2;\n"
+				+ "for (int PM_x=1; PM_x<PM_gInputXSizeReduce123; ++PM_x) {\n"
+				+ "for (int PM_y=1; PM_y<PM_gInputYSizeReduce123; ++PM_y) {\n"
+				+ "param2 = rsGetElementAt_float4(PM_gInputReduce123, PM_x, PM_y);\n"
+				+ "param1 = reduce123_func(param1, param2);\n"
+				+ "}\n"
+				+ "}\n"
+				+ "rsSetElementAt_float4(PM_gOutputDestVarReduce123, param1, 0);\n"
+				+ "}";
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential
 		operation = this.createReduceOperation(ExecutionType.Sequential);
 		translatedFunction = translator.translateOperation(operation);
 		expectedTranslation = "rs_allocation PM_gInputReduce123;\n"
-				+ "rs_allocation PM_gTileReduce123;\n"
+				+ "rs_allocation PM_gOutputDestVarReduce123;\n"
 				+ "int PM_gInputXSizeReduce123;\n"
 				+ "int PM_gInputYSizeReduce123;\n"
-				+ "static float4 reduce123_func(float4 param1, float4 param2) {\n"
-				+ "param1.s0 = 123;\n" + "param2.s1 = 456;\n"
-				+ "return param2;\n" + "}";
+				+ "float4 reduce123_func(float4 param1, float4 param2) {\n"
+				+ "param1.s0 = 123; \n"
+				+ "param2.s1 = 456; \n"
+				+ "return param2;\n"
+				+ "}\n"
+				+ "void reduce123() {\n"
+				+ "float4 param1 = rsGetElementAt_float4(PM_gInputReduce123, 0);\n"
+				+ "float4 param2;\n"
+				+ "for (int PM_x=1; PM_x<PM_gInputXSizeReduce123; ++PM_x) {\n"
+				+ "for (int PM_y=1; PM_y<PM_gInputYSizeReduce123; ++PM_y) {\n"
+				+ "param2 = rsGetElementAt_float4(PM_gInputReduce123, PM_x, PM_y);\n"
+				+ "param1 = reduce123_func(param1, param2);\n"
+				+ "}\n"
+				+ "}\n"
+				+ "rsSetElementAt_float4(PM_gOutputDestVarReduce123, param1, 0);\n"
+				+ "}";
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential with final variable
 		operation = this.createReduceOperation(ExecutionType.Sequential);
 		operation.addExternalVariable(finalVar);
 		translatedFunction = translator.translateOperation(operation);
 		expectedTranslation = "rs_allocation PM_gInputReduce123;\n"
-				+ "rs_allocation PM_gTileReduce123;\n"
+				+ "rs_allocation PM_gOutputDestVarReduce123;\n"
 				+ "int PM_gInputXSizeReduce123;\n"
 				+ "int PM_gInputYSizeReduce123;\n"
 				+ "int PM_gExternalVarReduce123;\n"
-				+ "static float4 reduce123_func(float4 param1, float4 param2) {\n"
-				+ "param1.s0 = 123;\n" + "param2.s1 = 456;\n"
-				+ "return param2;\n" + "}";
+				+ "float4 reduce123_func(float4 param1, float4 param2) {\n"
+				+ "param1.s0 = 123; \n"
+				+ "param2.s1 = 456; \n"
+				+ "return param2;\n"
+				+ "}\n"
+				+ "void reduce123() {\n"
+				+ "float4 param1 = rsGetElementAt_float4(PM_gInputReduce123, 0);\n"
+				+ "float4 param2;\n"
+				+ "for (int PM_x=1; PM_x<PM_gInputXSizeReduce123; ++PM_x) {\n"
+				+ "for (int PM_y=1; PM_y<PM_gInputYSizeReduce123; ++PM_y) {\n"
+				+ "param2 = rsGetElementAt_float4(PM_gInputReduce123, PM_x, PM_y);\n"
+				+ "param1 = reduce123_func(param1, param2);\n"
+				+ "}\n"
+				+ "}\n"
+				+ "rsSetElementAt_float4(PM_gOutputDestVarReduce123, param1, 0);\n"
+				+ "}";
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential with non-final variable
 		operation = this.createReduceOperation(ExecutionType.Sequential);
 		operation.addExternalVariable(nonFinalVar);
 		translatedFunction = translator.translateOperation(operation);
 		expectedTranslation = "rs_allocation PM_gInputReduce123;\n"
-				+ "rs_allocation PM_gTileReduce123;\n"
+				+ "rs_allocation PM_gOutputDestVarReduce123;\n"
 				+ "rs_allocation PM_gOutputExternalVarReduce123;\n"
 				+ "int PM_gInputXSizeReduce123;\n"
 				+ "int PM_gInputYSizeReduce123;\n"
 				+ "int PM_gExternalVarReduce123;\n"
-				+ "static float4 reduce123_func(float4 param1, float4 param2) {\n"
-				+ "param1.s0 = 123;\n" + "param2.s1 = 456;\n"
-				+ "return param2;\n" + "}";
+				+ "float4 reduce123_func(float4 param1, float4 param2) {\n"
+				+ "param1.s0 = 123; \n"
+				+ "param2.s1 = 456; \n"
+				+ "return param2;\n"
+				+ "}\n"
+				+ "void reduce123() {\n"
+				+ "float4 param1 = rsGetElementAt_float4(PM_gInputReduce123, 0);\n"
+				+ "float4 param2;\n"
+				+ "for (int PM_x=1; PM_x<PM_gInputXSizeReduce123; ++PM_x) {\n"
+				+ "for (int PM_y=1; PM_y<PM_gInputYSizeReduce123; ++PM_y) {\n"
+				+ "param2 = rsGetElementAt_float4(PM_gInputReduce123, PM_x, PM_y);\n"
+				+ "param1 = reduce123_func(param1, param2);\n"
+				+ "}\n"
+				+ "}\n"
+				+ "rsSetElementAt_float4(PM_gOutputDestVarReduce123, param1, 0);\n"
+				+ "}";
 		this.validateTranslation(expectedTranslation, translatedFunction);
 	}
 
@@ -311,25 +371,25 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 		String translatedFunction = translator.translateOperationCall(
 				className, operation);
 		ST st = new ST(
-				"Type PM_gTileReduce123Type = newType.Builder(PM_mRS, Element.<rsType>(PM_mRS))"
-						+ ".setX(<varOut>.getType().getX())"
-						+ ".create();\n"
-						+ "AllocationPM_gTileReduce123 = Allocation.createTyped(PM_mRS, PM_gTileReduce123Type);\n"
-						+ "Type PM_destVarType = new Type.Builder(PM_mRS, Element.<rsType>(PM_mRS)).setX(1).create();\n"
-						+ "Allocation PM_destVar = Allocation.createTyped(PM_mRS, PM_destVarType);\n"
-						+ "<kernel>.set_PM_gInputReduce123(<varOut>);\n"
+				"int PM_gTileSizeReduce123 = PM_imageVar1Out.getType().getY();\n"
+						+ "Type PM_gOutputDestVarReduce123Type = newType.Builder(PM_mRS, Element.<rsType>(PM_mRS)).setX(1).create();\n"
+						+ "Allocation PM_gOutputDestVarReduce123 = Allocation.createTyped(PM_mRS, PM_gOutputDestVarReduce123Type);\n"
+						+ "Type PM_gTileReduce123Type = new Type.Builder(PM_mRS,Element.<rsType>(PM_mRS)).setX(PM_gTileSizeReduce123).create();\n"
+						+ "Allocation PM_gTileReduce123 = Allocation.createTyped(PM_mRS, PM_gTileReduce123Type);\n"
+						+ "<kernel>.set_PM_gOutputDestVarReduce123(PM_gOutputDestVarReduce123);\n"
+						+ "<kernel>.set_PM_gInputReduce123(PM_imageVar1Out);\n"
 						+ "<kernel>.set_PM_gTileReduce123(PM_gTileReduce123);\n"
-						+ "<kernel>.set_PM_gInputXSizeReduce123(<varOut>.getType().getX());\n"
-						+ "<kernel>.set_PM_gInputYSizeReduce123(<varOut>.getType().getY());\n"
+						+ "<kernel>.set_PM_gTileSizeReduce123(PM_gTileSizeReduce123);\n"
+						+ "<kernel>.set_PM_gInputXSizeReduce123(PM_imageVar1Out.getType().getX());\n"
+						+ "<kernel>.set_PM_gInputYSizeReduce123(PM_imageVar1Out.getType().getY());\n"
 						+ "<kernel>.forEach_reduce123_tile(PM_gTileReduce123);\n"
-						+ "<kernel>.forEach_reduce123(PM_destVar);\n"
-						+ "float[] PM_destVarTmp = new float[4];\n"
-						+ "PM_destVar.copyTo(PM_destVarTmp);\n"
-						+ "return new Pixel(PM_destVarTmp[0], PM_destVarTmp[1], PM_destVarTmp[2], PM_destVarTmp[3], -1, -1);");
-		st.add("varOut",
-				commonDefinitions.getVariableOutName(operation.variable));
+						+ "<kernel>.invoke_reduce123();\n"
+						+ "float[] PM_gOutputDestVarReduce123Tmp = new float[4];\n"
+						+ "PM_gOutputDestVarReduce123.copyTo(PM_gOutputDestVarReduce123Tmp);\n"
+						+ "return new Pixel(PM_gOutputDestVarReduce123Tmp[0],PM_gOutputDestVarReduce123Tmp[1],PM_gOutputDestVarReduce123Tmp[2],PM_gOutputDestVarReduce123Tmp[3],-1,-1);");
 		st.add("kernel", commonDefinitions.getKernelName(className));
 		st.add("rsType", getRSType());
+		System.out.println(translatedFunction);
 		String expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential
@@ -337,25 +397,16 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 		translatedFunction = translator.translateOperationCall(className,
 				operation);
 		st = new ST(
-				"Type PM_gTileReduce123Type = newType.Builder(PM_mRS,Element.<rsType>(PM_mRS))"
-						+ ".setX(<varOut>.getType().getX()).create();\n"
-						+ "Allocation PM_gTileReduce123 = Allocation.createTyped(PM_mRS,PM_gTileReduce123Type);\n"
-						+ "Type PM_destVarType = new Type.Builder(PM_mRS,Element.<rsType>(PM_mRS)).setX(1).create();\n"
-						+ "Allocation PM_destVar = Allocation.createTyped(PM_mRS, PM_destVarType);\n"
-						+ "<kernel>.set_PM_gInputReduce123(<varOut>);\n"
-						+ "<kernel>.set_PM_gTileReduce123(PM_gTileReduce123);\n"
-						+ "<kernel>.set_PM_gInputReduce123(<varOut>);\n"
-						+ "<kernel>.set_PM_gInputXSizeReduce123(<varOut>.getType().getX());\n"
-						+ "<kernel>.set_PM_gInputYSizeReduce123(<varOut>.getType().getY());\n"
-						+ "<kernel>.set_PM_gInputXSizeReduce123(<varOut>.getType().getX());\n"
-						+ "<kernel>.set_PM_gInputYSizeReduce123(<varOut>.getType().getY());\n"
-						+ "<kernel>.invoke_reduce123_tile(PM_gTileReduce123);\n"
-						+ "<kernel>.invoke_reduce123(PM_destVar);\n"
-						+ "float[] PM_destVarTmp = new float[4];\n"
-						+ "PM_destVar.copyTo(PM_destVarTmp);\n"
-						+ "return new Pixel(PM_destVarTmp[0], PM_destVarTmp[1], PM_destVarTmp[2], PM_destVarTmp[3], -1, -1);");
-		st.add("varOut",
-				commonDefinitions.getVariableOutName(operation.variable));
+				"Type PM_gOutputDestVarReduce123Type = newType.Builder(PM_mRS, Element.<rsType>(PM_mRS)).setX(1).create();\n"
+						+ "Allocation PM_gOutputDestVarReduce123 = Allocation.createTyped(PM_mRS, PM_gOutputDestVarReduce123Type);\n"
+						+ "<kernel>.set_PM_gOutputDestVarReduce123(PM_gOutputDestVarReduce123);\n"
+						+ "<kernel>.set_PM_gInputReduce123(PM_imageVar1Out);\n"
+						+ "<kernel>.set_PM_gInputXSizeReduce123(PM_imageVar1Out.getType().getX());\n"
+						+ "<kernel>.set_PM_gInputYSizeReduce123(PM_imageVar1Out.getType().getY());\n"
+						+ "<kernel>.invoke_reduce123();\n"
+						+ "float[] PM_gOutputDestVarReduce123Tmp = new float[4];\n"
+						+ "PM_gOutputDestVarReduce123.copyTo(PM_gOutputDestVarReduce123Tmp);\n"
+						+ "return new Pixel(PM_gOutputDestVarReduce123Tmp[0],PM_gOutputDestVarReduce123Tmp[1],PM_gOutputDestVarReduce123Tmp[2],PM_gOutputDestVarReduce123Tmp[3],-1,-1);");
 		st.add("kernel", commonDefinitions.getKernelName(className));
 		st.add("rsType", getRSType());
 		expectedTranslation = st.render();

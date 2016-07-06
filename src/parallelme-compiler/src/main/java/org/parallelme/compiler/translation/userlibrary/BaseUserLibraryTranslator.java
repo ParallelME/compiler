@@ -128,7 +128,7 @@ public abstract class BaseUserLibraryTranslator implements
 				// must be the first
 				ret.add(this.translateReduceUserFunction(operation));
 				ret.add(this.translateParallelReduceTile(operation));
-				ret.add(this.translateParallelReduce(operation));
+				ret.add(this.translateReduce(operation));
 			} else {
 				throw new RuntimeException("Invalid operation: "
 						+ operation.operationType);
@@ -138,7 +138,7 @@ public abstract class BaseUserLibraryTranslator implements
 				ret.add(this.translateSequentialForeach(operation));
 			} else if (operation.operationType == OperationType.Reduce) {
 				ret.add(this.translateReduceUserFunction(operation));
-				ret.add(this.translateSequentialReduce(operation));
+				ret.add(this.translateReduce(operation));
 			} else {
 				throw new RuntimeException("Invalid operation: "
 						+ operation.operationType);
@@ -158,15 +158,10 @@ public abstract class BaseUserLibraryTranslator implements
 	abstract protected String translateParallelForeach(Operation operation);
 
 	/**
-	 * Translates a tile operation returning a C code compatible with this
-	 * runtime.
-	 * 
-	 * @param operation
-	 *            Operation that must be translated.
-	 * @return C code with operation's user code compatible with this runtime.
+	 * Translates the reduce operation.
 	 */
-	abstract protected String translateParallelReduce(Operation operation);
-
+	abstract protected String translateReduce(Operation operation);
+	
 	/**
 	 * Translates a tile operation returning a C code compatible with this
 	 * runtime.
@@ -197,16 +192,6 @@ public abstract class BaseUserLibraryTranslator implements
 	abstract protected String translateSequentialForeach(Operation operation);
 
 	/**
-	 * Translates a sequential operation returning a C code compatible with this
-	 * runtime.
-	 * 
-	 * @param operation
-	 *            Operation that must be translated.
-	 * @return C code with operation's user code compatible with this runtime.
-	 */
-	abstract protected String translateSequentialReduce(Operation operation);
-
-	/**
 	 * Given an operation and its body, creates a String with the equivalent
 	 * kernelF function.
 	 */
@@ -222,4 +207,12 @@ public abstract class BaseUserLibraryTranslator implements
 
 	abstract protected String getOperationFunctionSignature(
 			Operation operation, FunctionType functionType);
+
+	/**
+	 * Name for base variable that is used to index allocation data in C kernel
+	 * code.
+	 */
+	protected String getBaseVariableName() {
+		return this.commonDefinitions.getPrefix() + "base";
+	}
 }

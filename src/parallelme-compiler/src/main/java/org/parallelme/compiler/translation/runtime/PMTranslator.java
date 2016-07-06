@@ -93,19 +93,6 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 		return ret.toString();
 	}
 
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	protected String translateParallelReduce(Operation operation) {
-		return this.translateReduce(operation);
-	}
-
-	/**
-	 * Translates the reduce operation.
-	 */
-	abstract protected String translateReduce(Operation operation);
-
 	protected String getExpression(String varType, String varName,
 			String attributedVar) {
 		ST st = new ST("<type> <name><attr:{var| = <var.expression>}>");
@@ -234,14 +221,6 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 						variable.name);
 		}
 		return st.render();
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	protected String translateSequentialReduce(Operation operation) {
-		return this.translateReduce(operation);
 	}
 
 	/**
@@ -424,14 +403,6 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 	 */
 	protected String getTileVariableName() {
 		return this.commonDefinitions.getPrefix() + "tile";
-	}
-
-	/**
-	 * Name for base variable that is used to index allocation data in C kernel
-	 * code.
-	 */
-	protected String getBaseVariableName() {
-		return this.commonDefinitions.getPrefix() + "base";
 	}
 
 	/**
