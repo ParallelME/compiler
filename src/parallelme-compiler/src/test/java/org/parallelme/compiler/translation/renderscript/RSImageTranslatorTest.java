@@ -389,7 +389,6 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "return new Pixel(PM_gOutputDestVarReduce123Tmp[0],PM_gOutputDestVarReduce123Tmp[1],PM_gOutputDestVarReduce123Tmp[2],PM_gOutputDestVarReduce123Tmp[3],-1,-1);");
 		st.add("kernel", commonDefinitions.getKernelName(className));
 		st.add("rsType", getRSType());
-		System.out.println(translatedFunction);
 		String expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential
