@@ -20,7 +20,7 @@ import org.parallelme.compiler.userlibrary.UserLibraryClass;
 public class Float32 extends UserLibraryClass {
 	private static Float32 instance = new Float32();
 	private static final String className = "Float32";
-	private static final String packageName = "org.parallelme.userlibrary.datatypes";
+	private static final String packageName = "org.parallelme.userlibrary.datatype";
 
 	private Float32() {
 		this.initValidMethodsSet();

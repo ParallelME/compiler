@@ -20,7 +20,7 @@ import org.parallelme.compiler.userlibrary.UserLibraryClass;
 public class Int16 extends UserLibraryClass {
 	private static Int16 instance = new Int16();
 	private static final String className = "Int16";
-	private static final String packageName = "org.parallelme.userlibrary.datatypes";
+	private static final String packageName = "org.parallelme.userlibrary.datatype";
 	
 	private Int16() {
 		this.initValidMethodsSet();

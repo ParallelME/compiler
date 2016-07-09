@@ -22,7 +22,7 @@ public class PackageDefinition {
 	private static void initPackages() {
 		PackageDefinition.packages.add(PackageDefinition.getBasePackage());
 		PackageDefinition.packages
-				.add("org.parallelme.userlibrary.datatypes");
+				.add("org.parallelme.userlibrary.datatype");
 		PackageDefinition.packages
 				.add("org.parallelme.userlibrary.function");
 		PackageDefinition.packages
