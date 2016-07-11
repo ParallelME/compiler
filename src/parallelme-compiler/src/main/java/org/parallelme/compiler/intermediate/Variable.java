@@ -8,6 +8,8 @@
 
 package org.parallelme.compiler.intermediate;
 
+import java.util.List;
+
 /**
  * Intermediate representation for variable parameters.
  * 
@@ -16,7 +18,7 @@ package org.parallelme.compiler.intermediate;
 public class Variable implements Parameter {
 	public final String name;
 	public final String typeName;
-	public final String typeParameterName;
+	public final List<String> typeParameters;
 	public final String modifier;
 	// The sequential number is used to uniquely identify a variable in a class.
 	// This number will be used to handle variables inside the runtime wrapper
@@ -24,11 +26,11 @@ public class Variable implements Parameter {
 	// scopes in the original user code.
 	public final int sequentialNumber;
 
-	public Variable(String name, String typeName, String typeParameter,
+	public Variable(String name, String typeName, List<String> typeParameters,
 			String modifier, int sequentialNumber) {
 		this.name = name;
 		this.typeName = typeName;
-		this.typeParameterName = typeParameter;
+		this.typeParameters = typeParameters;
 		this.modifier = modifier;
 		this.sequentialNumber = sequentialNumber;
 	}
@@ -45,7 +47,8 @@ public class Variable implements Parameter {
 		if (other.getClass() == this.getClass()) {
 			return ((Variable) other).name == this.name
 					&& ((Variable) other).typeName == this.typeName
-					&& ((Variable) other).typeParameterName == this.typeParameterName;
+					&& ((Variable) other).typeParameters
+							.equals(this.typeParameters);
 		} else {
 			return false;
 		}

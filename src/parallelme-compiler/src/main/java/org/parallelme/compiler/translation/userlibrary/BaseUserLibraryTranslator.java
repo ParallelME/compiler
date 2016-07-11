@@ -119,26 +119,20 @@ public abstract class BaseUserLibraryTranslator implements
 				break;
 			}
 		}
-		// Translate parallel operations
-		if (operation.getExecutionType() == ExecutionType.Parallel) {
-			if (operation.operationType == OperationType.Foreach) {
-				ret.add(this.translateParallelForeach(operation));
-			} else if (operation.operationType == OperationType.Reduce) {
-				// C functions must be declared before used, so user function
-				// must be the first
-				ret.add(this.translateReduceUserFunction(operation));
-				ret.add(this.translateParallelReduceTile(operation));
-				ret.add(this.translateReduce(operation));
-			} else {
-				throw new RuntimeException("Invalid operation: "
-						+ operation.operationType);
-			}
+		if (operation.operationType == OperationType.Foreach) {
+			ret.add(translateForeach(operation));
 		} else {
-			if (operation.operationType == OperationType.Foreach) {
-				ret.add(this.translateSequentialForeach(operation));
-			} else if (operation.operationType == OperationType.Reduce) {
-				ret.add(this.translateReduceUserFunction(operation));
-				ret.add(this.translateReduce(operation));
+			// C functions must be declared before used, so user function
+			// must be the first
+			ret.add(translateUserFunction(operation));
+			if (operation.operationType == OperationType.Reduce) {
+				if (operation.getExecutionType() == ExecutionType.Parallel)
+					ret.add(translateParallelReduceTile(operation));
+				ret.add(translateReduce(operation));
+			} else if (operation.operationType == OperationType.Map) {
+				ret.add(translateMap(operation));
+			} else if (operation.operationType == OperationType.Filter) {
+				ret.add(translateFilter(operation));
 			} else {
 				throw new RuntimeException("Invalid operation: "
 						+ operation.operationType);
@@ -148,29 +142,34 @@ public abstract class BaseUserLibraryTranslator implements
 	}
 
 	/**
-	 * Translates a parallel operation returning a C code compatible with this
+	 * Translates a foreach operation returning a C code compatible with this
 	 * runtime.
-	 * 
-	 * @param operation
-	 *            Operation that must be translated.
-	 * @return C code with operation's user code compatible with this runtime.
 	 */
-	abstract protected String translateParallelForeach(Operation operation);
+	abstract protected String translateForeach(Operation operation);
 
 	/**
-	 * Translates the reduce operation.
+	 * Translates a reduce operation returning a C code compatible with this
+	 * runtime.
 	 */
 	abstract protected String translateReduce(Operation operation);
-	
+
 	/**
-	 * Translates a tile operation returning a C code compatible with this
-	 * runtime.
-	 * 
-	 * @param operation
-	 *            Operation that must be translated.
-	 * @return C code with operation's user code compatible with this runtime.
+	 * Translates a reduce tile operation returning a C code compatible with
+	 * this runtime.
 	 */
 	abstract protected String translateParallelReduceTile(Operation operation);
+
+	/**
+	 * Translates a map operation returning a C code compatible with this
+	 * runtime.
+	 */
+	abstract protected String translateMap(Operation operation);
+
+	/**
+	 * Translates a filter operation returning a C code compatible with this
+	 * runtime.
+	 */
+	abstract protected String translateFilter(Operation operation);
 
 	/**
 	 * Translates the user code that will be used for composing operations.
@@ -179,17 +178,7 @@ public abstract class BaseUserLibraryTranslator implements
 	 *            Operation that must be translated.
 	 * @return C code with operation's user code compatible with this runtime.
 	 */
-	abstract protected String translateReduceUserFunction(Operation operation);
-
-	/**
-	 * Translates a sequential operation returning a C code compatible with this
-	 * runtime.
-	 * 
-	 * @param operation
-	 *            Operation that must be translated.
-	 * @return C code with operation's user code compatible with this runtime.
-	 */
-	abstract protected String translateSequentialForeach(Operation operation);
+	abstract protected String translateUserFunction(Operation operation);
 
 	/**
 	 * Given an operation and its body, creates a String with the equivalent

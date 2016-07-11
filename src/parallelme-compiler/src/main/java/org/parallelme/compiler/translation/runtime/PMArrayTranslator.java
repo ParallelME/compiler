@@ -131,9 +131,10 @@ public class PMArrayTranslator extends PMTranslator implements ArrayTranslator {
 			// filter operations are implemented.
 			if (operation.operationType == OperationType.Reduce) {
 				nativeReturnType = this.commonDefinitions
-						.translateType(operation.variable.typeParameterName);
+						.translateType(operation.variable.typeParameters.get(0));
 				methodReturnType = UserLibraryClassFactory.getClass(
-						operation.variable.typeParameterName).getClassName();
+						operation.variable.typeParameters.get(0))
+						.getClassName();
 				size = "1";
 			}
 			st.addAggr(
@@ -196,7 +197,8 @@ public class PMArrayTranslator extends PMTranslator implements ArrayTranslator {
 		stForBody.add("dataVar", getDataVariableName());
 		if (!isSequential) {
 			stForLoop2.add("initValue", String.format(
-					"(int) pow(floor(sqrt((float)%s)), 2)", getLengthVariableName()));
+					"(int) pow(floor(sqrt((float)%s)), 2)",
+					getLengthVariableName()));
 			stForLoop2.add("varName", xVar);
 			stForLoop2.add("varMaxVal", getLengthVariableName());
 			stForLoop2.add("body", stForBody.render());

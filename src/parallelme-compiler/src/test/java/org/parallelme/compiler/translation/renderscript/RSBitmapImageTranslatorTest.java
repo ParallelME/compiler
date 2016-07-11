@@ -27,7 +27,7 @@ import org.stringtemplate.v4.ST;
  * @author Wilson de Carvalho
  */
 public class RSBitmapImageTranslatorTest extends RSImageTranslatorTest {
-	private Variable imageVar = new Variable("imageVar", "BitmapImage", "", "",
+	private Variable imageVar = new Variable("imageVar", "BitmapImage", null, "",
 			1);
 
 	@Override
@@ -47,15 +47,15 @@ public class RSBitmapImageTranslatorTest extends RSImageTranslatorTest {
 
 	private InputBind createInputBind() {
 		List<Parameter> parameters = new ArrayList<>();
-		parameters.add(new Variable("dataVar", "Bitmap", "", "", 2));
-		parameters.add(new Variable("widthVar", "int", "", "", 3));
-		parameters.add(new Variable("heightVar", "int", "", "", 4));
+		parameters.add(new Variable("dataVar", "Bitmap", null, "", 2));
+		parameters.add(new Variable("widthVar", "int", null, "", 3));
+		parameters.add(new Variable("heightVar", "int", null, "", 4));
 		return new InputBind(this.getUserLibraryVar(), 1, parameters, null,
 				null);
 	}
 
 	private OutputBind createOutputBind(OutputBindType outputBindType) {
-		Variable destinationVar = new Variable("bitmapVar", "Bitmap", "", "", 1);
+		Variable destinationVar = new Variable("bitmapVar", "Bitmap", null, "", 1);
 		return new OutputBind(this.getUserLibraryVar(), destinationVar, 1,
 				null, outputBindType);
 	}

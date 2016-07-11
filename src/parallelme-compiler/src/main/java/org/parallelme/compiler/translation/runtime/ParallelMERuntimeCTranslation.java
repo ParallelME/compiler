@@ -232,8 +232,8 @@ public class ParallelMERuntimeCTranslation {
 				stKernelHashTile.add("workSize", "variablePtr->height");
 				stKernelHash.add("workSize", "1");
 			} else {
-				// Worksize for tiles will be defined by the following function:
-				// floor(sqrt(vector size))
+				stKernelHashTile.add("workSize", "floor(sqrt((float)variablePtr->length))");
+				stKernelHash.add("workSize", "1");
 			}
 		} else {
 			st.add("destinationVariable", null);

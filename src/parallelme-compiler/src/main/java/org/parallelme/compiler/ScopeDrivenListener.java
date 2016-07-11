@@ -17,6 +17,7 @@ import org.parallelme.compiler.antlr.JavaParser;
 import org.parallelme.compiler.antlr.JavaParser.*;
 import org.parallelme.compiler.symboltable.*;
 import org.parallelme.compiler.userlibrary.UserLibraryClassFactory;
+import org.parallelme.compiler.util.Pair;
 import org.parallelme.compiler.util.StringUtil;
 
 /**
@@ -102,23 +103,24 @@ public class ScopeDrivenListener extends JavaBaseListener {
 					.formalParameterList().formalParameter()) {
 				String argumentName = parameter.variableDeclaratorId()
 						.getText();
-				String ret[] = this.getTypeData(parameter.type());
-				String typeName = ret[0];
-				String typeParameter = ret[1];
+				Pair<String, List<String>> ret = this.getTypeData(parameter
+						.type());
+				String typeName = ret.left;
+				List<String> typeParameters = ret.right;
 				String modifier = "";
 				if (!parameter.variableModifier().isEmpty())
 					modifier = parameter.variableModifier(0).getText();
 				Symbol argumentSymbol;
 				if (UserLibraryClassFactory.isValidClass(typeName)) {
 					argumentSymbol = new UserLibraryVariableSymbol(
-							argumentName, typeName, typeParameter, modifier,
+							argumentName, typeName, typeParameters, modifier,
 							this.currentScope, new TokenAddress(
 									parameter.start, parameter.stop),
 							new TokenAddress(ctx.start, ctx.stop),
 							this.symbolsCounter++);
 				} else {
 					argumentSymbol = new VariableSymbol(argumentName, typeName,
-							typeParameter, modifier, this.currentScope,
+							typeParameters, modifier, this.currentScope,
 							new TokenAddress(parameter.start, parameter.stop),
 							new TokenAddress(ctx.start, ctx.stop),
 							this.symbolsCounter++);
@@ -223,51 +225,52 @@ public class ScopeDrivenListener extends JavaBaseListener {
 	}
 
 	/**
-	 * Extract the class and type parameter. It is necessary to emphasize that
-	 * this code is prepared to extract a SINGLE parameter type. In case the
-	 * User Library is modified to accept more than one parameter type, this
-	 * code and the symbol table must be revised.
+	 * Extract the class and type parameters.
 	 * 
 	 * @param ctx
 	 *            Rule context.
 	 * 
-	 * @return A two element array with type name and parametrized type.
+	 * @return A pair with type name and a list of parametrized types.
 	 */
-	protected String[] getTypeData(RuleContext ctx) {
-		String[] ret = new String[2];
+	protected Pair<String, List<String>> getTypeData(RuleContext ctx) {
+		String typeName = "";
+		List<String> parameterizedType = null;
 		if (ctx instanceof TypeContext) {
 			TypeContext tpx = (TypeContext) ctx;
 			if (tpx.primitiveType() == null) {
 				// In case the class type contains package description,
 				// concatenates it in a single string
-				ret[0] = StringUtil.mkString(tpx.classOrInterfaceType()
+				typeName = StringUtil.mkString(tpx.classOrInterfaceType()
 						.Identifier().toArray(), ".");
-				ret[1] = "";
-				if (!tpx.classOrInterfaceType().typeArguments().isEmpty())
-					ret[1] = tpx.classOrInterfaceType().typeArguments(0)
-							.typeArgument(0).getText();
+				parameterizedType = new ArrayList<>();
+				for (TypeArgumentsContext typeArgument : tpx
+						.classOrInterfaceType().typeArguments()) {
+					parameterizedType.add(typeArgument.typeArgument(0)
+							.getText());
+				}
 			} else {
-				ret[0] = ctx.getText();
+				typeName = ctx.getText();
 			}
 		} else if (ctx instanceof CreatedNameContext) {
 			CreatedNameContext cnx = (CreatedNameContext) ctx;
 			if (!cnx.Identifier().isEmpty())
-				ret[0] = cnx.Identifier(0).getText();
+				typeName = cnx.Identifier(0).getText();
 			if (!cnx.typeArgumentsOrDiamond().isEmpty()) {
-				TypeArgumentsContext tpx = cnx.typeArgumentsOrDiamond(0)
-						.typeArguments();
+				TypeArgumentsOrDiamondContext typeOrDiamond = cnx
+						.typeArgumentsOrDiamond().get(0);
+				TypeArgumentsContext tpx = typeOrDiamond.typeArguments();
 				if (tpx != null && tpx.typeArgument() != null
 						&& !tpx.typeArgument().isEmpty()) {
-					ret[1] = tpx.typeArgument(0).getText();
-				} else {
-					ret[1] = "";
+					parameterizedType = new ArrayList<>();
+					for (TypeArgumentContext typeArgument : tpx.typeArgument())
+						parameterizedType.add(typeArgument.getText());
 				}
 			}
 		} else if (ctx instanceof ClassOrInterfaceTypeContext) {
 			ClassOrInterfaceTypeContext cix = (ClassOrInterfaceTypeContext) ctx;
-			ret[0] = cix.getText();
+			typeName = cix.getText();
 		}
-		return ret;
+		return new Pair<String, List<String>>(typeName, parameterizedType);
 	}
 
 	/**
@@ -306,10 +309,11 @@ public class ScopeDrivenListener extends JavaBaseListener {
 			// OR
 			// someObject.method(new ClassName(p1, p2, ..., pn) { ... });
 			this.symbolsCounter++;
-			String[] ret = this.getTypeData(ctx.createdName());
+			Pair<String, List<String>> ret = this
+					.getTypeData(ctx.createdName());
 			this.newScope(new CreatorSymbol(
 					SymbolTableDefinitions.anonymousObjectPrefix
-							+ this.symbolsCounter, "", ret[0], ret[1],
+							+ this.symbolsCounter, "", ret.left, ret.right,
 					arguments, this.currentScope, new TokenAddress(ctx.start,
 							ctx.stop), this.getCurrentStatementAddress(),
 					this.symbolsCounter));
@@ -353,17 +357,18 @@ public class ScopeDrivenListener extends JavaBaseListener {
 	private void createCreatorSymbol(JavaParser.CreatorContext creatorCtx,
 			String variableName, List<Symbol> arguments) {
 		if (!creatorCtx.createdName().typeArgumentsOrDiamond().isEmpty()) {
-			String[] ret = this.getTypeData(creatorCtx.createdName());
+			Pair<String, List<String>> ret = this.getTypeData(creatorCtx
+					.createdName());
 			this.newScope(new CreatorSymbol("PM_" + variableName + "Creator",
-					variableName, ret[0], ret[1], arguments, this.currentScope,
-					new TokenAddress(creatorCtx.start, creatorCtx.stop), this
-							.getCurrentStatementAddress(),
-					this.symbolsCounter++));
+					variableName, ret.left, ret.right, arguments,
+					this.currentScope, new TokenAddress(creatorCtx.start,
+							creatorCtx.stop),
+					this.getCurrentStatementAddress(), this.symbolsCounter++));
 		} else {
 			this.newScope(new CreatorSymbol("PM_" + variableName + "Creator",
-					variableName, creatorCtx.createdName().getText(), "",
-					arguments, this.currentScope, new TokenAddress(
-							creatorCtx.start, creatorCtx.stop), this
+					variableName, creatorCtx.createdName().getText(),
+					new ArrayList<String>(), arguments, this.currentScope,
+					new TokenAddress(creatorCtx.start, creatorCtx.stop), this
 							.getCurrentStatementAddress(),
 					this.symbolsCounter++));
 		}
@@ -385,17 +390,10 @@ public class ScopeDrivenListener extends JavaBaseListener {
 					&& expression.primary().literal() != null) {
 				symbol = this.createLiteralSymbol(expression.primary()
 						.literal());
-			} else if (expression.primary() != null
-					&& expression.primary().type() != null
-					&& expression.primary().type().classOrInterfaceType() != null) {
-				ClassOrInterfaceTypeContext classCtx = (ClassOrInterfaceTypeContext) expression
-						.primary().type().classOrInterfaceType();
-				String[] parameters = this.getTypeData(classCtx);
-				String className = parameters.length == 0 ? "" : parameters[0];
-				symbol = new ClassSymbol(className, "", this.currentScope,
-						new TokenAddress(classCtx.start, classCtx.stop), null,
-						this.symbolsCounter++);
-			} else if (!expression.expression().isEmpty()) {
+			} else if (!expression.expression().isEmpty()
+					|| (expression.primary() != null
+							&& expression.primary().type() != null && expression
+							.primary().type().classOrInterfaceType() != null)) {
 				symbol = new ExpressionSymbol(expressionText,
 						this.currentScope, new TokenAddress(expression.start,
 								expression.stop), this.symbolsCounter++);
@@ -509,26 +507,24 @@ public class ScopeDrivenListener extends JavaBaseListener {
 			TypeContext typeCtx,
 			List<VariableModifierContext> variableModifiers,
 			TokenAddress statementAddress) {
-		String ret[] = this.getTypeData(typeCtx);
-		String variableType = ret[0];
-		String typeParameter = ret[1];
+		Pair<String, List<String>> ret = this.getTypeData(typeCtx);
+		String variableType = ret.left;
+		List<String> typeParameters = ret.right;
 		for (VariableDeclaratorContext variable : variablesCtx
 				.variableDeclarator()) {
 			String variableName = variable.variableDeclaratorId().getText();
-			String modifier = "";
-			if (!variableModifiers.isEmpty()) {
-				modifier = variableModifiers.get(0).getText();
-			}
+			String modifier = variableModifiers.isEmpty() ? ""
+					: variableModifiers.get(0).getText();
 			if (UserLibraryClassFactory.isValidClass(variableType)) {
 				this.currentScope.addSymbol(new UserLibraryVariableSymbol(
-						variableName, variableType, typeParameter, modifier,
+						variableName, variableType, typeParameters, modifier,
 						this.currentScope, new TokenAddress(variable
 								.variableDeclaratorId().start, variable
 								.variableDeclaratorId().stop),
 						statementAddress, this.symbolsCounter++));
 			} else {
 				this.currentScope.addSymbol(new VariableSymbol(variableName,
-						variableType, typeParameter, modifier,
+						variableType, typeParameters, modifier,
 						this.currentScope, new TokenAddress(variable
 								.variableDeclaratorId().start, variable
 								.variableDeclaratorId().stop),

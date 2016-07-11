@@ -27,7 +27,8 @@ import org.stringtemplate.v4.ST;
  * @author Wilson de Carvalho
  */
 public class RSHDRImageTranslatorTest extends RSImageTranslatorTest {
-	private Variable imageVar = new Variable("imageVar", "HDRImage", "", "", 1);
+	private Variable imageVar = new Variable("imageVar", "HDRImage", null, "",
+			1);
 
 	@Override
 	protected Variable getUserLibraryVar() {
@@ -38,7 +39,7 @@ public class RSHDRImageTranslatorTest extends RSImageTranslatorTest {
 	protected BaseUserLibraryTranslator getTranslator() {
 		return new RSHDRImageTranslator(new SimpleTranslator());
 	}
-	
+
 	@Override
 	protected String getRSType() {
 		return "F32_4";
@@ -46,15 +47,16 @@ public class RSHDRImageTranslatorTest extends RSImageTranslatorTest {
 
 	private InputBind createInputBind() {
 		List<Parameter> parameters = new ArrayList<>();
-		parameters.add(new Variable("dataVar", "byte[]", "", "", 2));
-		parameters.add(new Variable("widthVar", "int", "", "", 3));
-		parameters.add(new Variable("heightVar", "int", "", "", 4));
+		parameters.add(new Variable("dataVar", "byte[]", null, "", 2));
+		parameters.add(new Variable("widthVar", "int", null, "", 3));
+		parameters.add(new Variable("heightVar", "int", null, "", 4));
 		return new InputBind(this.getUserLibraryVar(), 1, parameters, null,
 				null);
 	}
 
 	private OutputBind createOutputBind(OutputBindType outputBindType) {
-		Variable destinationVar = new Variable("bitmapVar", "Bitmap", "", "", 1);
+		Variable destinationVar = new Variable("bitmapVar", "Bitmap", null, "",
+				1);
 		return new OutputBind(this.getUserLibraryVar(), destinationVar, 1,
 				null, outputBindType);
 	}

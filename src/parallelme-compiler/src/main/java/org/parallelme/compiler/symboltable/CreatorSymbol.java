@@ -9,6 +9,7 @@
 package org.parallelme.compiler.symboltable;
 
 import java.util.Collection;
+import java.util.List;
 
 /**
  * A symbol for variable creation definition on the symbol table.
@@ -22,18 +23,18 @@ public class CreatorSymbol extends Symbol {
 	// Attributed object name (if any)
 	public final String attributedObjectName;
 	// Type parametrized on the creator
-	public final String typeParameterName;
+	public final List<String> typeParameters;
 	public final TokenAddress statementAddress;
 
 	public CreatorSymbol(String name, String attributedObjectName,
-			String typeName, String typeParameterName,
+			String typeName, List<String> typeParameters,
 			Collection<Symbol> arguments, Symbol enclosingScope,
 			TokenAddress tokenAddress, TokenAddress statementAddress,
 			int identifier) {
 		super(name, enclosingScope, tokenAddress, identifier);
 		this.typeName = typeName;
 		this.attributedObjectName = attributedObjectName;
-		this.typeParameterName = typeParameterName;
+		this.typeParameters = typeParameters;
 		this.arguments = arguments;
 		this.statementAddress = statementAddress;
 	}
@@ -51,7 +52,7 @@ public class CreatorSymbol extends Symbol {
 			ret.delete(ret.length() - 2, ret.length());
 		ret.append("]");
 		return super.readableTableHeader() + ", " + this.typeName + ", "
-				+ attributedObjectName + ", " + this.typeParameterName + ", "
+				+ attributedObjectName + ", " + this.typeParameters + ", "
 				+ ret.toString();
 	}
 
@@ -61,7 +62,7 @@ public class CreatorSymbol extends Symbol {
 			CreatorSymbol foo = (CreatorSymbol) other;
 			return super.equals(other) && foo.arguments == this.arguments
 					&& foo.typeName == this.typeName
-					&& foo.typeParameterName == this.typeParameterName
+					&& foo.equals(this.typeParameters)
 					&& foo.statementAddress == this.statementAddress;
 		} else {
 			return false;

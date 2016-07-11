@@ -35,7 +35,7 @@ abstract public class BaseTranslatorTest {
 	abstract protected BaseUserLibraryTranslator getTranslator();
 
 	protected Variable createExternalVariable(String modifier) {
-		return new Variable("externalVar", "int", "", modifier, 10);
+		return new Variable("externalVar", "int", null, modifier, 10);
 	}
 
 	protected MethodCall createMethodCall(String methodName) {

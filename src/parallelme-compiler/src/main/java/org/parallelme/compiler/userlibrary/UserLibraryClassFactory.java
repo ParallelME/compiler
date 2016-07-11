@@ -34,6 +34,10 @@ public class UserLibraryClassFactory {
 			return Foreach.getInstance();
 		else if (className.equals(Reduce.getInstance().getClassName()))
 			return Reduce.getInstance();
+		else if (className.equals(Map.getInstance().getClassName()))
+			return Map.getInstance();
+		else if (className.equals(Filter.getInstance().getClassName()))
+			return Filter.getInstance();
 		else if (className.equals(Pixel.getInstance().getClassName()))
 			return Pixel.getInstance();
 		else if (className.equals(Int16.getInstance().getClassName()))

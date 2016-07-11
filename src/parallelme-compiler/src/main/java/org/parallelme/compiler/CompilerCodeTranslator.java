@@ -668,7 +668,7 @@ public class CompilerCodeTranslator {
 			} else if (argument instanceof VariableSymbol) {
 				VariableSymbol variable = (VariableSymbol) argument;
 				ret.add(new Variable(variable.name, variable.typeName,
-						variable.typeParameterName, variable.modifier,
+						variable.typeParameters, variable.modifier,
 						variable.identifier));
 			} else if (argument instanceof ExpressionSymbol) {
 				ExpressionSymbol expression = (ExpressionSymbol) argument;
@@ -711,7 +711,7 @@ public class CompilerCodeTranslator {
 				.getVariablesWithCreators(symbolTable)) {
 			VariableSymbol variableSymbol = (VariableSymbol) pair.left;
 			Variable variable = new Variable(variableSymbol.name,
-					variableSymbol.typeName, variableSymbol.typeParameterName,
+					variableSymbol.typeName, variableSymbol.typeParameters,
 					variableSymbol.modifier, variableSymbol.identifier);
 			List<Parameter> arguments = this
 					.argumentsToVariableParameter(pair.right.arguments);

@@ -8,6 +8,8 @@
 
 package org.parallelme.compiler.symboltable;
 
+import java.util.List;
+
 /**
  * A symbol for user library variables definition on the symbol table.
  * 
@@ -15,10 +17,10 @@ package org.parallelme.compiler.symboltable;
  */
 public class UserLibraryVariableSymbol extends VariableSymbol {
 	public UserLibraryVariableSymbol(String name, String typeName,
-			String typeParameterName, String modifier, Symbol enclosingScope,
-			TokenAddress tokenAddress, TokenAddress expressionAddress,
+			List<String> typeParameters, String modifier,
+			Symbol enclosingScope, TokenAddress tokenAddress, TokenAddress expressionAddress,
 			int identifier) {
-		super(name, typeName, typeParameterName, modifier, enclosingScope,
+		super(name, typeName, typeParameters, modifier, enclosingScope,
 				tokenAddress, expressionAddress, identifier);
 	}
 }

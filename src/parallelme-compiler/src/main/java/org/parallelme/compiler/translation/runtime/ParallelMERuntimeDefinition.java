@@ -108,8 +108,8 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	private List<String> declareNativeOperations(List<Operation> operations)
 			throws CompilationException {
 		List<String> ret = new ArrayList<>();
-		Variable runtimePtr = new Variable("runtimePtr", "long", "", "", -1);
-		Variable variablePointer = new Variable("varPtr", "long", "", "", -1);
+		Variable runtimePtr = new Variable("runtimePtr", "long", null, "", -1);
+		Variable variablePointer = new Variable("varPtr", "long", null, "", -1);
 		for (Operation operation : operations) {
 			List<Parameter> parameters = new ArrayList<>();
 			parameters.add(runtimePtr);
@@ -124,7 +124,7 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 					if (!foo.isFinal())
 						parameters.add(new Variable(RuntimeCommonDefinitions
 								.getInstance().getPrefix() + foo.name,
-								foo.typeName + "[]", "", "", -1));
+								foo.typeName + "[]", null, "", -1));
 				}
 			} else {
 				parameters.addAll(externalVariables);
@@ -160,13 +160,13 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 					.getPrefix() + operation.destinationVariable.name,
 					RuntimeCommonDefinitions.getInstance().translateType(
 							operation.variable.typeName)
-							+ "[]", "", "", -1);
+							+ "[]", null, "", -1);
 		} else {
 			variable = new Variable(RuntimeCommonDefinitions.getInstance()
 					.getPrefix() + operation.destinationVariable.name,
 					RuntimeCommonDefinitions.getInstance().translateType(
 							operation.destinationVariable.typeName)
-							+ "[]", "", "", -1);
+							+ "[]", null, "", -1);
 		}
 		return variable;
 	}

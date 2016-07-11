@@ -28,8 +28,8 @@ import org.parallelme.compiler.translation.userlibrary.BaseUserLibraryTranslator
  * @author Wilson de Carvalho
  */
 public class PMBitmapImageTranslatorTest extends PMImageTranslatorTest {
-	private Variable imageVar = new Variable("imageVar", "BitmapImage", "", "",
-			1);
+	private Variable imageVar = new Variable("imageVar", "BitmapImage", null,
+			"", 1);
 
 	@Override
 	protected Variable getUserLibraryVar() {
@@ -43,15 +43,18 @@ public class PMBitmapImageTranslatorTest extends PMImageTranslatorTest {
 
 	private InputBind createInputBind() {
 		List<Parameter> parameters = new ArrayList<>();
-		parameters.add(new Variable("dataVar", "Bitmap", "", "", 2));
-		parameters.add(new Variable("widthVar", "int", "", "", 3));
-		parameters.add(new Variable("heightVar", "in", "", "", 4));
-		return new InputBind(this.getUserLibraryVar(), 1, parameters, null, null);
+		parameters.add(new Variable("dataVar", "Bitmap", null, "", 2));
+		parameters.add(new Variable("widthVar", "int", null, "", 3));
+		parameters.add(new Variable("heightVar", "in", null, "", 4));
+		return new InputBind(this.getUserLibraryVar(), 1, parameters, null,
+				null);
 	}
 
 	private OutputBind createOutputBind(OutputBindType outputBindType) {
-		Variable destinationVar = new Variable("bitmapVar", "Bitmap", "", "", 1);
-		return new OutputBind(this.getUserLibraryVar(), destinationVar, 1, null, outputBindType);
+		Variable destinationVar = new Variable("bitmapVar", "Bitmap", null, "",
+				1);
+		return new OutputBind(this.getUserLibraryVar(), destinationVar, 1,
+				null, outputBindType);
 	}
 
 	/**

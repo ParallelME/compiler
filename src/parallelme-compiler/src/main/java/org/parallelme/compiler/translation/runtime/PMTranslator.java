@@ -59,7 +59,19 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 	 * {@inheritDoc}
 	 */
 	@Override
-	protected String translateParallelForeach(Operation operation) {
+	protected String translateForeach(Operation operation) {
+		if (operation.getExecutionType() == ExecutionType.Parallel) {
+			return translateParallelForeach(operation);
+		} else {
+			return translateSequentialForeach(operation);
+		}
+	}
+
+	/**
+	 * Translates a parallel foreach operation returning a C code compatible
+	 * with this runtime.
+	 */
+	private String translateParallelForeach(Operation operation) {
 		List<String> variableDeclarations = new ArrayList<>();
 		List<String> dataReturnStatements = new ArrayList<>();
 		String gid = this.commonDefinitions.getPrefix() + "gid";
@@ -93,69 +105,11 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 		return ret.toString();
 	}
 
-	protected String getExpression(String varType, String varName,
-			String attributedVar) {
-		ST st = new ST("<type> <name><attr:{var| = <var.expression>}>");
-		st.add("type", varType);
-		st.add("name", varName);
-		st.add("attr", null);
-		if (attributedVar != null && !attributedVar.isEmpty()) {
-			st.addAggr("attr.{expression}", attributedVar);
-		}
-		return st.render();
-	}
-
 	/**
-	 * {@inheritDoc}
+	 * Translates a sequential foreach operation returning a C code compatible
+	 * with this runtime.
 	 */
-	@Override
-	protected String translateParallelReduceTile(Operation operation) {
-		ST st = new ST(templateParallelReduceTile);
-		st.add("xVar", this.commonDefinitions.getPrefix() + "x");
-		st.add("gidVar", this.commonDefinitions.getPrefix() + "gid");
-		Variable inputVar1 = operation.getUserFunctionData().arguments.get(0);
-		Variable inputVar2 = operation.getUserFunctionData().arguments.get(1);
-		st.add("inputVar1", inputVar1.name);
-		st.add("inputVar2", inputVar2.name);
-		// Takes the first var, since they must be the same for reduce
-		// operations
-		st.add("varType",
-				this.commonDefinitions.translateType(inputVar1.typeName));
-		st.add("userFunctionName",
-				this.commonDefinitions.getOperationUserFunctionName(operation));
-		st.add("dataVar", this.getDataVariableName());
-		st.add("baseVar", this.getBaseVariableName());
-		if (operation.variable.typeName.equals(BitmapImage.getInstance()
-				.getClassName())
-				|| operation.variable.typeName.equals(HDRImage.getInstance()
-						.getClassName())) {
-			st.add("sizeVar", this.getWidthVariableName());
-		} else {
-			st.add("sizeVar", this.getTileSizeVariableName());
-		}
-		st.add("params", null);
-		for (Variable variable : operation.getExternalVariables()) {
-			st.addAggr("params.{name}", variable.name);
-		}
-		st.add("destinationVar", this.getTileVariableName());
-		return this.createKernelFunction(operation, st.render(),
-				FunctionType.Tile);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	protected String translateReduceUserFunction(Operation operation) {
-		return this.createKernelFunction(operation,
-				this.translateUserCode(operation), FunctionType.UserCode);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	protected String translateSequentialForeach(Operation operation) {
+	private String translateSequentialForeach(Operation operation) {
 		Variable userFunctionVariable = operation.getUserFunctionData().arguments
 				.get(0);
 		String code2Translate = operation.getUserFunctionData().Code.trim();
@@ -221,6 +175,80 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 						variable.name);
 		}
 		return st.render();
+	}
+
+	protected String getExpression(String varType, String varName,
+			String attributedVar) {
+		ST st = new ST("<type> <name><attr:{var| = <var.expression>}>");
+		st.add("type", varType);
+		st.add("name", varName);
+		st.add("attr", null);
+		if (attributedVar != null && !attributedVar.isEmpty()) {
+			st.addAggr("attr.{expression}", attributedVar);
+		}
+		return st.render();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	protected String translateParallelReduceTile(Operation operation) {
+		ST st = new ST(templateParallelReduceTile);
+		st.add("xVar", this.commonDefinitions.getPrefix() + "x");
+		st.add("gidVar", this.commonDefinitions.getPrefix() + "gid");
+		Variable inputVar1 = operation.getUserFunctionData().arguments.get(0);
+		Variable inputVar2 = operation.getUserFunctionData().arguments.get(1);
+		st.add("inputVar1", inputVar1.name);
+		st.add("inputVar2", inputVar2.name);
+		// Takes the first var, since they must be the same for reduce
+		// operations
+		st.add("varType",
+				this.commonDefinitions.translateType(inputVar1.typeName));
+		st.add("userFunctionName",
+				this.commonDefinitions.getOperationUserFunctionName(operation));
+		st.add("dataVar", this.getDataVariableName());
+		st.add("baseVar", this.getBaseVariableName());
+		if (operation.variable.typeName.equals(BitmapImage.getInstance()
+				.getClassName())
+				|| operation.variable.typeName.equals(HDRImage.getInstance()
+						.getClassName())) {
+			st.add("sizeVar", this.getWidthVariableName());
+		} else {
+			st.add("sizeVar", this.getTileSizeVariableName());
+		}
+		st.add("params", null);
+		for (Variable variable : operation.getExternalVariables()) {
+			st.addAggr("params.{name}", variable.name);
+		}
+		st.add("destinationVar", this.getTileVariableName());
+		return this.createKernelFunction(operation, st.render(),
+				FunctionType.Tile);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	protected String translateMap(Operation operation) {
+		return "";
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	protected String translateFilter(Operation operation) {
+		return "";
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	protected String translateUserFunction(Operation operation) {
+		return this.createKernelFunction(operation,
+				this.translateUserCode(operation), FunctionType.UserCode);
 	}
 
 	/**
@@ -305,7 +333,8 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 					st.addAggr("params.{type, name}", "int",
 							this.getHeightVariableName());
 				} else {
-					st.addAggr("params.{type, name}", String.format("__global %s*", reduceType),
+					st.addAggr("params.{type, name}",
+							String.format("__global %s*", reduceType),
 							getTileVariableName());
 					st.addAggr("params.{type, name}", "int",
 							getLengthVariableName());

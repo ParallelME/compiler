@@ -66,8 +66,7 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 			+ "\tfor (int <xVar>=1; <xVar>\\<<sizeVar>; ++<xVar>) {\n"
 			+ "\t\t<inputVar2> = rsGetElementAt_<varType>(<dataVar>, <x:{var|x, }><declBaseVar:{var|<baseVar> + }><xVar>);\n"
 			+ "\t\t<inputVar1> = <userFunctionName>(<inputVar1>, <inputVar2>);\n"
-			+ "\t}\n"
-			+ "\treturn param1;\n";
+			+ "\t}\n" + "\treturn param1;\n";
 	private static final String templateSequentialForLoopBody = "<userFunctionVarName> = rsGetElementAt_<userFunctionVarType>(<inputData>, PM_x<param:{var|, <var.name>}>);\n"
 			+ "<userCode>\n"
 			+ "rsSetElementAt_<userFunctionVarType>(<inputData>, <userFunctionVarName>, PM_x<param:{var|, <var.name>}>);\n";
@@ -198,7 +197,7 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 						.translateType(operation.variable.typeName);
 			} else {
 				return commonDefinitions
-						.translateType(operation.variable.typeParameterName);
+						.translateType(operation.variable.typeParameters.get(0));
 			}
 		} else {
 			throw new RuntimeException("Operation not supported: "
@@ -250,8 +249,9 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 	protected String createTileAllocation(Operation operation) {
 		ST st = new ST(templateAllocation);
 		// For typed classes like Array, get the type parameter
-		String javaType = operation.variable.typeParameterName.isEmpty() ? operation.variable.typeName
-				: operation.variable.typeParameterName;
+		String javaType = operation.variable.typeParameters == null
+				|| operation.variable.typeParameters.isEmpty() ? operation.variable.typeName
+				: operation.variable.typeParameters.get(0);
 		String tileVariableName = getTileVariableName(operation);
 		st.add("typeName", tileVariableName);
 		st.add("rsVarName", getRSVariableName());
@@ -265,8 +265,9 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 	protected String createReturnAllocation(Operation operation) {
 		ST st = new ST(templateAllocation);
 		// For typed classes like Array, get the type parameter
-		String javaType = operation.variable.typeParameterName.isEmpty() ? operation.variable.typeName
-				: operation.variable.typeParameterName;
+		String javaType = operation.variable.typeParameters == null
+				|| operation.variable.typeParameters.isEmpty() ? operation.variable.typeName
+				: operation.variable.typeParameters.get(0);
 		String outVarName = getOutputVariableName(
 				operation.destinationVariable, operation);
 		st.add("typeName", outVarName);
@@ -314,7 +315,19 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 	 * {@inheritDoc}
 	 */
 	@Override
-	protected String translateParallelForeach(Operation operation) {
+	protected String translateForeach(Operation operation) {
+		if (operation.getExecutionType() == ExecutionType.Parallel) {
+			return translateParallelForeach(operation);
+		} else {
+			return translateSequentialForeach(operation);
+		}
+	}
+
+	/**
+	 * Translates a parallel foreach operation returning a C code compatible
+	 * with this runtime.
+	 */
+	private String translateParallelForeach(Operation operation) {
 		Variable userFunctionVariable = operation.getUserFunctionData().arguments
 				.get(0);
 		String code2Translate = operation.getUserFunctionData().Code.trim();
@@ -345,61 +358,10 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 	}
 
 	/**
-	 * {@inheritDoc}
+	 * Translates a sequential foreach operation returning a C code compatible
+	 * with this runtime.
 	 */
-	@Override
-	protected String translateParallelReduceTile(Operation operation) {
-		ST st = new ST(templateParallelReduceTile);
-		st.add("xVar", commonDefinitions.getPrefix() + "x");
-		Variable inputVar1 = operation.getUserFunctionData().arguments.get(0);
-		Variable inputVar2 = operation.getUserFunctionData().arguments.get(1);
-		st.add("inputVar1", inputVar1.name);
-		st.add("inputVar2", inputVar2.name);
-		// Takes the first var, since they must be the same for reduce
-		// operations
-		st.add("varType", commonDefinitions.translateType(inputVar1.typeName));
-		st.add("userFunctionName",
-				commonDefinitions.getOperationUserFunctionName(operation));
-		st.add("dataVar", getInputDataVariableName(operation));
-		st.add("dataVarTile", getTileVariableName(operation));
-		if (operation.variable.typeName.equals(BitmapImage.getInstance()
-				.getClassName())
-				|| operation.variable.typeName.equals(HDRImage.getInstance()
-						.getClassName())) {
-			st.add("sizeVar", getInputYSizeVariableName(operation));
-			st.add("declBaseVar", null);
-			st.add("baseVar", "x, 0");
-			st.add("x", "");
-		} else {
-			st.add("sizeVar", getTileSizeVariableName(operation));
-			st.add("x", null);
-			st.add("declBaseVar", "");
-			st.add("baseVar", getBaseVariableName());
-		}
-		return createKernelFunction(operation, st.render(), FunctionType.Tile);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	protected String translateReduceUserFunction(Operation operation) {
-		String userCode = commonDefinitions.removeCurlyBraces(operation
-				.getUserFunctionData().Code.trim());
-		for (Variable userFunctionVariable : operation.getUserFunctionData().arguments) {
-			userCode = translateVariable(userFunctionVariable,
-					cCodeTranslator.translate(userCode));
-		}
-		return createAllocationRSFile(operation)
-				+ createKernelFunction(operation, userCode,
-						FunctionType.UserCode);
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
-	protected String translateSequentialForeach(Operation operation) {
+	private String translateSequentialForeach(Operation operation) {
 		Variable userFunctionVariable = operation.getUserFunctionData().arguments
 				.get(0);
 		String code2Translate = operation.getUserFunctionData().Code.trim();
@@ -462,6 +424,73 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 		}
 		st.add("forLoop", stFor.render());
 		return st.render();
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	protected String translateParallelReduceTile(Operation operation) {
+		ST st = new ST(templateParallelReduceTile);
+		st.add("xVar", commonDefinitions.getPrefix() + "x");
+		Variable inputVar1 = operation.getUserFunctionData().arguments.get(0);
+		Variable inputVar2 = operation.getUserFunctionData().arguments.get(1);
+		st.add("inputVar1", inputVar1.name);
+		st.add("inputVar2", inputVar2.name);
+		// Takes the first var, since they must be the same for reduce
+		// operations
+		st.add("varType", commonDefinitions.translateType(inputVar1.typeName));
+		st.add("userFunctionName",
+				commonDefinitions.getOperationUserFunctionName(operation));
+		st.add("dataVar", getInputDataVariableName(operation));
+		st.add("dataVarTile", getTileVariableName(operation));
+		if (operation.variable.typeName.equals(BitmapImage.getInstance()
+				.getClassName())
+				|| operation.variable.typeName.equals(HDRImage.getInstance()
+						.getClassName())) {
+			st.add("sizeVar", getInputYSizeVariableName(operation));
+			st.add("declBaseVar", null);
+			st.add("baseVar", "x, 0");
+			st.add("x", "");
+		} else {
+			st.add("sizeVar", getTileSizeVariableName(operation));
+			st.add("x", null);
+			st.add("declBaseVar", "");
+			st.add("baseVar", getBaseVariableName());
+		}
+		return createKernelFunction(operation, st.render(), FunctionType.Tile);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	protected String translateMap(Operation operation) {
+		return "";
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	protected String translateFilter(Operation operation) {
+		return "";
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	protected String translateUserFunction(Operation operation) {
+		String userCode = commonDefinitions.removeCurlyBraces(operation
+				.getUserFunctionData().Code.trim());
+		for (Variable userFunctionVariable : operation.getUserFunctionData().arguments) {
+			userCode = translateVariable(userFunctionVariable,
+					cCodeTranslator.translate(userCode));
+		}
+		return createAllocationRSFile(operation)
+				+ createKernelFunction(operation, userCode,
+						FunctionType.UserCode);
 	}
 
 	private String createAllocationRSFile(Operation operation) {

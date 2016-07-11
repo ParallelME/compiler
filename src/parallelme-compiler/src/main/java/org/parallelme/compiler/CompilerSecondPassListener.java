@@ -212,7 +212,7 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 						VariableSymbol argumentVariable = (VariableSymbol) argument;
 						variables.add(new Variable(argumentVariable.name,
 								argumentVariable.typeName,
-								argumentVariable.typeParameterName,
+								argumentVariable.typeParameters,
 								argumentVariable.modifier,
 								argumentVariable.identifier));
 					}
@@ -228,7 +228,7 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 						.values()) {
 					this.currentOperationData.addExternalVariable(new Variable(
 							variable.name, variable.typeName,
-							variable.typeParameterName, variable.modifier,
+							variable.typeParameters, variable.modifier,
 							variable.identifier));
 				}
 				this.currentOperationData.setUserFunctionData(userFunctionData);
@@ -340,7 +340,7 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 	private void createOperation(UserLibraryVariableSymbol variableSymbol,
 			JavaParser.ExpressionContext etx) {
 		Variable variable = new Variable(variableSymbol.name,
-				variableSymbol.typeName, variableSymbol.typeParameterName,
+				variableSymbol.typeName, variableSymbol.typeParameters,
 				variableSymbol.modifier, variableSymbol.identifier);
 		OperationType operationType;
 		Variable destinationVariable = null;
@@ -355,7 +355,19 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 								this.currentStatement.stop), operationType,
 						destinationVariable);
 			} else {
-				operationType = OperationType.Reduce;
+				if (this.operationName.equals(UserLibraryCollectionClass
+						.getReduceMethodName())) {
+					operationType = OperationType.Reduce;
+				} else if (this.operationName.equals(UserLibraryCollectionClass
+						.getMapMethodName())) {
+					operationType = OperationType.Map;
+				} else if (this.operationName.equals(UserLibraryCollectionClass
+						.getFilterMethodName())) {
+					operationType = OperationType.Filter;
+				} else {
+					throw new RuntimeException("Unsupported operation: "
+							+ this.operationName);
+				}
 				LocalVariableDeclarationStatementContext lcx = this.currentVariableStatement;
 				String variableName = lcx.localVariableDeclaration()
 						.variableDeclarators().variableDeclarator(0)
@@ -504,7 +516,7 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 		if (symbol instanceof VariableSymbol) {
 			VariableSymbol variableSymbol = (VariableSymbol) symbol;
 			return new Variable(variableSymbol.name, variableSymbol.typeName,
-					variableSymbol.typeParameterName, variableSymbol.modifier,
+					variableSymbol.typeParameters, variableSymbol.modifier,
 					variableSymbol.identifier);
 		} else {
 			return null;
@@ -515,7 +527,7 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 			UserLibraryVariableSymbol userLibraryVariableSymbol) {
 		return new Variable(userLibraryVariableSymbol.name,
 				userLibraryVariableSymbol.typeName,
-				userLibraryVariableSymbol.typeParameterName,
+				userLibraryVariableSymbol.typeParameters,
 				userLibraryVariableSymbol.modifier,
 				userLibraryVariableSymbol.identifier);
 	}
@@ -534,7 +546,7 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 		String methodName = expression.substring(expression.indexOf(".") + 1,
 				expression.length());
 		this.methodCalls.add(new MethodCall(methodName, new Variable(
-				variable.name, variable.typeName, variable.typeParameterName,
+				variable.name, variable.typeName, variable.typeParameters,
 				variable.modifier, variable.identifier), new TokenAddress(
 				expressionCtx.start, expressionCtx.stop),
 				++this.methodCallCount));

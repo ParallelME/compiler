@@ -82,7 +82,7 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 		st.add("inputArray", inputBind.parameters.get(0));
 		st.add("allocation", inputObject);
 		st.add("elementType", parallelME2RSAllocationTypes
-				.get(inputBind.variable.typeParameterName));
+				.get(inputBind.variable.typeParameters.get(0)));
 		return st.render();
 	}
 
@@ -232,7 +232,7 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 			return String.format(
 					"%s(%s[0])",
 					UserLibraryClassFactory.getClass(
-							operation.variable.typeParameterName)
+							operation.variable.typeParameters.get(0))
 							.getClassName(), variableName);
 		} else {
 			throw new RuntimeException("Operation not supported: "

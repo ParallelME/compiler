@@ -11,6 +11,7 @@ package org.parallelme.compiler.translation.runtime;
 import static org.junit.Assert.*;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Test;
@@ -39,7 +40,7 @@ public abstract class PMArrayTranslatorBaseTest extends BaseTranslatorTest {
 	abstract protected String getTranslatedParameterType();
 
 	private Variable arrayVar = new Variable("arrayVar", "Array",
-			getParameterType(), "", 1);
+			Arrays.asList(getParameterType()), "", 1);
 
 	@Override
 	protected Variable getUserLibraryVar() {
@@ -54,16 +55,16 @@ public abstract class PMArrayTranslatorBaseTest extends BaseTranslatorTest {
 	private InputBind createInputBind() {
 		List<Parameter> parameters = new ArrayList<>();
 		parameters.add(new Variable("dataVar", getTranslatedParameterType()
-				+ "[]", "", "", 2));
+				+ "[]", null, "", 2));
 		parameters.add(new Variable(getParameterType() + ".class", "Class",
-				getParameterType(), "", 3));
+				Arrays.asList(getParameterType()), "", 3));
 		return new InputBind(this.getUserLibraryVar(), 1, parameters, null,
 				null);
 	}
 
 	private OutputBind createOutputBind(OutputBindType outputBindType) {
 		Variable destinationVar = new Variable("arrayVar",
-				getTranslatedParameterType() + "[]", "", "", 1);
+				getTranslatedParameterType() + "[]", null, "", 1);
 		return new OutputBind(this.getUserLibraryVar(), destinationVar, 1,
 				null, outputBindType);
 	}
@@ -73,7 +74,7 @@ public abstract class PMArrayTranslatorBaseTest extends BaseTranslatorTest {
 				null, OperationType.Foreach, null);
 		operation.setExecutionType(executionType);
 		List<Variable> arguments = new ArrayList<>();
-		arguments.add(new Variable("param1", getParameterType(), "", "", 10));
+		arguments.add(new Variable("param1", getParameterType(), null, "", 10));
 		UserFunction userFunction = new UserFunction(
 				" { param1.value = 123; }", arguments);
 		operation.setUserFunctionData(userFunction);
@@ -81,14 +82,14 @@ public abstract class PMArrayTranslatorBaseTest extends BaseTranslatorTest {
 	}
 
 	protected Operation createReduceOperation(ExecutionType executionType) {
-		Variable destVar = new Variable("destVar", getParameterType(), "", "",
-				999);
+		Variable destVar = new Variable("destVar", getParameterType(), null,
+				"", 999);
 		Operation operation = new Operation(this.getUserLibraryVar(), 123,
 				null, OperationType.Reduce, destVar);
 		operation.setExecutionType(executionType);
 		List<Variable> arguments = new ArrayList<>();
-		arguments.add(new Variable("param1", getParameterType(), "", "", 10));
-		arguments.add(new Variable("param2", getParameterType(), "", "", 11));
+		arguments.add(new Variable("param1", getParameterType(), null, "", 10));
+		arguments.add(new Variable("param2", getParameterType(), null, "", 11));
 		UserFunction userFunction = new UserFunction(
 				" { param2.value += param1.value; " + "return param2;}",
 				arguments);

@@ -28,7 +28,7 @@ public abstract class ImageTranslatorTest extends BaseTranslatorTest {
 				null, OperationType.Foreach, null);
 		operation.setExecutionType(executionType);
 		List<Variable> arguments = new ArrayList<>();
-		arguments.add(new Variable("param1", "Pixel", "", "", 10));
+		arguments.add(new Variable("param1", "Pixel", null, "", 10));
 		UserFunction userFunction = new UserFunction(
 				" { param1.rgba.red = 123; }", arguments);
 		operation.setUserFunctionData(userFunction);
@@ -36,13 +36,13 @@ public abstract class ImageTranslatorTest extends BaseTranslatorTest {
 	}
 
 	protected Operation createReduceOperation(ExecutionType executionType) {
-		Variable destVar = new Variable("destVar", "Pixel", "", "", 999);
+		Variable destVar = new Variable("destVar", "Pixel", null, "", 999);
 		Operation operation = new Operation(this.getUserLibraryVar(), 123,
 				null, OperationType.Reduce, destVar);
 		operation.setExecutionType(executionType);
 		List<Variable> arguments = new ArrayList<>();
-		arguments.add(new Variable("param1", "Pixel", "", "", 10));
-		arguments.add(new Variable("param2", "Pixel", "", "", 11));
+		arguments.add(new Variable("param1", "Pixel", null, "", 10));
+		arguments.add(new Variable("param2", "Pixel", null, "", 11));
 		UserFunction userFunction = new UserFunction(
 				" { param1.rgba.red = 123; param2.rgba.green = 456; "
 						+ "return param2;}", arguments);

@@ -8,6 +8,8 @@
 
 package org.parallelme.compiler.symboltable;
 
+import java.util.List;
+
 /**
  * A symbol for variables definition on the symbol table.
  * 
@@ -15,17 +17,17 @@ package org.parallelme.compiler.symboltable;
  */
 public class VariableSymbol extends Symbol {
 	public final String typeName;
-	public final String typeParameterName;
+	public final List<String> typeParameters;
 	public final String modifier;
 	public final TokenAddress statementAddress;
 
 	public VariableSymbol(String name, String typeName,
-			String typeParameterName, String modifier, Symbol enclosingScope,
-			TokenAddress tokenAddress, TokenAddress statementAddress,
-			int identifier) {
+			List<String> typeParameters, String modifier,
+			Symbol enclosingScope, TokenAddress tokenAddress,
+			TokenAddress statementAddress, int identifier) {
 		super(name, enclosingScope, tokenAddress, identifier);
 		this.typeName = typeName;
-		this.typeParameterName = typeParameterName;
+		this.typeParameters = typeParameters;
 		this.modifier = modifier;
 		this.statementAddress = statementAddress;
 	}
@@ -36,7 +38,7 @@ public class VariableSymbol extends Symbol {
 	@Override
 	protected String readableTableHeader() {
 		return super.readableTableHeader() + ", " + typeName + ", "
-				+ typeParameterName + ", " + modifier;
+				+ typeParameters + ", " + modifier;
 	}
 
 	@Override
@@ -44,7 +46,7 @@ public class VariableSymbol extends Symbol {
 		if (other.getClass() == this.getClass()) {
 			VariableSymbol foo = (VariableSymbol) other;
 			return super.equals(other) && foo.typeName == this.typeName
-					&& foo.typeParameterName == this.typeParameterName
+					&& foo.typeParameters.equals(this.typeParameters)
 					&& foo.modifier == this.modifier
 					&& foo.statementAddress == this.statementAddress;
 		} else {

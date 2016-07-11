@@ -20,12 +20,16 @@ import java.util.Set;
 public abstract class UserLibraryCollectionClass extends UserLibraryClass {
 	private static String foreachMethodName = "foreach";
 	private static String reduceMethodName = "reduce";
+	private static String mapMethodName = "map";
+	private static String filterMethodName = "filter";
 	private static Set<String> operationMethods;
 
 	static {
 		operationMethods = new HashSet<>();
 		operationMethods.add(foreachMethodName);
 		operationMethods.add(reduceMethodName);
+		operationMethods.add(mapMethodName);
+		operationMethods.add(filterMethodName);
 	}
 
 	public static Set<String> getOperationMethods() {
@@ -48,6 +52,24 @@ public abstract class UserLibraryCollectionClass extends UserLibraryClass {
 	 */
 	public static String getReduceMethodName() {
 		return reduceMethodName;
+	}
+
+	/**
+	 * Gets map method name.
+	 * 
+	 * @return Map name.
+	 */
+	public static String getMapMethodName() {
+		return mapMethodName;
+	}
+
+	/**
+	 * Gets filter method name.
+	 * 
+	 * @return Filter name.
+	 */
+	public static String getFilterMethodName() {
+		return filterMethodName;
 	}
 
 	/**

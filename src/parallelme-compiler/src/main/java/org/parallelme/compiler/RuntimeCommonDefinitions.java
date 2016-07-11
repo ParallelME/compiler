@@ -343,9 +343,9 @@ public class RuntimeCommonDefinitions {
 				throw new CompilationException(
 						"HDRImage constructor must have 3 arguments: byte array, width and height.");
 			parameters = new ArrayList<>();
-			parameters.add(new Variable("data", "byte[]", "", "", -1));
-			parameters.add(new Variable("width", "int", "", "", -1));
-			parameters.add(new Variable("height", "int", "", "", -1));
+			parameters.add(new Variable("data", "byte[]", null, "", -1));
+			parameters.add(new Variable("width", "int", null, "", -1));
+			parameters.add(new Variable("height", "int", null, "", -1));
 		}
 		return parameters;
 	}
