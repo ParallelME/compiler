@@ -62,7 +62,7 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	 */
 	public List<String> getIsValidBody() {
 		ArrayList<String> ret = new ArrayList<>();
-		ret.add("return ParallelMERuntime.getInstance().runtimePointer != 0;");
+		ret.add("return isValid && ParallelMERuntime.getInstance().runtimePointer != 0;");
 		return ret;
 	}
 
@@ -89,6 +89,7 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 			throws CompilationException {
 		List<String> ret = new ArrayList<>();
 		Set<Variable> variables = new HashSet<>();
+		ret.add("private static boolean isValid;");
 		// Store variables in a set to avoid duplication if the user creates two
 		// input binds for the same variable
 		for (InputBind inputBind : inputBinds)
@@ -187,7 +188,12 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	private List<String> initializeParallelME() {
 		ArrayList<String> ret = new ArrayList<>();
 		ret.add("static {");
-		ret.add("\tSystem.loadLibrary(\"ParallelMEGenerated\");");
+		ret.add("\ttry {");
+		ret.add("\t\tSystem.loadLibrary(\"ParallelMEGenerated\");");
+		ret.add("\t\tisValid = true;");
+		ret.add("\t} catch (UnsatisfiedLinkError e) {");
+		ret.add("\t\tisValid = false;");
+		ret.add("\t}");
 		ret.add("}");
 		return ret;
 	}
