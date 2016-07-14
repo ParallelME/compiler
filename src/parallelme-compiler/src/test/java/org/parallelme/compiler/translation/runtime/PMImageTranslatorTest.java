@@ -15,11 +15,14 @@ import java.util.List;
 import org.junit.Test;
 import org.parallelme.compiler.intermediate.Operation;
 import org.parallelme.compiler.intermediate.Operation.ExecutionType;
+import org.parallelme.compiler.intermediate.InputBind;
 import org.parallelme.compiler.intermediate.MethodCall;
 import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.translation.ImageTranslatorTest;
 import org.parallelme.compiler.translation.userlibrary.BaseUserLibraryTranslator;
 import org.parallelme.compiler.userlibrary.classes.BitmapImage;
+import org.parallelme.compiler.userlibrary.classes.Float32;
+import org.parallelme.compiler.userlibrary.classes.Pixel;
 import org.stringtemplate.v4.ST;
 
 /**
@@ -28,13 +31,46 @@ import org.stringtemplate.v4.ST;
  * @author Wilson de Carvalho
  */
 public abstract class PMImageTranslatorTest extends ImageTranslatorTest {
+	@Override
+	protected String getParameterType() {
+		return Pixel.getInstance().getClassName();
+	}
+
+	@Override
+	protected String getMapType() {
+		return Float32.getInstance().getClassName();
+	}
+
+	@Override
+	protected String getTranslatedParameterType() {
+		return "float3";
+	}
+
+	@Override
+	protected String getTranslatedMapType() {
+		return "float";
+	}
+	
 	/**
-	 * Tests input bind object declaration.
+	 * Tests object declaration.
 	 */
 	@Test
-	public void translateInputBindObjDeclaration() throws Exception {
+	public void translateObjDeclaration() throws Exception {
 		BaseUserLibraryTranslator translator = this.getTranslator();
-		assertEquals(translator.translateInputBindObjDeclaration(null), "");
+		InputBind inputBind = createInputBind();
+		assertEquals(translator.translateObjDeclaration(inputBind),
+				String.format("private long  PM_%s%sPtr;", inputBind.variable,
+						inputBind.variable.sequentialNumber));
+		Operation operation = createMapOperation(ExecutionType.Sequential);
+		assertEquals(translator.translateObjDeclaration(operation),
+				String.format("private long  PM_%s%sPtr;",
+						operation.destinationVariable,
+						operation.destinationVariable.sequentialNumber));
+		operation = createMapOperation(ExecutionType.Parallel);
+		assertEquals(translator.translateObjDeclaration(operation),
+				String.format("private long  PM_%s%sPtr;",
+						operation.destinationVariable,
+						operation.destinationVariable.sequentialNumber));
 	}
 
 	/**

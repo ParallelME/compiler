@@ -90,13 +90,24 @@ public class RuntimeCommonDefinitions {
 	 * Return an unique operation name based on its sequential number.
 	 */
 	public String getOperationName(Operation operation) {
+		String operationName;
 		if (operation.operationType == OperationType.Foreach) {
-			return UserLibraryCollectionClass.getForeachMethodName()
+			operationName = UserLibraryCollectionClass.getForeachMethodName()
+					+ operation.sequentialNumber;
+		} else if (operation.operationType == OperationType.Reduce) {
+			operationName = UserLibraryCollectionClass.getReduceMethodName()
+					+ operation.sequentialNumber;
+		} else if (operation.operationType == OperationType.Map) {
+			operationName = UserLibraryCollectionClass.getMapMethodName()
+					+ operation.sequentialNumber;
+		} else if (operation.operationType == OperationType.Filter) {
+			operationName = UserLibraryCollectionClass.getFilterMethodName()
 					+ operation.sequentialNumber;
 		} else {
-			return UserLibraryCollectionClass.getReduceMethodName()
-					+ operation.sequentialNumber;
+			throw new RuntimeException("Operation not supported: "
+					+ operation.operationType);
 		}
+		return operationName;
 	}
 
 	/**
@@ -164,8 +175,7 @@ public class RuntimeCommonDefinitions {
 	 *            Array of parameters.
 	 * @return Comma separated string with parameters.
 	 */
-	public <T extends Parameter> String toCommaSeparatedString(
-			List<T> parameters) {
+	public <T> String toCommaSeparatedString(List<T> parameters) {
 		StringBuilder params = new StringBuilder();
 		for (int i = 0; i < parameters.size(); i++) {
 			params.append(parameters.get(i));
@@ -361,7 +371,9 @@ public class RuntimeCommonDefinitions {
 	 */
 	public String createJavaMethodSignature(Operation operation,
 			boolean isInterface) {
-		String returnType = operation.destinationVariable == null ? "void"
+		String returnType = operation.destinationVariable == null
+				|| operation.destinationVariable.typeName.equals(Array
+						.getInstance().getClassName()) ? "void"
 				: operation.destinationVariable.typeName;
 		String modifier = isInterface ? "" : "public";
 		if (operation.getExecutionType() == ExecutionType.Sequential) {
@@ -450,5 +462,15 @@ public class RuntimeCommonDefinitions {
 		// Remove the first curly brace
 		code = code.substring(code.indexOf("{") + 1, code.length());
 		return code;
+	}
+
+	/**
+	 * Checks if a given variable has an image type.
+	 */
+	public boolean isImage(Variable variable) {
+		return variable.typeName.equals(BitmapImage.getInstance()
+				.getClassName())
+				|| variable.typeName.equals(HDRImage.getInstance()
+						.getClassName());
 	}
 }

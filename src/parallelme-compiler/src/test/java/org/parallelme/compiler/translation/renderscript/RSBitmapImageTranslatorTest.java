@@ -27,8 +27,8 @@ import org.stringtemplate.v4.ST;
  * @author Wilson de Carvalho
  */
 public class RSBitmapImageTranslatorTest extends RSImageTranslatorTest {
-	private Variable imageVar = new Variable("imageVar", "BitmapImage", null, "",
-			1);
+	private Variable imageVar = new Variable("imageVar", "BitmapImage", null,
+			"", 1);
 
 	@Override
 	protected Variable getUserLibraryVar() {
@@ -39,13 +39,14 @@ public class RSBitmapImageTranslatorTest extends RSImageTranslatorTest {
 	protected BaseUserLibraryTranslator getTranslator() {
 		return new RSBitmapImageTranslator(new SimpleTranslator());
 	}
-	
+
 	@Override
 	protected String getRSType() {
 		return "F32_3";
 	}
-
-	private InputBind createInputBind() {
+	
+	@Override
+	protected InputBind createInputBind() {
 		List<Parameter> parameters = new ArrayList<>();
 		parameters.add(new Variable("dataVar", "Bitmap", null, "", 2));
 		parameters.add(new Variable("widthVar", "int", null, "", 3));
@@ -54,8 +55,10 @@ public class RSBitmapImageTranslatorTest extends RSImageTranslatorTest {
 				null);
 	}
 
-	private OutputBind createOutputBind(OutputBindType outputBindType) {
-		Variable destinationVar = new Variable("bitmapVar", "Bitmap", null, "", 1);
+	@Override
+	protected OutputBind createOutputBind(OutputBindType outputBindType) {
+		Variable destinationVar = new Variable("bitmapVar", "Bitmap", null, "",
+				1);
 		return new OutputBind(this.getUserLibraryVar(), destinationVar, 1,
 				null, outputBindType);
 	}
@@ -117,7 +120,7 @@ public class RSBitmapImageTranslatorTest extends RSImageTranslatorTest {
 				commonDefinitions.getVariableOutName(inputBind.variable));
 		String expectedTranslation = st.render();
 		String translatedFunction = translator
-				.translateInputBindObjDeclaration(inputBind);
+				.translateObjDeclaration(inputBind);
 		this.validateTranslation(expectedTranslation, translatedFunction);
 	}
 

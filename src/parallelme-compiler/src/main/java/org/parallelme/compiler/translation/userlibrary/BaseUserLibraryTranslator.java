@@ -122,16 +122,19 @@ public abstract class BaseUserLibraryTranslator implements
 		if (operation.operationType == OperationType.Foreach) {
 			ret.add(translateForeach(operation));
 		} else {
-			// C functions must be declared before used, so user function
-			// must be the first
-			ret.add(translateUserFunction(operation));
 			if (operation.operationType == OperationType.Reduce) {
+				// C functions must be declared before used, so user function
+				// must be the first
+				ret.add(translateUserFunction(operation));
 				if (operation.getExecutionType() == ExecutionType.Parallel)
 					ret.add(translateParallelReduceTile(operation));
 				ret.add(translateReduce(operation));
 			} else if (operation.operationType == OperationType.Map) {
 				ret.add(translateMap(operation));
 			} else if (operation.operationType == OperationType.Filter) {
+				// C functions must be declared before used, so user function
+				// must be the first
+				ret.add(translateUserFunction(operation));
 				ret.add(translateFilter(operation));
 			} else {
 				throw new RuntimeException("Invalid operation: "

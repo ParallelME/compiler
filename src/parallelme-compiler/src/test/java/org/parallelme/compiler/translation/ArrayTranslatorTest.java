@@ -12,64 +12,76 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.parallelme.compiler.intermediate.InputBind;
 import org.parallelme.compiler.intermediate.Operation;
+import org.parallelme.compiler.intermediate.OutputBind;
+import org.parallelme.compiler.intermediate.Parameter;
 import org.parallelme.compiler.intermediate.UserFunction;
 import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.intermediate.Operation.ExecutionType;
 import org.parallelme.compiler.intermediate.Operation.OperationType;
-import org.parallelme.compiler.userlibrary.classes.Array;
+import org.parallelme.compiler.intermediate.OutputBind.OutputBindType;
 
 /**
- * Base class for image tests.
+ * Base class for array tests.
  * 
  * @author Wilson de Carvalho
  */
-public abstract class ImageTranslatorTest extends BaseTranslatorTest {
+public abstract class ArrayTranslatorTest extends BaseTranslatorTest {
+	private Variable arrayVar = new Variable("arrayVar", "Array",
+			Arrays.asList(getParameterType()), "", 1);
+
+	@Override
+	protected Variable getUserLibraryVar() {
+		return this.arrayVar;
+	}
+
+	@Override
+	protected InputBind createInputBind() {
+		List<Parameter> parameters = new ArrayList<>();
+		parameters.add(new Variable("dataVar", getTranslatedParameterType()
+				+ "[]", null, "", 2));
+		parameters.add(new Variable(getParameterType() + ".class", "Class",
+				Arrays.asList(getParameterType()), "", 3));
+		return new InputBind(this.getUserLibraryVar(), 1, parameters, null,
+				null);
+	}
+
+	@Override
+	protected OutputBind createOutputBind(OutputBindType outputBindType) {
+		Variable destinationVar = new Variable("arrayVar",
+				getTranslatedParameterType() + "[]", null, "", 1);
+		return new OutputBind(this.getUserLibraryVar(), destinationVar, 1,
+				null, outputBindType);
+	}
+
 	@Override
 	protected Operation createForeachOperation(ExecutionType executionType) {
 		Operation operation = new Operation(this.getUserLibraryVar(), 123,
 				null, OperationType.Foreach, null);
 		operation.setExecutionType(executionType);
 		List<Variable> arguments = new ArrayList<>();
-		arguments.add(new Variable("param1", "Pixel", null, "", 10));
+		arguments.add(new Variable("param1", getParameterType(), null, "", 10));
 		UserFunction userFunction = new UserFunction(
-				" { param1.rgba.red = 123; }", arguments);
+				" { param1.value = 123; }", arguments);
 		operation.setUserFunctionData(userFunction);
 		return operation;
 	}
 
 	@Override
 	protected Operation createReduceOperation(ExecutionType executionType) {
-		Variable destVar = new Variable("destVar", "Pixel", null, "", 999);
+		Variable destVar = new Variable("destVar", getParameterType(), null,
+				"", 999);
 		Operation operation = new Operation(this.getUserLibraryVar(), 123,
 				null, OperationType.Reduce, destVar);
 		operation.setExecutionType(executionType);
 		List<Variable> arguments = new ArrayList<>();
-		arguments.add(new Variable("param1", "Pixel", null, "", 10));
-		arguments.add(new Variable("param2", "Pixel", null, "", 11));
-		UserFunction userFunction = new UserFunction(
-				" { param1.rgba.red = 123; param2.rgba.green = 456; "
-						+ "return param2;}", arguments);
-		operation.setUserFunctionData(userFunction);
-		return operation;
-	}
-
-	@Override
-	protected Operation createMapOperation(ExecutionType executionType) {
-		Variable destVar = new Variable("destVar", Array.getInstance()
-				.getClassName(), Arrays.asList(getMapType()), "", 999);
-		Operation operation = new Operation(this.getUserLibraryVar(), 123,
-				null, OperationType.Map, destVar);
-		operation.setExecutionType(executionType);
-		List<Variable> arguments = new ArrayList<>();
 		arguments.add(new Variable("param1", getParameterType(), null, "", 10));
-		UserFunction userFunction = new UserFunction(String.format("{\n"
-				+ "\t%s ret = new %s(param1.rgba.blue);\n"
-				+ "\tparam1.rgba.blue;\n"
-				+ "\treturn ret;"
-				+ "}", getMapType(), getMapType()), arguments);
+		arguments.add(new Variable("param2", getParameterType(), null, "", 11));
+		UserFunction userFunction = new UserFunction(
+				" { param2.value += param1.value; " + "return param2;}",
+				arguments);
 		operation.setUserFunctionData(userFunction);
 		return operation;
 	}
-
 }

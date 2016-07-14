@@ -65,7 +65,21 @@ public interface UserLibraryTranslatorDefinition {
 	 *
 	 * @return
 	 */
-	public String translateInputBindObjDeclaration(InputBind inputBind);
+	public String translateObjDeclaration(InputBind inputBind);
+
+	/**
+	 * Creates the Java code declaration for a given input bind. Input bind
+	 * creation and declaration are separated because the declaration must be
+	 * placed on the user code at the same level of user library objects were
+	 * declared. Differently, input bind creation must be placed on the same
+	 * level where user library objects are instantiated.
+	 * 
+	 * @param inputBind
+	 *            Input bind information.
+	 *
+	 * @return
+	 */
+	public String translateObjDeclaration(Operation operation);
 
 	/**
 	 * Translates a given output bind returning the C code compatible for a

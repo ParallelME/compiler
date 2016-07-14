@@ -8,8 +8,6 @@
 
 package org.parallelme.compiler.translation.runtime;
 
-import static org.junit.Assert.*;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,7 +38,8 @@ public class PMHDRImageTranslatorTest extends PMImageTranslatorTest {
 		return new PMHDRImageTranslator(new SimpleTranslator());
 	}
 
-	private InputBind createInputBind() {
+	@Override
+	protected InputBind createInputBind() {
 		List<Parameter> parameters = new ArrayList<>();
 		parameters.add(new Variable("dataVar", "byte[]", null, "", 2));
 		parameters.add(new Variable("widthVar", "int", null, "", 3));
@@ -49,7 +48,8 @@ public class PMHDRImageTranslatorTest extends PMImageTranslatorTest {
 				null);
 	}
 
-	private OutputBind createOutputBind(OutputBindType outputBindType) {
+	@Override
+	protected OutputBind createOutputBind(OutputBindType outputBindType) {
 		Variable destinationVar = new Variable("bitmapVar", "Bitmap", null, "",
 				1);
 		return new OutputBind(this.getUserLibraryVar(), destinationVar, 1,
@@ -101,15 +101,6 @@ public class PMHDRImageTranslatorTest extends PMImageTranslatorTest {
 				.format("%s = ParallelMERuntime.getInstance().createHDRImage(data, width, height);",
 						varName);
 		this.validateTranslation(expectedTranslation, translatedFunction);
-	}
-
-	/**
-	 * Tests input bind object declaration.
-	 */
-	@Test
-	public void translateInputBindObjDeclaration() throws Exception {
-		PMTranslator translator = this.getTranslator();
-		assertEquals(translator.translateInputBindObjDeclaration(null), "");
 	}
 
 	/**

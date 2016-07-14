@@ -11,6 +11,7 @@ package org.parallelme.compiler.translation.runtime;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.parallelme.compiler.intermediate.InputBind;
 import org.parallelme.compiler.intermediate.Operation;
 import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.intermediate.Operation.ExecutionType;
@@ -53,6 +54,35 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 
 	public PMTranslator(CTranslator cCodeTranslator) {
 		this.cCodeTranslator = cCodeTranslator;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String translateObjDeclaration(InputBind inputBind) {
+		return translateObjDeclaration(inputBind.variable);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String translateObjDeclaration(Operation operation) {
+		if (operation.operationType == OperationType.Map
+				|| operation.operationType == OperationType.Filter) {
+			return translateObjDeclaration(operation.destinationVariable);
+		} else {
+			return "";
+		}
+	}
+
+	/**
+	 * Returns the creation statement for a given variable's allocation.
+	 */
+	private String translateObjDeclaration(Variable variable) {
+		String pointerName = commonDefinitions.getPointerName(variable);
+		return String.format("private long  %s;", pointerName);
 	}
 
 	/**
@@ -264,6 +294,11 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 		} else if (operation.operationType == OperationType.Reduce) {
 			st = this
 					.initializeReduceSignatureTemplate(operation, functionType);
+		} else if (operation.operationType == OperationType.Map) {
+			st = this.initializeMapSignatureTemplate(operation, functionType);
+		} else if (operation.operationType == OperationType.Filter) {
+			st = this
+					.initializeFilterSignatureTemplate(operation, functionType);
 		} else {
 			throw new RuntimeException("Operation not supported: "
 					+ operation.operationType);
@@ -309,10 +344,7 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 			FunctionType functionType) {
 		ST st = new ST(templateFunctionDecl);
 		boolean isSequential = operation.getExecutionType() == ExecutionType.Sequential;
-		boolean isImage = operation.variable.typeName.equals(BitmapImage
-				.getInstance().getClassName())
-				|| operation.variable.typeName.equals(HDRImage.getInstance()
-						.getClassName());
+		boolean isImage = commonDefinitions.isImage(operation.variable);
 		String reduceType = this.commonDefinitions.translateType(operation
 				.getUserFunctionData().arguments.get(0).typeName);
 		if (functionType == FunctionType.BaseOperation) {
@@ -383,6 +415,26 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 		if (isSequential && functionType != FunctionType.UserCode) {
 			addSizeParams(operation, st);
 		}
+		return st;
+	}
+
+	private ST initializeMapSignatureTemplate(Operation operation,
+			FunctionType functionType) {
+		ST st = new ST(templateFunctionDecl);
+		st.add("returnType", null);
+		st.add("isKernel", null);
+		st.add("functionName", null);
+		st.add("params", null);
+		return st;
+	}
+
+	private ST initializeFilterSignatureTemplate(Operation operation,
+			FunctionType functionType) {
+		ST st = new ST(templateFunctionDecl);
+		st.add("returnType", null);
+		st.add("isKernel", null);
+		st.add("functionName", null);
+		st.add("params", null);
 		return st;
 	}
 

@@ -8,21 +8,16 @@
 
 package org.parallelme.compiler.translation.renderscript;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Test;
 import org.parallelme.compiler.intermediate.InputBind;
 import org.parallelme.compiler.intermediate.Operation;
 import org.parallelme.compiler.intermediate.OutputBind;
-import org.parallelme.compiler.intermediate.UserFunction;
 import org.parallelme.compiler.intermediate.Operation.ExecutionType;
-import org.parallelme.compiler.intermediate.Operation.OperationType;
 import org.parallelme.compiler.intermediate.OutputBind.OutputBindType;
-import org.parallelme.compiler.intermediate.Parameter;
 import org.parallelme.compiler.intermediate.Variable;
-import org.parallelme.compiler.translation.BaseTranslatorTest;
+import org.parallelme.compiler.translation.ArrayTranslatorTest;
 import org.parallelme.compiler.translation.SimpleTranslator;
 import org.parallelme.compiler.translation.userlibrary.BaseUserLibraryTranslator;
 import org.stringtemplate.v4.ST;
@@ -32,69 +27,18 @@ import org.stringtemplate.v4.ST;
  * 
  * @author Wilson de Carvalho
  */
-public abstract class RSArrayTranslatorBaseTest extends BaseTranslatorTest {
+public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 	abstract protected String getParameterType();
 
 	abstract protected String getTranslatedParameterType();
 
 	abstract protected String getRSType();
 
-	private Variable arrayVar = new Variable("arrayVar", "Array",
-			Arrays.asList(getParameterType()), "", 1);
-
-	@Override
-	protected Variable getUserLibraryVar() {
-		return this.arrayVar;
-	}
+	abstract protected String getMapRSType();
 
 	@Override
 	protected BaseUserLibraryTranslator getTranslator() {
 		return new RSArrayTranslator(new SimpleTranslator());
-	}
-
-	private InputBind createInputBind() {
-		List<Parameter> parameters = new ArrayList<>();
-		parameters.add(new Variable("dataVar", getTranslatedParameterType()
-				+ "[]", null, "", 2));
-		parameters.add(new Variable(getParameterType() + ".class", "Class",
-				Arrays.asList(getParameterType()), "", 3));
-		return new InputBind(this.getUserLibraryVar(), 1, parameters, null,
-				null);
-	}
-
-	private OutputBind createOutputBind(OutputBindType outputBindType) {
-		Variable destinationVar = new Variable("arrayVar",
-				getTranslatedParameterType() + "[]", null, "", 1);
-		return new OutputBind(this.getUserLibraryVar(), destinationVar, 1,
-				null, outputBindType);
-	}
-
-	private Operation createForeachOperation(ExecutionType executionType) {
-		Operation operation = new Operation(this.getUserLibraryVar(), 123,
-				null, OperationType.Foreach, null);
-		operation.setExecutionType(executionType);
-		List<Variable> arguments = new ArrayList<>();
-		arguments.add(new Variable("param1", getParameterType(), null, "", 10));
-		UserFunction userFunction = new UserFunction(
-				" { param1.value = 123; }", arguments);
-		operation.setUserFunctionData(userFunction);
-		return operation;
-	}
-
-	protected Operation createReduceOperation(ExecutionType executionType) {
-		Variable destVar = new Variable("destVar", getParameterType(), null,
-				"", 999);
-		Operation operation = new Operation(this.getUserLibraryVar(), 123,
-				null, OperationType.Reduce, destVar);
-		operation.setExecutionType(executionType);
-		List<Variable> arguments = new ArrayList<>();
-		arguments.add(new Variable("param1", getParameterType(), null, "", 10));
-		arguments.add(new Variable("param2", getParameterType(), null, "", 11));
-		UserFunction userFunction = new UserFunction(
-				" { param1.value += param2.value; " + "return param1;}",
-				arguments);
-		operation.setUserFunctionData(userFunction);
-		return operation;
 	}
 
 	/**
@@ -117,13 +61,13 @@ public abstract class RSArrayTranslatorBaseTest extends BaseTranslatorTest {
 	public void translateInputBindObjCreation() throws Exception {
 		InputBind inputBind = this.createInputBind();
 		BaseUserLibraryTranslator translator = this.getTranslator();
-		String varInName = commonDefinitions
-				.getVariableInName(inputBind.variable);
+		String varName = commonDefinitions
+				.getVariableOutName(inputBind.variable);
 		ST st = new ST(
-				"<varIn> = Allocation.createSized(PM_mRS, Element.<rsType>(PM_mRS), <dataVar>.length);\n"
-						+ "<varIn>.copyFrom(<dataVar>);");
+				"<varName> = Allocation.createSized(PM_mRS, Element.<rsType>(PM_mRS), <dataVar>.length);\n"
+						+ "<varName>.copyFrom(<dataVar>);");
 		st.add("dataVar", inputBind.parameters.get(0));
-		st.add("varIn", varInName);
+		st.add("varName", varName);
 		st.add("rsType", getRSType());
 		String expectedTranslation = st.render();
 		String translatedFunction = translator.translateInputBindObjCreation(
@@ -138,15 +82,12 @@ public abstract class RSArrayTranslatorBaseTest extends BaseTranslatorTest {
 	public void translateInputBindObjDeclaration() throws Exception {
 		InputBind inputBind = createInputBind();
 		BaseUserLibraryTranslator translator = this.getTranslator();
-		ST st = new ST(
-				"<varIn> = Allocation.createSized(PM_mRS, Element.<rsType>(PM_mRS), <dataVar>.length);\n"
-						+ "<varIn>.copyFrom(<dataVar>);");
-		st.add("varIn", commonDefinitions.getVariableInName(inputBind.variable));
-		st.add("rsType", getRSType());
-		st.add("dataVar", inputBind.parameters.get(0));
+		ST st = new ST("private Allocation <varName>;");
+		st.add("varName",
+				commonDefinitions.getVariableOutName(inputBind.variable));
 		String expectedTranslation = st.render();
-		String translatedFunction = translator.translateInputBindObjCreation(
-				className, inputBind);
+		String translatedFunction = translator
+				.translateObjDeclaration(inputBind);
 		this.validateTranslation(expectedTranslation, translatedFunction);
 	}
 
@@ -169,10 +110,10 @@ public abstract class RSArrayTranslatorBaseTest extends BaseTranslatorTest {
 	public void translateOutputBindCall() throws Exception {
 		// arrayVar.toArray(dataVar);
 		OutputBind outputBind = createOutputBind(OutputBindType.None);
-		String varInName = commonDefinitions
-				.getVariableInName(outputBind.variable);
-		ST st = new ST("<varIn>.copyTo(<varDest>);");
-		st.add("varIn", varInName);
+		String varName = commonDefinitions
+				.getVariableOutName(outputBind.variable);
+		ST st = new ST("<varName>.copyTo(<varDest>);");
+		st.add("varName", varName);
 		st.add("varDest", outputBind.destinationObject);
 		String expectedTranslation = st.render();
 		BaseUserLibraryTranslator translator = this.getTranslator();
@@ -182,9 +123,9 @@ public abstract class RSArrayTranslatorBaseTest extends BaseTranslatorTest {
 		// bitmapVar = imageVar.toBitmap();
 		outputBind = this.createOutputBind(OutputBindType.Assignment);
 		st = new ST(
-				"<varDest> = (<type>[]) java.lang.reflect.Array.newInstance(<type>.class, <varIn>.getType().getX());\n"
-						+ "<varIn>.copyTo(<varDest>);");
-		st.add("varIn", varInName);
+				"<varDest> = (<type>[]) java.lang.reflect.Array.newInstance(<type>.class, <varName>.getType().getX());\n"
+						+ "<varName>.copyTo(<varDest>);");
+		st.add("varName", varName);
 		st.add("varDest", outputBind.destinationObject);
 		st.add("type", getTranslatedParameterType());
 		expectedTranslation = st.render();
@@ -363,8 +304,8 @@ public abstract class RSArrayTranslatorBaseTest extends BaseTranslatorTest {
 						+ "int PM_gInputXSizeReduce123;\n"
 						+ "int PM_gTileSizeReduce123;\n"
 						+ "static <type> reduce123_func(<type> param1, <type> param2) {\n"
-						+ "param1 += param2;\n"
-						+ "return param1;\n"
+						+ "param2 += param1;\n"
+						+ "return param2;\n"
 						+ "}\n"
 						+ "<type> __attribute__ ((kernel)) reduce123_tile(uint32_t x) {\n"
 						+ "int PM_base = x*PM_gTileSizeReduce123;\n"
@@ -405,8 +346,8 @@ public abstract class RSArrayTranslatorBaseTest extends BaseTranslatorTest {
 						+ "int PM_gTileSizeReduce123;\n"
 						+ "<finalVarType> PM_gExternalVarReduce123;\n"
 						+ "static <type> reduce123_func(<type> param1, <type> param2) {\n"
-						+ "param1 += param2;\n"
-						+ "return param1;\n"
+						+ "param2 += param1;\n"
+						+ "return param2;\n"
 						+ "}\n"
 						+ "<type> __attribute__ ((kernel)) reduce123_tile(uint32_t x) {\n"
 						+ "int PM_base = x*PM_gTileSizeReduce123;\n"
@@ -448,8 +389,8 @@ public abstract class RSArrayTranslatorBaseTest extends BaseTranslatorTest {
 						+ "int PM_gInputXSizeReduce123;\n"
 						+ "int PM_gExternalVarReduce123;\n"
 						+ "<type> reduce123_func(<type> param1, <type> param2) {\n"
-						+ "param1 += param2;\n"
-						+ "return param1;\n"
+						+ "param2 += param1;\n"
+						+ "return param2;\n"
 						+ "}\n"
 						+ "void reduce123() {\n"
 						+ "<type> param1 = rsGetElementAt_<type>(PM_gInputReduce123, 0);\n"
@@ -473,8 +414,8 @@ public abstract class RSArrayTranslatorBaseTest extends BaseTranslatorTest {
 						+ "rs_allocation PM_gOutputDestVarReduce123;\n"
 						+ "int PM_gInputXSizeReduce123;\n"
 						+ "<type> reduce123_func(<type> param1, <type> param2) {\n"
-						+ "param1 += param2;\n"
-						+ "return param1;\n"
+						+ "param2 += param1;\n"
+						+ "return param2;\n"
 						+ "}\n"
 						+ "void reduce123() {\n"
 						+ "<type> param1 = rsGetElementAt_<type>(PM_gInputReduce123, 0);\n"
@@ -498,8 +439,8 @@ public abstract class RSArrayTranslatorBaseTest extends BaseTranslatorTest {
 						+ "int PM_gInputXSizeReduce123;\n"
 						+ "<finalVarType> PM_gExternalVarReduce123;\n"
 						+ "<type> reduce123_func(<type> param1, <type> param2) {\n"
-						+ "param1 += param2;\n"
-						+ "return param1;\n"
+						+ "param2 += param1;\n"
+						+ "return param2;\n"
 						+ "}\n"
 						+ "void reduce123() {\n"
 						+ "<type> param1 = rsGetElementAt_<type>(PM_gInputReduce123, 0);\n"
@@ -525,8 +466,8 @@ public abstract class RSArrayTranslatorBaseTest extends BaseTranslatorTest {
 						+ "int PM_gInputXSizeReduce123;\n"
 						+ "<nonFinalVarType> PM_gExternalVarReduce123;\n"
 						+ "<type> reduce123_func(<type> param1, <type> param2) {\n"
-						+ "param1 += param2;\n"
-						+ "return param1;\n"
+						+ "param2 += param1;\n"
+						+ "return param2;\n"
 						+ "}\n"
 						+ "void reduce123() {\n"
 						+ "<type> param1 = rsGetElementAt_<type>(PM_gInputReduce123, 0);\n"
@@ -594,6 +535,41 @@ public abstract class RSArrayTranslatorBaseTest extends BaseTranslatorTest {
 		st.add("type", getTranslatedParameterType());
 		st.add("rsType", getRSType());
 		st.add("userLibraryType", getParameterType());
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+	}
+
+	/**
+	 * Tests map operation call.
+	 */
+	@Test
+	public void translateMapOperationCall() throws Exception {
+		// Parallel
+		Operation operation = this
+				.createMapOperation(ExecutionType.Parallel);
+		BaseUserLibraryTranslator translator = this.getTranslator();
+		String translatedFunction = translator.translateOperationCall(
+				className, operation);
+		ST st = new ST(
+				"Type <retVar>Type = new Type.Builder(PM_mRS, Element.<rsType>(PM_mRS))"
+						+ ".setX(<var>.getType().getX())"
+						+ ".create();"
+						+ "<retVar> = Allocation.createTyped(PM_mRS, <retVar>Type);"
+						+ "<kernel>.<callFunction>_map123(<var>, <retVar>);");
+		st.add("rsType", getMapRSType());
+		st.add("var", commonDefinitions.getVariableOutName(operation.variable));
+		st.add("retVar", commonDefinitions
+				.getVariableOutName(operation.destinationVariable));
+		st.add("kernel", commonDefinitions.getKernelName(className));
+		st.add("callFunction", "forEach");
+		String expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Sequential
+		operation = this.createMapOperation(ExecutionType.Sequential);
+		translatedFunction = translator.translateOperationCall(className,
+				operation);
+		st.remove("callFunction");
+		st.add("callFunction", "invoke");
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 	}

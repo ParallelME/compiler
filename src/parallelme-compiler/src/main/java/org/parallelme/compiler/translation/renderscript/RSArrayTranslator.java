@@ -75,7 +75,7 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 	public String translateInputBindObjCreation(String className,
 			InputBind inputBind) {
 		String inputObject = commonDefinitions
-				.getVariableInName(inputBind.variable);
+				.getVariableOutName(inputBind.variable);
 		ST st = new ST(templateInputBindObjCreation);
 		// TODO Check if parameters array has size 1, otherwise throw an
 		// exception and abort translation.
@@ -90,9 +90,28 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public String translateInputBindObjDeclaration(InputBind inputBind) {
-		String inAllocation = commonDefinitions
-				.getVariableInName(inputBind.variable);
+	public String translateObjDeclaration(InputBind inputBind) {
+		return translateObjDeclaration(inputBind.variable);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String translateObjDeclaration(Operation operation) {
+		if (operation.operationType == OperationType.Map
+				|| operation.operationType == OperationType.Filter) {
+			return translateObjDeclaration(operation.destinationVariable);
+		} else {
+			return "";
+		}
+	}
+
+	/**
+	 * Returns the creation statement for a given variable's allocation.
+	 */
+	private String translateObjDeclaration(Variable variable) {
+		String inAllocation = commonDefinitions.getVariableOutName(variable);
 		return String.format("private Allocation %s;", inAllocation);
 	}
 
@@ -111,8 +130,8 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 	public String translateOutputBindCall(String className,
 			OutputBind outputBind) {
 		StringBuilder ret = new StringBuilder();
-		String inputObject = commonDefinitions
-				.getVariableInName(outputBind.variable);
+		String allocationObject = commonDefinitions
+				.getVariableOutName(outputBind.variable);
 		String destinationObject = outputBind.destinationObject.name;
 		// If it is an object assignment, must declare the destination
 		// object type and name.
@@ -123,11 +142,11 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 			String baseType = outputBind.destinationObject.typeName
 					.replaceAll("\\[", "").replaceAll("\\]", "").trim();
 			st.add("baseType", baseType);
-			st.add("inputAllocation", inputObject);
+			st.add("inputAllocation", allocationObject);
 			ret.append(st.render());
 		}
 		ST st = new ST(templateOutputBindCall2);
-		st.add("inputObject", inputObject);
+		st.add("inputObject", allocationObject);
 		st.add("destinationObject", destinationObject);
 		ret.append(st.render());
 		return ret.toString();
@@ -208,8 +227,7 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 	 */
 	@Override
 	public List<String> getJavaInterfaceImports() {
-		ArrayList<String> ret = new ArrayList<>();
-		return ret;
+		return new ArrayList<>();
 	}
 
 	/**
@@ -228,9 +246,17 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 	@Override
 	protected String getReturnObjectCreation(Operation operation,
 			String variableName) {
+		String ret;
 		if (operation.operationType == OperationType.Reduce) {
-			return String.format(
+			ret = String.format(
 					"%s(%s[0])",
+					UserLibraryClassFactory.getClass(
+							operation.variable.typeParameters.get(0))
+							.getClassName(), variableName);
+		} else if (operation.operationType == OperationType.Map
+				|| operation.operationType == OperationType.Filter) {
+			ret = String.format(
+					"%s(%s)",
 					UserLibraryClassFactory.getClass(
 							operation.variable.typeParameters.get(0))
 							.getClassName(), variableName);
@@ -238,7 +264,7 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 			throw new RuntimeException("Operation not supported: "
 					+ operation.operationType);
 		}
-
+		return ret;
 	}
 
 	@Override

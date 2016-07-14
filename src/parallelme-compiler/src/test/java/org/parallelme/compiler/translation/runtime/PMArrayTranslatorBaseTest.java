@@ -10,21 +10,16 @@ package org.parallelme.compiler.translation.runtime;
 
 import static org.junit.Assert.*;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Test;
 import org.parallelme.compiler.intermediate.InputBind;
 import org.parallelme.compiler.intermediate.Operation;
 import org.parallelme.compiler.intermediate.OutputBind;
-import org.parallelme.compiler.intermediate.UserFunction;
 import org.parallelme.compiler.intermediate.Operation.ExecutionType;
-import org.parallelme.compiler.intermediate.Operation.OperationType;
 import org.parallelme.compiler.intermediate.OutputBind.OutputBindType;
-import org.parallelme.compiler.intermediate.Parameter;
 import org.parallelme.compiler.intermediate.Variable;
-import org.parallelme.compiler.translation.BaseTranslatorTest;
+import org.parallelme.compiler.translation.ArrayTranslatorTest;
 import org.parallelme.compiler.translation.SimpleTranslator;
 import org.parallelme.compiler.translation.userlibrary.BaseUserLibraryTranslator;
 import org.stringtemplate.v4.ST;
@@ -34,67 +29,10 @@ import org.stringtemplate.v4.ST;
  * 
  * @author Wilson de Carvalho
  */
-public abstract class PMArrayTranslatorBaseTest extends BaseTranslatorTest {
-	abstract protected String getParameterType();
-
-	abstract protected String getTranslatedParameterType();
-
-	private Variable arrayVar = new Variable("arrayVar", "Array",
-			Arrays.asList(getParameterType()), "", 1);
-
-	@Override
-	protected Variable getUserLibraryVar() {
-		return this.arrayVar;
-	}
-
+public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 	@Override
 	protected BaseUserLibraryTranslator getTranslator() {
 		return new PMArrayTranslator(new SimpleTranslator());
-	}
-
-	private InputBind createInputBind() {
-		List<Parameter> parameters = new ArrayList<>();
-		parameters.add(new Variable("dataVar", getTranslatedParameterType()
-				+ "[]", null, "", 2));
-		parameters.add(new Variable(getParameterType() + ".class", "Class",
-				Arrays.asList(getParameterType()), "", 3));
-		return new InputBind(this.getUserLibraryVar(), 1, parameters, null,
-				null);
-	}
-
-	private OutputBind createOutputBind(OutputBindType outputBindType) {
-		Variable destinationVar = new Variable("arrayVar",
-				getTranslatedParameterType() + "[]", null, "", 1);
-		return new OutputBind(this.getUserLibraryVar(), destinationVar, 1,
-				null, outputBindType);
-	}
-
-	private Operation createForeachOperation(ExecutionType executionType) {
-		Operation operation = new Operation(this.getUserLibraryVar(), 123,
-				null, OperationType.Foreach, null);
-		operation.setExecutionType(executionType);
-		List<Variable> arguments = new ArrayList<>();
-		arguments.add(new Variable("param1", getParameterType(), null, "", 10));
-		UserFunction userFunction = new UserFunction(
-				" { param1.value = 123; }", arguments);
-		operation.setUserFunctionData(userFunction);
-		return operation;
-	}
-
-	protected Operation createReduceOperation(ExecutionType executionType) {
-		Variable destVar = new Variable("destVar", getParameterType(), null,
-				"", 999);
-		Operation operation = new Operation(this.getUserLibraryVar(), 123,
-				null, OperationType.Reduce, destVar);
-		operation.setExecutionType(executionType);
-		List<Variable> arguments = new ArrayList<>();
-		arguments.add(new Variable("param1", getParameterType(), null, "", 10));
-		arguments.add(new Variable("param2", getParameterType(), null, "", 11));
-		UserFunction userFunction = new UserFunction(
-				" { param2.value += param1.value; " + "return param2;}",
-				arguments);
-		operation.setUserFunctionData(userFunction);
-		return operation;
 	}
 
 	/**
@@ -128,12 +66,25 @@ public abstract class PMArrayTranslatorBaseTest extends BaseTranslatorTest {
 	}
 
 	/**
-	 * Tests input bind object declaration.
+	 * Tests object declaration.
 	 */
 	@Test
-	public void translateInputBindObjDeclaration() throws Exception {
+	public void translateObjDeclaration() throws Exception {
 		BaseUserLibraryTranslator translator = this.getTranslator();
-		assertEquals(translator.translateInputBindObjDeclaration(null), "");
+		InputBind inputBind = createInputBind();
+		assertEquals(translator.translateObjDeclaration(inputBind),
+				String.format("private long  PM_%s%sPtr;", inputBind.variable,
+						inputBind.variable.sequentialNumber));
+		Operation operation = createMapOperation(ExecutionType.Sequential);
+		assertEquals(translator.translateObjDeclaration(operation),
+				String.format("private long  PM_%s%sPtr;",
+						operation.destinationVariable,
+						operation.destinationVariable.sequentialNumber));
+		operation = createMapOperation(ExecutionType.Parallel);
+		assertEquals(translator.translateObjDeclaration(operation),
+				String.format("private long  PM_%s%sPtr;",
+						operation.destinationVariable,
+						operation.destinationVariable.sequentialNumber));
 	}
 
 	/**

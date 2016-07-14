@@ -8,8 +8,6 @@
 
 package org.parallelme.compiler.translation.renderscript;
 
-import static org.junit.Assert.assertEquals;
-
 import java.util.List;
 
 import org.junit.Test;
@@ -20,6 +18,8 @@ import org.parallelme.compiler.intermediate.Operation.ExecutionType;
 import org.parallelme.compiler.translation.ImageTranslatorTest;
 import org.parallelme.compiler.translation.userlibrary.BaseUserLibraryTranslator;
 import org.parallelme.compiler.userlibrary.classes.BitmapImage;
+import org.parallelme.compiler.userlibrary.classes.Float32;
+import org.parallelme.compiler.userlibrary.classes.Pixel;
 import org.stringtemplate.v4.ST;
 
 /**
@@ -30,15 +30,30 @@ import org.stringtemplate.v4.ST;
 public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 	abstract protected String getRSType();
 
-	/**
-	 * Tests input bind object declaration.
-	 */
-	@Test
-	public void translateInputBindObjDeclaration() throws Exception {
-		BaseUserLibraryTranslator translator = this.getTranslator();
-		assertEquals(translator.translateInputBindObjDeclaration(null), "");
+	@Override
+	protected String getParameterType() {
+		return Pixel.getInstance().getClassName();
 	}
 
+	@Override
+	protected String getMapType() {
+		return Float32.getInstance().getClassName();
+	}
+
+	@Override
+	protected String getTranslatedParameterType() {
+		return "float3";
+	}
+
+	@Override
+	protected String getTranslatedMapType() {
+		return "float";
+	}
+
+	protected String getMapRSType() {
+		return "F32";
+	}
+	
 	/**
 	 * Tests foreach operation translation.
 	 */
@@ -408,6 +423,42 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "return new Pixel(PM_gOutputDestVarReduce123Tmp[0],PM_gOutputDestVarReduce123Tmp[1],PM_gOutputDestVarReduce123Tmp[2],PM_gOutputDestVarReduce123Tmp[3],-1,-1);");
 		st.add("kernel", commonDefinitions.getKernelName(className));
 		st.add("rsType", getRSType());
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+	}
+
+
+	/**
+	 * Tests map operation call.
+	 */
+	@Test
+	public void translateMapOperationCall() throws Exception {
+		// Parallel
+		Operation operation = this
+				.createMapOperation(ExecutionType.Parallel);
+		BaseUserLibraryTranslator translator = this.getTranslator();
+		String translatedFunction = translator.translateOperationCall(
+				className, operation);
+		ST st = new ST(
+				"Type <retVar>Type = new Type.Builder(PM_mRS, Element.<rsType>(PM_mRS))"
+						+ ".setX(<var>.getType().getX() * <var>.getType().getY())"
+						+ ".create();"
+						+ "<retVar> = Allocation.createTyped(PM_mRS, <retVar>Type);"
+						+ "<kernel>.<callFunction>_map123(<var>, <retVar>);");
+		st.add("rsType", getMapRSType());
+		st.add("var", commonDefinitions.getVariableOutName(operation.variable));
+		st.add("retVar", commonDefinitions
+				.getVariableOutName(operation.destinationVariable));
+		st.add("kernel", commonDefinitions.getKernelName(className));
+		st.add("callFunction", "forEach");
+		String expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Sequential
+		operation = this.createMapOperation(ExecutionType.Sequential);
+		translatedFunction = translator.translateOperationCall(className,
+				operation);
+		st.remove("callFunction");
+		st.add("callFunction", "invoke");
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 	}

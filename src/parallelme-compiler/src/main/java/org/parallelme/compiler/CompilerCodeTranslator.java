@@ -21,6 +21,7 @@ import org.parallelme.compiler.RuntimeDefinition.TargetRuntime;
 import org.parallelme.compiler.exception.CompilationException;
 import org.parallelme.compiler.intermediate.*;
 import org.parallelme.compiler.intermediate.Operation.ExecutionType;
+import org.parallelme.compiler.intermediate.Operation.OperationType;
 import org.parallelme.compiler.intermediate.OutputBind.OutputBindType;
 import org.parallelme.compiler.symboltable.*;
 import org.parallelme.compiler.translation.CTranslator;
@@ -29,6 +30,9 @@ import org.parallelme.compiler.translation.runtime.ParallelMERuntimeDefinition;
 import org.parallelme.compiler.translation.userlibrary.UserLibraryTranslatorDefinition;
 import org.parallelme.compiler.userlibrary.UserLibraryClassFactory;
 import org.parallelme.compiler.userlibrary.UserLibraryCollectionClass;
+import org.parallelme.compiler.userlibrary.classes.Array;
+import org.parallelme.compiler.userlibrary.classes.BitmapImage;
+import org.parallelme.compiler.userlibrary.classes.HDRImage;
 import org.parallelme.compiler.util.FileWriter;
 import org.parallelme.compiler.util.Pair;
 import org.stringtemplate.v4.ST;
@@ -250,9 +254,17 @@ public class CompilerCodeTranslator {
 				collectionClasses.add(operation.variable.typeName);
 			if (operation.destinationVariable != null
 					&& !destinationVariablesClasses
-							.contains(operation.destinationVariable.typeName))
-				destinationVariablesClasses
-						.add(operation.destinationVariable.typeName);
+							.contains(operation.destinationVariable.typeName)) {
+				if (!operation.destinationVariable.typeName.equals(Array
+						.getInstance().getClassName())) {
+					destinationVariablesClasses
+							.add(operation.destinationVariable.typeName);
+					if (operation.destinationVariable.typeParameters != null) {
+						destinationVariablesClasses
+								.addAll(operation.destinationVariable.typeParameters);
+					}
+				}
+			}
 		}
 		// Using a TreeSet here in order to keep imports sorted
 		TreeSet<String> importStatements = new TreeSet<>();
@@ -321,12 +333,11 @@ public class CompilerCodeTranslator {
 		st.add("packageName", packageName);
 		st.add("interfaceName", interfaceName);
 		st.add("className", javaClassName);
-		st.add("classDeclarations", null);
+		translateClassDeclarations(st, className, operationsAndBinds,
+				methodCalls, targetRuntime);
 		for (InputBind inputBind : operationsAndBinds.inputBinds) {
 			UserLibraryTranslatorDefinition translator = targetRuntime
 					.getTranslator(inputBind.variable.typeName);
-			st.addAggr("classDeclarations.{line}",
-					translator.translateInputBindObjDeclaration(inputBind));
 			String methodSignature = RuntimeCommonDefinitions.getInstance()
 					.createJavaMethodSignature(inputBind, false);
 			String body = translator.translateInputBindObjCreation(
@@ -335,10 +346,6 @@ public class CompilerCodeTranslator {
 		}
 		for (String line : targetRuntime.getIsValidBody()) {
 			st.add("isValidBody", line);
-		}
-		for (String line : targetRuntime.getInitializationString(className,
-				operationsAndBinds, methodCalls)) {
-			st.addAggr("classDeclarations.{line}", line);
 		}
 		for (Operation operation : operationsAndBinds.operations) {
 			String methodSignature = RuntimeCommonDefinitions.getInstance()
@@ -373,6 +380,32 @@ public class CompilerCodeTranslator {
 				RuntimeCommonDefinitions.getInstance()
 						.getJavaDestinationFolder(this.outputDestinationFolder,
 								packageName), st.render());
+	}
+
+	private void translateClassDeclarations(ST st, String className,
+			OperationsAndBinds operationsAndBinds,
+			List<MethodCall> methodCalls, RuntimeDefinition targetRuntime)
+			throws CompilationException {
+		st.add("classDeclarations", null);
+		for (InputBind inputBind : operationsAndBinds.inputBinds) {
+			UserLibraryTranslatorDefinition translator = targetRuntime
+					.getTranslator(inputBind.variable.typeName);
+			st.addAggr("classDeclarations.{line}",
+					translator.translateObjDeclaration(inputBind));
+		}
+		for (Operation operation : operationsAndBinds.operations) {
+			if (operation.operationType == OperationType.Map
+					|| operation.operationType == OperationType.Filter) {
+				UserLibraryTranslatorDefinition translator = targetRuntime
+						.getTranslator(operation.variable.typeName);
+				st.addAggr("classDeclarations.{line}",
+						translator.translateObjDeclaration(operation));
+			}
+		}
+		for (String line : targetRuntime.getInitializationString(className,
+				operationsAndBinds, methodCalls)) {
+			st.addAggr("classDeclarations.{line}", line);
+		}
 	}
 
 	/**
@@ -483,11 +516,19 @@ public class CompilerCodeTranslator {
 		String objectName = RuntimeCommonDefinitions.getInstance()
 				.getParallelMEObjectName();
 		for (InputBind inputBind : inputBinds) {
+			String parameters;
+			if (inputBind.variable.typeName.equals(BitmapImage.getInstance()
+					.getClassName())
+					|| inputBind.variable.typeName.equals(HDRImage
+							.getInstance().getClassName())) {
+				parameters = RuntimeCommonDefinitions.getInstance()
+						.toCommaSeparatedString(inputBind.parameters);
+			} else {
+				parameters = inputBind.parameters.get(0).toString();
+			}
 			String translatedStatement = String.format("%s.%s(%s);",
 					objectName, RuntimeCommonDefinitions.getInstance()
-							.getInputBindName(inputBind),
-					RuntimeCommonDefinitions.getInstance()
-							.toCommaSeparatedString(inputBind.parameters));
+							.getInputBindName(inputBind), parameters);
 			tokenStreamRewriter.delete(
 					inputBind.declarationStatementAddress.start,
 					inputBind.declarationStatementAddress.stop);
@@ -540,7 +581,8 @@ public class CompilerCodeTranslator {
 			}
 			st.add("operationName", RuntimeCommonDefinitions.getInstance()
 					.getOperationName(operation));
-			if (operation.destinationVariable != null) {
+			if (operation.destinationVariable != null
+					&& operation.operationType == OperationType.Reduce) {
 				st.addAggr("destinationVariable.{type, name}",
 						operation.destinationVariable.typeName,
 						operation.destinationVariable.name);

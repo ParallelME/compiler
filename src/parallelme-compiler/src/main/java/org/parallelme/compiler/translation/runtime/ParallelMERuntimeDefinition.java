@@ -23,7 +23,6 @@ import org.parallelme.compiler.intermediate.Operation.ExecutionType;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.userlibrary.classes.*;
 import org.parallelme.compiler.util.ResourceWriter;
-import org.stringtemplate.v4.ST;
 
 /**
  * General definitions for ParallelME runtime.
@@ -74,7 +73,7 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 			OperationsAndBinds operationsAndBinds, List<MethodCall> methodCalls)
 			throws CompilationException {
 		List<String> ret = new ArrayList<>();
-		ret.addAll(this.declarePointers(operationsAndBinds.inputBinds));
+		ret.add("private static boolean isValid;");
 		ret.add(" ");
 		// Declare native functions to call NDK
 		ret.addAll(this.declareNativeOperations(operationsAndBinds.operations));
@@ -82,27 +81,6 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 		ret.addAll(this.cleanUpPointers(operationsAndBinds.inputBinds));
 		ret.add(" ");
 		ret.addAll(this.initializeParallelME());
-		return ret;
-	}
-
-	private List<String> declarePointers(List<InputBind> inputBinds)
-			throws CompilationException {
-		List<String> ret = new ArrayList<>();
-		Set<Variable> variables = new HashSet<>();
-		ret.add("private static boolean isValid;");
-		// Store variables in a set to avoid duplication if the user creates two
-		// input binds for the same variable
-		for (InputBind inputBind : inputBinds)
-			variables.add(inputBind.variable);
-		if (!variables.isEmpty()) {
-			ST st = new ST(
-					"private long <pointer:{var|<var.name>}; separator=\", \">;");
-			for (Variable variable : variables) {
-				st.addAggr("pointer.{name}", RuntimeCommonDefinitions
-						.getInstance().getPointerName(variable));
-			}
-			ret.add(st.render());
-		}
 		return ret;
 	}
 

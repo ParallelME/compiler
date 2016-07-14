@@ -45,7 +45,8 @@ public class RSHDRImageTranslatorTest extends RSImageTranslatorTest {
 		return "F32_4";
 	}
 
-	private InputBind createInputBind() {
+	@Override
+	protected InputBind createInputBind() {
 		List<Parameter> parameters = new ArrayList<>();
 		parameters.add(new Variable("dataVar", "byte[]", null, "", 2));
 		parameters.add(new Variable("widthVar", "int", null, "", 3));
@@ -54,7 +55,8 @@ public class RSHDRImageTranslatorTest extends RSImageTranslatorTest {
 				null);
 	}
 
-	private OutputBind createOutputBind(OutputBindType outputBindType) {
+	@Override
+	protected OutputBind createOutputBind(OutputBindType outputBindType) {
 		Variable destinationVar = new Variable("bitmapVar", "Bitmap", null, "",
 				1);
 		return new OutputBind(this.getUserLibraryVar(), destinationVar, 1,
@@ -124,7 +126,7 @@ public class RSHDRImageTranslatorTest extends RSImageTranslatorTest {
 	 * Tests input bind object declaration.
 	 */
 	@Test
-	public void translateInputBindObjDeclaration() throws Exception {
+	public void translateObjDeclaration() throws Exception {
 		BaseUserLibraryTranslator translator = this.getTranslator();
 		InputBind inputBind = createInputBind();
 		ST st = new ST("private Allocation <varIn>, <varOut>;");
@@ -133,7 +135,7 @@ public class RSHDRImageTranslatorTest extends RSImageTranslatorTest {
 				commonDefinitions.getVariableOutName(inputBind.variable));
 		String expectedTranslation = st.render();
 		String translatedFunction = translator
-				.translateInputBindObjDeclaration(inputBind);
+				.translateObjDeclaration(inputBind);
 		this.validateTranslation(expectedTranslation, translatedFunction);
 	}
 

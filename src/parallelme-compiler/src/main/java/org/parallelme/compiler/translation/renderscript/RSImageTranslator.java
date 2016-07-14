@@ -40,13 +40,28 @@ public abstract class RSImageTranslator extends RSTranslator implements
 	 * {@inheritDoc}
 	 */
 	@Override
-	public String translateInputBindObjDeclaration(InputBind inputBind) {
+	public String translateObjDeclaration(InputBind inputBind) {
 		String inAllocation = this.commonDefinitions
 				.getVariableInName(inputBind.variable);
 		String outAllocation = this.commonDefinitions
 				.getVariableOutName(inputBind.variable);
 		return String.format("private Allocation %s, %s;", inAllocation,
 				outAllocation);
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String translateObjDeclaration(Operation operation) {
+		if (operation.operationType == OperationType.Map
+				|| operation.operationType == OperationType.Filter) {
+			String outAllocation = this.commonDefinitions
+					.getVariableOutName(operation.destinationVariable);
+			return String.format("private Allocation %s;", outAllocation);
+		} else {
+			return "";
+		}
 	}
 
 	/**

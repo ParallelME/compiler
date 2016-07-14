@@ -68,14 +68,6 @@ public class PMArrayTranslator extends PMTranslator implements ArrayTranslator {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public String translateInputBindObjDeclaration(InputBind inputBind) {
-		return "";
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	@Override
 	public String translateOutputBind(String className, OutputBind outputBind) {
 		return "";
 	}

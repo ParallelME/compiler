@@ -21,7 +21,6 @@ import org.parallelme.compiler.intermediate.OutputBind;
 import org.parallelme.compiler.intermediate.Operation.ExecutionType;
 import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.translation.userlibrary.UserLibraryTranslatorDefinition;
-import org.parallelme.compiler.userlibrary.classes.Array;
 import org.parallelme.compiler.userlibrary.classes.BitmapImage;
 import org.parallelme.compiler.userlibrary.classes.HDRImage;
 import org.parallelme.compiler.util.FileWriter;
@@ -56,22 +55,22 @@ public class ParallelMERuntimeCTranslation {
 			+ "\tauto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
 			+ "\tauto variablePtr = (<objectType> *) varPtr;\n"
 			+ "\tauto task = std::make_unique\\<Task>(runtimePtr->program);\n"
-			+ "<destinationVariable:{\tvar|auto tileElemSize = sizeof(<var.type>) * env->GetArrayLength(<var.name>);\n"
-			+ "auto tileBuffer = std::make_shared\\<Buffer>(tileElemSize * <var.expression>);\n"
-			+ "auto <var.bufferName> = std::make_shared\\<Buffer>(tileElemSize);\n}>"
+			+ "<destinationVariable:{var|\t\tauto tileElemSize = sizeof(<var.type>) * env->GetArrayLength(<var.name>);\n"
+			+ "\tauto tileBuffer = std::make_shared\\<Buffer>(tileElemSize * <var.expression>);\n"
+			+ "\tauto <var.bufferName> = std::make_shared\\<Buffer>(tileElemSize);\n}>"
 			+ "<task:{var|\t\ttask->addKernel(\"<var.operationName>\");\n}>"
 			+ "\ttask->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
 			+ "\t\t<kernelHash:{var|<var.body>}; separator=\"\n\">"
 			+ "\n\t\\});\n"
 			+ "\truntimePtr->runtime->submitTask(std::move(task));\n"
 			+ "\truntimePtr->runtime->finish();\n"
-			+ "<destinationVariable:{var|\t<var.bufferName>->copyToJArray(env, <var.name>);\n}>"
+			+ "<destinationVariable:{var|\t\t<var.bufferName>->copyToJArray(env, <var.name>);\n}>"
 			+ "\\}";
 	private static final String templateSequentialOperation = "<functionDecl> {\n"
 			+ "\tauto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
 			+ "\tauto variablePtr = (<objectType> *) varPtr;\n"
 			+ "\tauto task = std::make_unique\\<Task>(runtimePtr->program, Task::Score(1.0f, 2.0f));\n"
-			+ "<destinationVariable:{var|\tauto <var.bufferName> = std::make_shared\\<Buffer>(sizeof(<var.type>) * GetArrayLength(env, <var.name>));\n}>"
+			+ "<destinationVariable:{var|\t\tauto <var.bufferName> = std::make_shared\\<Buffer>(sizeof(<var.type>) * GetArrayLength(env, <var.name>));\n}>"
 			+ "<buffers:{var|\t\tauto <var.bufferName> = std::make_shared\\<Buffer>(sizeof(<var.name>));\n}>"
 			+ "<task:{var|\t\ttask->addKernel(\"<var.operationName>\");\n}>"
 			+ "\ttask->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
@@ -232,19 +231,15 @@ public class ParallelMERuntimeCTranslation {
 				stKernelHashTile.add("workSize", "variablePtr->height");
 				stKernelHash.add("workSize", "1");
 			} else {
-				stKernelHashTile.add("workSize", "floor(sqrt((float)variablePtr->length))");
+				stKernelHashTile.add("workSize",
+						"floor(sqrt((float)variablePtr->length))");
 				stKernelHash.add("workSize", "1");
 			}
 		} else {
 			st.add("destinationVariable", null);
 			stKernelHash.addAggr("setArgs.{index, name}", argIndex,
 					"variablePtr->" + operationBufferName);
-			if (operation.variable.typeName.equals(Array.getInstance()
-					.getClassName())) {
-				stKernelHash.add("workSize", "1");
-			} else {
-				stKernelHash.add("workSize", "variablePtr->workSize");
-			}
+			stKernelHash.add("workSize", "variablePtr->workSize");
 		}
 		for (Variable variable : operation.getExternalVariables()) {
 			stKernelHash.addAggr("setArgs.{index, name}", ++argIndex,
