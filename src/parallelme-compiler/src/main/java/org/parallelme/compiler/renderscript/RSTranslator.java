@@ -225,7 +225,13 @@ public abstract class RSTranslator extends BaseTranslator {
 				.upperCaseFirstLetter(iterator.getVariable().name);
 		
 		String gNameIn = this.getGlobalVariableName("input" + variableName,
-				iterator);		
+				iterator);
+		
+		String code2Translate = iterator.getUserFunctionData().Code.trim();
+		
+		// Remove the last curly brace
+				code2Translate = code2Translate.substring(1,
+						code2Translate.lastIndexOf("}")); //TODO: Is this String search really necessary?
 		
 		ST stFor = new ST(templateForLoop);
 		stFor.add("varName", "x");
@@ -234,7 +240,8 @@ public abstract class RSTranslator extends BaseTranslator {
 		stForBody.add("inputData", gNameIn);
 		stForBody.add("userFunctionVarName", userFunctionVariable.name);
 		stForBody.add("userFunctionVarType", userFunctionVarType);
-		stForBody.add("userCode", iterator.getUserFunctionData().Code.trim()); //TODO: This code need to be translate
+		stForBody.add("userCode", this.translateVariable(userFunctionVariable,
+				this.cCodeTranslator.translate(code2Translate)).trim()); //TODO: This code need to be translate
 		stForBody.add("param", null);
 		// BitmapImage and HDRImage types contains two for loops
 		if (iterator.getVariable().typeName.equals(BitmapImage.getName())
