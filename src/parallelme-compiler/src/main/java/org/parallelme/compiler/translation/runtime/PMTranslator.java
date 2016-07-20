@@ -276,6 +276,14 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 	 * {@inheritDoc}
 	 */
 	@Override
+	protected String translateParallelFilterTile(Operation operation) {
+		return "";
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
 	protected String translateUserFunction(Operation operation) {
 		return this.createKernelFunction(operation,
 				this.translateUserCode(operation), FunctionType.UserCode);

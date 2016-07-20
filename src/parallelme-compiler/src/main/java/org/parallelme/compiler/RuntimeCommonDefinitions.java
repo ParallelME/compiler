@@ -80,14 +80,14 @@ public class RuntimeCommonDefinitions {
 	}
 
 	/**
-	 * Return an unique prefixed operation name base on its sequential number.
+	 * Return a unique prefixed operation name based on its sequential number.
 	 */
 	public String getPrefixedOperationName(Operation operation) {
 		return this.prefix + this.getOperationName(operation);
 	}
 
 	/**
-	 * Return an unique operation name based on its sequential number.
+	 * Return a unique operation name based on its sequential number.
 	 */
 	public String getOperationName(Operation operation) {
 		String operationName;
@@ -111,7 +111,7 @@ public class RuntimeCommonDefinitions {
 	}
 
 	/**
-	 * Return an unique name for operation tile function base on its sequential
+	 * Return a unique name for operation tile function based on its sequential
 	 * number.
 	 */
 	public String getOperationTileFunctionName(Operation operation) {
@@ -119,7 +119,7 @@ public class RuntimeCommonDefinitions {
 	}
 
 	/**
-	 * Return an unique name for operation user function base on its sequential
+	 * Return a unique name for operation user function base on its sequential
 	 * number.
 	 */
 	public String getOperationUserFunctionName(Operation operation) {
@@ -127,35 +127,43 @@ public class RuntimeCommonDefinitions {
 	}
 
 	/**
-	 * Return an unique method call name base on its sequential number.
+	 * Return a unique name for operation allocation function based on its
+	 * sequential number.
+	 */
+	public String getOperationAllocationFunctionName(Operation operation) {
+		return this.getOperationName(operation) + "_setAllocationSize";
+	}
+
+	/**
+	 * Return a unique method call name based on its sequential number.
 	 */
 	public String getMethodCallName(MethodCall methodCall) {
 		return methodCall.methodName + methodCall.sequentialNumber;
 	}
 
 	/**
-	 * Return an unique input bind name base on its sequential number.
+	 * Return a unique input bind name based on its sequential number.
 	 */
 	public String getPrefixedInputBindName(InputBind inputBind) {
 		return this.prefix + this.getInputBindName(inputBind);
 	}
 
 	/**
-	 * Return an unique input bind name base on its sequential number.
+	 * Return a unique input bind name based on its sequential number.
 	 */
 	public String getInputBindName(InputBind inputBind) {
 		return inputBindName + inputBind.sequentialNumber;
 	}
 
 	/**
-	 * Return an unique prefixed output bind name base on its sequential number.
+	 * Return a unique prefixed output bind name based on its sequential number.
 	 */
 	public String getPrefixedOutputBindName(OutputBind outputBind) {
 		return this.prefix + this.getOutputBindName(outputBind);
 	}
 
 	/**
-	 * Return an unique output bind name base on its sequential number.
+	 * Return a unique output bind name based on its sequential number.
 	 */
 	public String getOutputBindName(OutputBind outputBind) {
 		return outputBindName + outputBind.sequentialNumber;

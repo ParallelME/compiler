@@ -42,15 +42,17 @@ public abstract class BaseUserLibraryTranslator implements
 	 * BaseOperation: the operation that will be called by the user code and,
 	 * if necessary, call other functions to perform data processing;
 	 * 
-	 * Tile: Function that will process a fraction of the user data;
+	 * Tile: function that will process a fraction of the user data;
 	 * 
-	 * UserCode: a function that corresponds exaclty to the user code.  
+	 * UserCode: a function that corresponds exactly to the user code.  
 	 * It will be used to encapsulate user code to be called by BaseOperation
 	 * and Tile functions.
+	 * 
+	 * SetAllocation: function used to configure allocation parameters.
 	 * </pre>
 	 */
 	protected enum FunctionType {
-		BaseOperation, Tile, UserCode;
+		BaseOperation, Tile, UserCode, SetAllocation;
 	}
 
 	/**
@@ -135,6 +137,8 @@ public abstract class BaseUserLibraryTranslator implements
 				// C functions must be declared before used, so user function
 				// must be the first
 				ret.add(translateUserFunction(operation));
+				if (operation.getExecutionType() == ExecutionType.Parallel)
+					ret.add(translateParallelFilterTile(operation));
 				ret.add(translateFilter(operation));
 			} else {
 				throw new RuntimeException("Invalid operation: "
@@ -173,6 +177,12 @@ public abstract class BaseUserLibraryTranslator implements
 	 * runtime.
 	 */
 	abstract protected String translateFilter(Operation operation);
+
+	/**
+	 * Translates a filter tile operation returning a C code compatible with
+	 * this runtime.
+	 */
+	abstract protected String translateParallelFilterTile(Operation operation);
 
 	/**
 	 * Translates the user code that will be used for composing operations.

@@ -10,7 +10,7 @@ package org.parallelme.compiler.symboltable;
 
 /**
  * A symbol for expressions that must not have all its componentes recognized
- * separately by the compiler. These symbols will be treated as an unique piece
+ * separately by the compiler. These symbols will be treated as a unique piece
  * of code.
  * 
  * @author Wilson de Carvalho
