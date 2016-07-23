@@ -10,14 +10,14 @@ package org.parallelme.compiler.userlibrary.classes;
 
 import java.util.HashMap;
 
-import org.parallelme.compiler.userlibrary.UserLibraryClass;
+import org.parallelme.compiler.userlibrary.UserLibraryDataType;
 
 /**
  * Defines the user library class Int32.
  * 
  * @author Wilson de Carvalho
  */
-public class Int32 extends UserLibraryClass {
+public class Int32 extends UserLibraryDataType {
 	private static Int32 instance = new Int32();
 	private static final String className = "Int32";
 	private static final String packageName = "org.parallelme.userlibrary.datatype";
@@ -60,5 +60,21 @@ public class Int32 extends UserLibraryClass {
 	@Override
 	public String getPackageName() {
 		return packageName;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getRenderScriptJavaType() {
+		return "I32";
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getRenderScriptCType() {
+		return "int";
 	}
 }

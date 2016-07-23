@@ -58,7 +58,7 @@ abstract public class BaseTranslatorTest {
 	 * The Java equivalent type provided in getMapType().
 	 */
 	abstract protected String getTranslatedMapType();
-	
+
 	abstract protected InputBind createInputBind();
 
 	abstract protected OutputBind createOutputBind(OutputBindType outputBindType);
@@ -70,9 +70,11 @@ abstract public class BaseTranslatorTest {
 
 	abstract protected BaseUserLibraryTranslator getTranslator();
 
-	abstract protected Operation createForeachOperation(ExecutionType executionType);
+	abstract protected Operation createForeachOperation(
+			ExecutionType executionType);
 
-	abstract protected Operation createReduceOperation(ExecutionType executionType);
+	abstract protected Operation createReduceOperation(
+			ExecutionType executionType);
 
 	protected Operation createMapOperation(ExecutionType executionType) {
 		Variable destVar = new Variable("destVar", Array.getInstance()
@@ -82,14 +84,15 @@ abstract public class BaseTranslatorTest {
 		operation.setExecutionType(executionType);
 		List<Variable> arguments = new ArrayList<>();
 		arguments.add(new Variable("param1", getParameterType(), null, "", 10));
-		UserFunction userFunction = new UserFunction(
-				" { param1.value = 123; }", arguments);
+		UserFunction userFunction = new UserFunction(String.format(
+				"{\n\t%s ret;\n" + "\tret = param1 * 1.5f;\n\treturn ret;\n}",
+				getTranslatedMapType()), arguments);
 		operation.setUserFunctionData(userFunction);
 		return operation;
 	}
-	
-	protected Variable createExternalVariable(String modifier) {
-		return new Variable("externalVar", "int", null, modifier, 10);
+
+	protected Variable createExternalVariable(String modifier, String name) {
+		return new Variable(name, "int", null, modifier, 10);
 	}
 
 	protected MethodCall createMethodCall(String methodName) {
@@ -132,5 +135,13 @@ abstract public class BaseTranslatorTest {
 			List<String> translatedCode) {
 		assertEquals(this.flattenString(expectedTranslation),
 				this.flattenString(translatedCode));
+	}
+	
+	/**
+	 * 
+	 */
+	protected String upperCaseFirstLetter(String string) {
+		return string.substring(0, 1).toUpperCase()
+				+ string.substring(1, string.length());
 	}
 }

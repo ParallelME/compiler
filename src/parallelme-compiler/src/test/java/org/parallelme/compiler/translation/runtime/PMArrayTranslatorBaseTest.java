@@ -156,7 +156,7 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Parallel with final external variable
 		operation = this.createForeachOperation(ExecutionType.Parallel);
-		Variable finalVar = this.createExternalVariable("final");
+		Variable finalVar = this.createExternalVariable("final", "var1");
 		operation.addExternalVariable(finalVar);
 		translatedFunction = translator.translateOperation(operation);
 		st = new ST(
@@ -173,7 +173,7 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		// Parallel with non-final external variable (will be translated to
 		// sequential code)
 		operation = this.createForeachOperation(ExecutionType.Parallel);
-		Variable nonFinalVar = this.createExternalVariable("");
+		Variable nonFinalVar = this.createExternalVariable("", "var2");
 		operation.addExternalVariable(nonFinalVar);
 		translatedFunction = translator.translateOperation(operation);
 		st = new ST(
@@ -298,7 +298,7 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Parallel with final external variable
 		operation = this.createReduceOperation(ExecutionType.Parallel);
-		Variable finalVar = this.createExternalVariable("final");
+		Variable finalVar = this.createExternalVariable("final", "var1");
 		operation.addExternalVariable(finalVar);
 		translatedFunction = translator.translateOperation(operation);
 		st = new ST(
@@ -335,7 +335,7 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		// Parallel with non-final external variable (will be translated to
 		// sequential code)
 		operation = this.createReduceOperation(ExecutionType.Parallel);
-		Variable nonFinalVar = this.createExternalVariable("");
+		Variable nonFinalVar = this.createExternalVariable("", "var2");
 		operation.addExternalVariable(nonFinalVar);
 		translatedFunction = translator.translateOperation(operation);
 		st = new ST(

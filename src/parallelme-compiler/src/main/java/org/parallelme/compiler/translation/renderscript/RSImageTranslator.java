@@ -27,8 +27,9 @@ import org.stringtemplate.v4.ST;
  */
 public abstract class RSImageTranslator extends RSTranslator implements
 		ImageTranslator {
-	private static final String templateOutputBindCall1 = "<destinationObject> = Bitmap.createBitmap(<inputAllocation>.getType().getX(), "
-			+ "<inputAllocation>.getType().getY(), Bitmap.Config.ARGB_8888);\n";
+	private static final String templateOutputBindCall1 = "Bitmap <destinationObject> = Bitmap.createBitmap(<inputAllocation>.getType().getX(), "
+			+ "<inputAllocation>.getType().getY(), Bitmap.Config.ARGB_8888);\n"
+			+ "return <destinationObject>;";
 	private static final String templateOutputBindCall2 = "<kernelName>.forEach_toBitmap<classType>(<outputObject>, <inputObject>);\n"
 			+ "<inputObject>.copyTo(<destinationObject>);";
 
@@ -83,15 +84,16 @@ public abstract class RSImageTranslator extends RSTranslator implements
 			st.add("inputAllocation", inputObject);
 			st.add("destinationObject", destinationObject);
 			ret.append(st.render());
+		} else {
+			ST st = new ST(templateOutputBindCall2);
+			st.add("classType", outputBind.variable.typeName);
+			st.add("kernelName",
+					this.commonDefinitions.getKernelName(className));
+			st.add("outputObject", outputObject);
+			st.add("inputObject", inputObject);
+			st.add("destinationObject", destinationObject);
+			ret.append(st.render());
 		}
-		ST st = new ST(templateOutputBindCall2);
-		st.add("classType", outputBind.variable.typeName);
-		st.add("kernelName", this.commonDefinitions.getKernelName(className));
-		st.add("outputObject", outputObject);
-		st.add("inputObject", inputObject);
-		st.add("destinationObject", destinationObject);
-		ret.append(st.render());
-
 		return ret.toString();
 	}
 
@@ -181,15 +183,18 @@ public abstract class RSImageTranslator extends RSTranslator implements
 			}
 		}
 		stForLoop.add("initValue", "1");
-		String inputXSize = getInputXSizeVariableName(operation);
-		stForLoop.add("varMaxVal", inputXSize);
+		stForLoop.add("varMaxVal",
+				getAllocationDimCall("X", getInputDataVariableName(operation)));
 		if (isSequential) {
 			String yVar = commonDefinitions.getPrefix() + "y";
 			stForBody.addAggr("yVar.{name}", yVar);
 			ST stInnerFor = new ST(templateForLoop);
 			stInnerFor.add("varName", yVar);
 			stInnerFor.add("initValue", "1");
-			stInnerFor.add("varMaxVal", getInputYSizeVariableName(operation));
+			stInnerFor.add(
+					"varMaxVal",
+					getAllocationDimCall("Y",
+							getInputDataVariableName(operation)));
 			stInnerFor.add("body", stForBody.render());
 			stForLoop.add("body", stInnerFor.render());
 		} else {
@@ -201,6 +206,7 @@ public abstract class RSImageTranslator extends RSTranslator implements
 		stForBody.add("dataVar", getInputDataVariableName(operation));
 		st.add("destVar",
 				getOutputVariableName(operation.destinationVariable, operation));
+		setExternalVariables(operation, st);
 		return createKernelFunction(operation, st.render(),
 				FunctionType.BaseOperation);
 	}

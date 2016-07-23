@@ -276,7 +276,7 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 	 * {@inheritDoc}
 	 */
 	@Override
-	protected String translateParallelFilterTile(Operation operation) {
+	protected String translateFilterTile(Operation operation) {
 		return "";
 	}
 

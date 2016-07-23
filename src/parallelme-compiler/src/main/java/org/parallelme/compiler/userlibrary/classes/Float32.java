@@ -10,14 +10,14 @@ package org.parallelme.compiler.userlibrary.classes;
 
 import java.util.HashMap;
 
-import org.parallelme.compiler.userlibrary.UserLibraryClass;
+import org.parallelme.compiler.userlibrary.UserLibraryDataType;
 
 /**
  * Defines the user library class Float32.
  * 
  * @author Wilson de Carvalho
  */
-public class Float32 extends UserLibraryClass {
+public class Float32 extends UserLibraryDataType {
 	private static Float32 instance = new Float32();
 	private static final String className = "Float32";
 	private static final String packageName = "org.parallelme.userlibrary.datatype";
@@ -60,5 +60,21 @@ public class Float32 extends UserLibraryClass {
 	@Override
 	public String getPackageName() {
 		return packageName;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getRenderScriptJavaType() {
+		return "F32";
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getRenderScriptCType() {
+		return "float";
 	}
 }

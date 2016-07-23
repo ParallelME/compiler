@@ -118,7 +118,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 		st.add("introductoryMsg", RuntimeCommonDefinitions.getInstance()
 				.getHeaderComment());
 		st.add("header", "#pragma version(1)\n#pragma rs java_package_name("
-				+ packageName + ")\n#pragma rs_fp_imprecise");
+				+ packageName + ")\n#pragma rs_fp_relaxed");
 		// 2. Translate input binds
 		Set<String> inputBindTypes = new HashSet<String>();
 		for (InputBind inputBind : operationsAndBinds.inputBinds) {

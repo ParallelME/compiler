@@ -10,16 +10,16 @@ package org.parallelme.compiler.userlibrary.classes;
 
 import java.util.HashMap;
 
-import org.parallelme.compiler.userlibrary.UserLibraryCollectionClass;
+import org.parallelme.compiler.userlibrary.UserLibraryCollection;
 
 /**
  * Defines user library Image derived classes.
  * 
  * @author Wilson de Carvalho, Pedro Caldeira
  */
-public abstract class Image extends UserLibraryCollectionClass {
+public abstract class Image extends UserLibraryCollection {
 	private static String outputBindMethodName = "toBitmap";
-	private static String getHeightName = "getHeight";
+	private static String getHeightMethodName = "getHeight";
 	private static String getWidthMethodName = "getWidth";
 	private static final String packageName = "org.parallelme.userlibrary.image";
 
@@ -34,7 +34,7 @@ public abstract class Image extends UserLibraryCollectionClass {
 	@Override
 	protected void initValidMethodsSet() {
 		this.validMethods = new HashMap<>();
-		this.validMethods.put(getHeightName, "int");
+		this.validMethods.put(getHeightMethodName, "int");
 		this.validMethods.put(getWidthMethodName, "int");
 	}
 
@@ -55,7 +55,7 @@ public abstract class Image extends UserLibraryCollectionClass {
 	}
 
 	public String getHeightMethodName() {
-		return getHeightName;
+		return getHeightMethodName;
 	}
 
 	public String getWidthMethodName() {

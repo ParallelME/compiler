@@ -29,7 +29,7 @@ import org.parallelme.compiler.translation.renderscript.RenderScriptRuntimeDefin
 import org.parallelme.compiler.translation.runtime.ParallelMERuntimeDefinition;
 import org.parallelme.compiler.translation.userlibrary.UserLibraryTranslatorDefinition;
 import org.parallelme.compiler.userlibrary.UserLibraryClassFactory;
-import org.parallelme.compiler.userlibrary.UserLibraryCollectionClass;
+import org.parallelme.compiler.userlibrary.UserLibraryCollection;
 import org.parallelme.compiler.userlibrary.classes.Array;
 import org.parallelme.compiler.userlibrary.classes.BitmapImage;
 import org.parallelme.compiler.userlibrary.classes.HDRImage;
@@ -561,7 +561,10 @@ public class CompilerCodeTranslator {
 				for (Variable variable : operation.getExternalVariables()) {
 					if (!variable.isFinal()) {
 						String arrName = RuntimeCommonDefinitions.getInstance()
-								.getPrefix() + variable.name;
+								.getPrefix()
+								+ variable.name
+								+ operation.operationType
+								+ operation.sequentialNumber;
 						st.addAggr("declParams.{type, arrName, varName}",
 								variable.typeName, arrName, variable.name);
 						st.addAggr("recoverParams.{arrName, varName}", arrName,
@@ -609,18 +612,25 @@ public class CompilerCodeTranslator {
 				.getParallelMEObjectName();
 		for (OutputBind outputBind : outputBinds) {
 			String translatedStatement;
-			if (outputBind.outputBindType == OutputBindType.DeclarativeAssignment) {
-				translatedStatement = String.format("%s %s;\n%s.%s(%s);",
-						outputBind.destinationObject.typeName,
-						outputBind.destinationObject.name, objectName,
-						RuntimeCommonDefinitions.getInstance()
-								.getOutputBindName(outputBind),
-						outputBind.destinationObject.name);
-			} else {
+			if (outputBind.outputBindType == OutputBindType.None) {
 				translatedStatement = String.format("%s.%s(%s);", objectName,
 						RuntimeCommonDefinitions.getInstance()
 								.getOutputBindName(outputBind),
 						outputBind.destinationObject.name);
+			} else {
+				ST st = new ST(
+						"<destType:{var|<var.value> }><destVar> = <kernel>.<methodName>();");
+				if (outputBind.outputBindType == OutputBindType.Assignment) {
+					st.add("destType", null);
+				} else {
+					st.addAggr("destType.{value}",
+							outputBind.destinationObject.typeName);
+				}
+				st.add("destVar", outputBind.destinationObject.name);
+				st.add("kernel", objectName);
+				st.add("methodName", RuntimeCommonDefinitions.getInstance()
+						.getOutputBindName(outputBind));
+				translatedStatement = st.render();
 			}
 			tokenStreamRewriter.replace(outputBind.statementAddress.start,
 					outputBind.statementAddress.stop, translatedStatement);
@@ -671,7 +681,7 @@ public class CompilerCodeTranslator {
 					.getSymbolUnderScope(creator.attributedObjectName,
 							UserLibraryVariableSymbol.class);
 			if (variable != null) {
-				if (UserLibraryClassFactory.getClass(variable.typeName) instanceof UserLibraryCollectionClass) {
+				if (UserLibraryClassFactory.getClass(variable.typeName) instanceof UserLibraryCollection) {
 					variables.add(new Pair<>(variable, creator));
 				}
 			}

@@ -9,7 +9,6 @@
 package org.parallelme.compiler.translation;
 
 import java.util.HashMap;
-import java.util.HashSet;
 
 /**
  * Hold basic primitive data type information that can be used to recognize Java
@@ -18,23 +17,20 @@ import java.util.HashSet;
  * @author Wilson de Carvalho
  */
 public class PrimitiveTypes {
-	static private HashMap<String, String> cTypes = null;
-	static private HashSet<String> numericTypes = null;
+	static private HashMap<String, String[]> types = null;
 
 	private static void initTypes() {
-		cTypes = new HashMap<>();
-		numericTypes = new HashSet<>();
+		// The hash map key is the Java primitive type, the first value element
+		// is the equivalent C99 type and the second value is the Java
+		// RenderScript type.
+		types = new HashMap<>();
+		types.put("int", new String[] { "int", "I32" });
+		types.put("float", new String[] { "float", "F32" });
+		types.put("short", new String[] { "short", "I16" });
+		types.put("char", new String[] { "char", "U8" });
+		types.put("boolean", new String[] { "bool", "BOOLEAN" });
+		types.put("byte", new String[] { "byte", "U8" });
 
-		numericTypes.add("int");
-		numericTypes.add("float");
-		numericTypes.add("short");
-
-		cTypes.put("int", "int");
-		cTypes.put("float", "float");
-		cTypes.put("short", "short");
-		cTypes.put("char", "char");
-		cTypes.put("boolean", "bool");
-		cTypes.put("byte", "byte");
 	}
 
 	/**
@@ -45,9 +41,9 @@ public class PrimitiveTypes {
 	 * @return True if type is primitive. False otherwise.
 	 */
 	public static boolean isPrimitive(String type) {
-		if (cTypes == null)
+		if (types == null)
 			initTypes();
-		return cTypes.containsKey(type);
+		return types.containsKey(type);
 	}
 
 	/**
@@ -60,11 +56,31 @@ public class PrimitiveTypes {
 	 *         class.
 	 */
 	public static String getCType(String type) {
-		if (cTypes == null)
+		if (types == null)
 			initTypes();
 		if (!isPrimitive(type))
 			return "";
 		else
-			return cTypes.get(type);
+			return types.get(type)[0];
 	}
+
+	/**
+	 * Gets the equivalent RenderScript Java type for a given Java primitive
+	 * type.
+	 * 
+	 * @param type
+	 *            Java type name.
+	 * @return RenderScript Java equivalent type. Empty if type informed is not
+	 *         Java primitive or is not recognized among the primitives
+	 *         available in this class.
+	 */
+	public static String getRenderScriptJavaType(String type) {
+		if (types == null)
+			initTypes();
+		if (!isPrimitive(type))
+			return "";
+		else
+			return types.get(type)[1];
+	}
+
 }

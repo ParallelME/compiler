@@ -9,9 +9,7 @@
 package org.parallelme.compiler.translation.renderscript;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.parallelme.compiler.intermediate.InputBind;
 import org.parallelme.compiler.intermediate.MethodCall;
@@ -24,9 +22,6 @@ import org.parallelme.compiler.intermediate.OutputBind.OutputBindType;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.translation.userlibrary.ArrayTranslator;
 import org.parallelme.compiler.userlibrary.UserLibraryClassFactory;
-import org.parallelme.compiler.userlibrary.classes.Float32;
-import org.parallelme.compiler.userlibrary.classes.Int16;
-import org.parallelme.compiler.userlibrary.classes.Int32;
 import org.stringtemplate.v4.ST;
 
 /**
@@ -37,27 +32,16 @@ import org.stringtemplate.v4.ST;
 public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 	private static final String templateInputBindObjCreation = "<allocation> = Allocation.createSized(PM_mRS, Element.<elementType>(PM_mRS), <inputArray>.length);\n"
 			+ "<allocation>.copyFrom(<inputArray>);";
-	private static final String templateOutputBindCall1 = "<name> = (<type>) java.lang.reflect.Array.newInstance(<baseType>.class, <inputAllocation>.getType().getX());\n";
+	private static final String templateOutputBindCall1 = "<baseType>[] <name>;\n"
+			+ "if (<inputAllocation> != null) {\n"
+			+ "\t<name> = new <baseType>[<inputAllocation>.getType().getX()];\n"
+			+ "\t<inputAllocation>.copyTo(<name>);\n"
+			+ "} else {\n"
+			+ "\t<name> = new <baseType>[0];\n" + "}\n" + "return <name>;";
 	private static final String templateOutputBindCall2 = "<inputObject>.copyTo(<destinationObject>);";
-
-	// Keeps a key-value map of equivalent types from ParallelME to RenderScript
-	// allocation.
-	private static Map<String, String> parallelME2RSAllocationTypes = null;
 
 	public RSArrayTranslator(CTranslator cCodeTranslator) {
 		super(cCodeTranslator);
-		if (parallelME2RSAllocationTypes == null)
-			initParallelME2RSAllocationTypes();
-	}
-
-	private void initParallelME2RSAllocationTypes() {
-		parallelME2RSAllocationTypes = new HashMap<>();
-		parallelME2RSAllocationTypes.put(Int16.getInstance().getClassName(),
-				"I16");
-		parallelME2RSAllocationTypes.put(Int32.getInstance().getClassName(),
-				"I32");
-		parallelME2RSAllocationTypes.put(Float32.getInstance().getClassName(),
-				"F32");
 	}
 
 	/**
@@ -81,8 +65,9 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 		// exception and abort translation.
 		st.add("inputArray", inputBind.parameters.get(0));
 		st.add("allocation", inputObject);
-		st.add("elementType", parallelME2RSAllocationTypes
-				.get(inputBind.variable.typeParameters.get(0)));
+		st.add("elementType",
+				getRenderScriptJavaType(inputBind.variable.typeParameters
+						.get(0)));
 		return st.render();
 	}
 
@@ -137,18 +122,18 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 		// object type and name.
 		if (outputBind.outputBindType != OutputBindType.None) {
 			ST st = new ST(templateOutputBindCall1);
-			st.add("type", outputBind.destinationObject.typeName);
-			st.add("name", outputBind.destinationObject.name);
+			st.add("name", commonDefinitions.getPrefix() + "javaArray");
 			String baseType = outputBind.destinationObject.typeName
 					.replaceAll("\\[", "").replaceAll("\\]", "").trim();
 			st.add("baseType", baseType);
 			st.add("inputAllocation", allocationObject);
 			ret.append(st.render());
+		} else {
+			ST st = new ST(templateOutputBindCall2);
+			st.add("inputObject", allocationObject);
+			st.add("destinationObject", destinationObject);
+			ret.append(st.render());
 		}
-		ST st = new ST(templateOutputBindCall2);
-		st.add("inputObject", allocationObject);
-		st.add("destinationObject", destinationObject);
-		ret.append(st.render());
 		return ret.toString();
 	}
 
@@ -201,21 +186,26 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 			}
 		}
 		stForLoop.add("initValue", "1");
-		String inputXSize = getInputXSizeVariableName(operation);
-		stForLoop.add("varMaxVal", isSequential ? inputXSize
-				: getTileSizeVariableName(operation));
+		String inputDataVariableName = getInputDataVariableName(operation);
+		String varMaxVal = getAllocationDimCall("X",
+				isSequential ? inputDataVariableName
+						: getTileVariableName(operation));
+		stForLoop.add("varMaxVal", varMaxVal);
 		stForLoop.add("body", stForBody.render());
 		st.addAggr("forLoop.{loop}", stForLoop.render());
 		stForBody.remove("dataVar");
 		stForBody.add("dataVar", getInputDataVariableName(operation));
 		if (!isSequential) {
 			stForLoop2.add("initValue", String.format(
-					"(int) pow(floor(sqrt((float)%s)), 2)", inputXSize));
+					"(int) pow(floor(sqrt((float)%s)), 2)",
+					getAllocationDimCall("X", inputDataVariableName)));
 			stForLoop2.add("varName", xVar);
-			stForLoop2.add("varMaxVal", inputXSize);
+			stForLoop2.add("varMaxVal",
+					getAllocationDimCall("X", inputDataVariableName));
 			stForLoop2.add("body", stForBody.render());
 			st.addAggr("forLoop.{loop}", stForLoop2.render());
 		}
+		setExternalVariables(operation, st);
 		st.add("destVar",
 				getOutputVariableName(operation.destinationVariable, operation));
 		return createKernelFunction(operation, st.render(),

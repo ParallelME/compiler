@@ -53,7 +53,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 	protected String getMapRSType() {
 		return "F32";
 	}
-	
+
 	/**
 	 * Tests foreach operation translation.
 	 */
@@ -65,93 +65,124 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 		BaseUserLibraryTranslator translator = this.getTranslator();
 		List<String> translatedFunction = translator
 				.translateOperation(operation);
-		String expectedTranslation = "float4 __attribute__ ((kernel)) foreach123(float4 param1, uint32_t x, uint32_t y) {\n"
-				+ "param1.s0=123;\n" + "return param1;\n" + "}";
+		String expectedTranslation = "rs_allocation PM_gInputForeach123;\n"
+				+ "static float4 foreach123_func(float4 param1) {\n"
+				+ "\tparam1.s0 = 123;\n"
+				+ "\treturn param1;\n"
+				+ "}\n"
+				+ "float4 __attribute__((kernel)) foreach123(float4 param1, uint32_t x, uint32_t y) {\n"
+				+ "\trsSetElementAt_float4(PM_gInputForeach123, foreach123_func(param1, x, y), x, y);\n"
+				+ "}\n";
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Parallel with final external variable
 		operation = this.createForeachOperation(ExecutionType.Parallel);
-		Variable finalVar = this.createExternalVariable("final");
+		Variable finalVar = this.createExternalVariable("final", "var1");
 		operation.addExternalVariable(finalVar);
 		translatedFunction = translator.translateOperation(operation);
-		expectedTranslation = "int PM_gExternalVarForeach123;\n"
-				+ "float4 __attribute__ ((kernel)) foreach123(float4 param1, uint32_t x, uint32_t y) {\n"
-				+ "param1.s0=123;\n" + "return param1;\n" + "}";
+		ST st = new ST("rs_allocation PM_gInputForeach123;\n"
+				+ "<finalVarType> PM_g<finalVarName>Foreach123;\n"
+				+ "static float4 foreach123_func(float4 param1) {\n"
+				+ "\tparam1.s0 = 123;\n"
+				+ "\treturn param1;\n"
+				+ "}\n"
+				+ "float4 __attribute__((kernel)) foreach123(float4 param1, uint32_t x, uint32_t y) {\n"
+				+ "\trsSetElementAt_float4(PM_gInputForeach123, foreach123_func(param1, x, y), x, y);\n"
+				+ "}\n");
+		st.add("finalVarType", finalVar.typeName);
+		st.add("finalVarName", upperCaseFirstLetter(finalVar.name));
+		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Parallel with non-final external variable (will be translated to
 		// sequential code)
 		operation = this.createForeachOperation(ExecutionType.Parallel);
-		Variable nonFinalVar = this.createExternalVariable("");
+		Variable nonFinalVar = this.createExternalVariable("", "var2");
 		operation.addExternalVariable(nonFinalVar);
 		translatedFunction = translator.translateOperation(operation);
-		expectedTranslation = "rs_allocation PM_gInputForeach123;\n"
-				+ "rs_allocation PM_gOutputExternalVarForeach123;\n"
-				+ "int PM_gInputXSizeForeach123;\n"
-				+ "int PM_gInputYSizeForeach123;\n"
-				+ "int PM_gExternalVarForeach123;\n"
+		st = new ST("rs_allocation PM_gInputForeach123;\n"
+				+ "rs_allocation PM_gOutput<nonFinalVarName>Foreach123;\n"
+				+ "<nonFinalVarType> PM_g<nonFinalVarName>Foreach123;\n"
+				+ "static float4 foreach123_func(float4 param1) {\n"
+				+ "\tparam1.s0 = 123;\n"
+				+ "\treturn param1;\n"
+				+ "}\n"
 				+ "void foreach123() {\n"
-				+ "float4 param1;\n"
-				+ "for (int PM_x=0; PM_x<PM_gInputXSizeForeach123; ++PM_x) {\n"
-				+ "for (int PM_y=0; PM_y<PM_gInputYSizeForeach123; ++PM_y) {\n"
-				+ "param1 = rsGetElementAt_float4(PM_gInputForeach123, PM_x, PM_y);\n"
-				+ "param1.s0 = 123;\n"
-				+ "rsSetElementAt_float4(PM_gInputForeach123, param1, PM_x, PM_y);\n"
+				+ "for (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gInputForeach123); ++PM_x) {\n"
+				+ "for (int PM_y=0; PM_y\\<rsAllocationGetDimY(PM_gInputForeach123); ++PM_y) {\n"
+				+ "\trsSetElementAt_float4(PM_gInputForeach123, foreach123_func(rsGetElementAt_float4(PM_gInputForeach123,PM_x,PM_y)),PM_x,PM_y);\n"
 				+ "}\n"
 				+ "}\n"
-				+ "rsSetElementAt_int(PM_gOutputExternalVarForeach123, PM_gExternalVarForeach123, 0);\n"
-				+ "}";
+				+ "rsSetElementAt_int(PM_gOutput<nonFinalVarName>Foreach123, PM_g<nonFinalVarName>Foreach123, 0);\n"
+				+ "}");
+		st.add("nonFinalVarType", nonFinalVar.typeName);
+		st.add("nonFinalVarName", upperCaseFirstLetter(nonFinalVar.name));
+		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential
 		operation = this.createForeachOperation(ExecutionType.Sequential);
 		translatedFunction = translator.translateOperation(operation);
-		expectedTranslation = "rs_allocation PM_gInputForeach123;\n"
-				+ "int PM_gInputXSizeForeach123;\n"
-				+ "int PM_gInputYSizeForeach123;\n"
-				+ "void foreach123(){\n"
-				+ "float4 param1;\n"
-				+ "for (int PM_x=0; PM_x<PM_gInputXSizeForeach123; ++PM_x) {\n"
-				+ "for (int PM_y=0; PM_y<PM_gInputYSizeForeach123; ++PM_y) {\n"
-				+ "param1 = rsGetElementAt_float4(PM_gInputForeach123, PM_x, PM_y);\n"
-				+ "param1.s0 = 123;\n"
-				+ "rsSetElementAt_float4(PM_gInputForeach123, param1, PM_x, PM_y);\n"
-				+ "}\n" + "}\n" + "}";
+		st = new ST("rs_allocation PM_gInputForeach123;\n"
+				+ "static float4 foreach123_func(float4 param1) {\n"
+				+ "\tparam1.s0 = 123;\n"
+				+ "\treturn param1;\n"
+				+ "}\n"
+				+ "void foreach123() {\n"
+				+ "for (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gInputForeach123); ++PM_x) {\n"
+				+ "for (int PM_y=0; PM_y\\<rsAllocationGetDimY(PM_gInputForeach123); ++PM_y) {\n"
+				+ "\trsSetElementAt_float4(PM_gInputForeach123, foreach123_func(rsGetElementAt_float4(PM_gInputForeach123,PM_x,PM_y)),PM_x,PM_y);\n"
+				+ "}\n"
+				+ "}\n"
+				+ "}");
+		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
-		// Sequential with final variable
+		// Sequential with non-final and final variable
 		operation = this.createForeachOperation(ExecutionType.Sequential);
+		operation.addExternalVariable(nonFinalVar);
 		operation.addExternalVariable(finalVar);
 		translatedFunction = translator.translateOperation(operation);
-		expectedTranslation = "rs_allocation PM_gInputForeach123;\n"
-				+ "int PM_gInputXSizeForeach123;\n"
-				+ "int PM_gInputYSizeForeach123;\n"
-				+ "int PM_gExternalVarForeach123;\n"
+		st = new ST("rs_allocation PM_gInputForeach123;\n"
+				+ "rs_allocation PM_gOutput<nonFinalVarName>Foreach123;\n"
+				+ "<nonFinalVarType> PM_g<nonFinalVarName>Foreach123;\n"
+				+ "<finalVarType> PM_g<finalVarName>Foreach123;\n"
+				+ "static float4 foreach123_func(float4 param1) {\n"
+				+ "\tparam1.s0 = 123;\n"
+				+ "\treturn param1;\n"
+				+ "}\n"
 				+ "void foreach123() {\n"
-				+ "float4 param1;\n"
-				+ "for (int PM_x=0; PM_x<PM_gInputXSizeForeach123; ++PM_x) {\n"
-				+ "for (int PM_y=0; PM_y<PM_gInputYSizeForeach123; ++PM_y) {\n"
-				+ "param1 = rsGetElementAt_float4(PM_gInputForeach123, PM_x, PM_y);\n"
-				+ "param1.s0 = 123;\n"
-				+ "rsSetElementAt_float4(PM_gInputForeach123, param1, PM_x, PM_y);\n"
-				+ "}\n" + "}\n" + "}";
+				+ "for (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gInputForeach123); ++PM_x) {\n"
+				+ "for (int PM_y=0; PM_y\\<rsAllocationGetDimY(PM_gInputForeach123); ++PM_y) {\n"
+				+ "\trsSetElementAt_float4(PM_gInputForeach123, foreach123_func(rsGetElementAt_float4(PM_gInputForeach123,PM_x,PM_y)),PM_x,PM_y);\n"
+				+ "}\n"
+				+ "}\n"
+				+ "rsSetElementAt_int(PM_gOutput<nonFinalVarName>Foreach123, PM_g<nonFinalVarName>Foreach123, 0);\n"
+				+ "}");
+		st.add("nonFinalVarType", nonFinalVar.typeName);
+		st.add("nonFinalVarName", upperCaseFirstLetter(nonFinalVar.name));
+		st.add("finalVarType", finalVar.typeName);
+		st.add("finalVarName", upperCaseFirstLetter(finalVar.name));
+		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential with non-final variable
 		operation = this.createForeachOperation(ExecutionType.Sequential);
 		operation.addExternalVariable(nonFinalVar);
 		translatedFunction = translator.translateOperation(operation);
-		expectedTranslation = "rs_allocation PM_gInputForeach123;\n"
-				+ "rs_allocation PM_gOutputExternalVarForeach123;\n"
-				+ "int PM_gInputXSizeForeach123;\n"
-				+ "int PM_gInputYSizeForeach123;\n"
-				+ "int PM_gExternalVarForeach123;\n"
+		st = new ST("rs_allocation PM_gInputForeach123;\n"
+				+ "rs_allocation PM_gOutput<nonFinalVarName>Foreach123;\n"
+				+ "<nonFinalVarType> PM_g<nonFinalVarName>Foreach123;\n"
+				+ "static float4 foreach123_func(float4 param1) {\n"
+				+ "\tparam1.s0 = 123;\n"
+				+ "\treturn param1;\n"
+				+ "}\n"
 				+ "void foreach123() {\n"
-				+ "float4 param1;\n"
-				+ "for (int PM_x=0; PM_x<PM_gInputXSizeForeach123; ++PM_x) {\n"
-				+ "for (int PM_y=0; PM_y<PM_gInputYSizeForeach123; ++PM_y) {\n"
-				+ "param1 = rsGetElementAt_float4(PM_gInputForeach123, PM_x, PM_y);\n"
-				+ "param1.s0 = 123;\n"
-				+ "rsSetElementAt_float4(PM_gInputForeach123, param1, PM_x, PM_y);\n"
+				+ "for (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gInputForeach123); ++PM_x) {\n"
+				+ "for (int PM_y=0; PM_y\\<rsAllocationGetDimY(PM_gInputForeach123); ++PM_y) {\n"
+				+ "\trsSetElementAt_float4(PM_gInputForeach123, foreach123_func(rsGetElementAt_float4(PM_gInputForeach123,PM_x,PM_y)),PM_x,PM_y);\n"
 				+ "}\n"
 				+ "}\n"
-				+ "rsSetElementAt_int(PM_gOutputExternalVarForeach123, PM_gExternalVarForeach123,0);\n"
-				+ "}";
+				+ "rsSetElementAt_int(PM_gOutput<nonFinalVarName>Foreach123, PM_g<nonFinalVarName>Foreach123, 0);\n"
+				+ "}");
+		st.add("nonFinalVarType", nonFinalVar.typeName);
+		st.add("nonFinalVarName", upperCaseFirstLetter(nonFinalVar.name));
+		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 	}
 
@@ -203,8 +234,6 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 		String expectedTranslation = "rs_allocation PM_gInputReduce123;\n"
 				+ "rs_allocation PM_gTileReduce123;\n"
 				+ "rs_allocation PM_gOutputDestVarReduce123;\n"
-				+ "int PM_gInputXSizeReduce123;\n"
-				+ "int PM_gInputYSizeReduce123;\n"
 				+ "int PM_gTileSizeReduce123;\n"
 				+ "static float4 reduce123_func(float4 param1, float4 param2) {\n"
 				+ "param1.s0 = 123; \n"
@@ -214,7 +243,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 				+ "float4 __attribute__((kernel)) reduce123_tile(uint32_t x) {\n"
 				+ "float4 param1 = rsGetElementAt_float4(PM_gInputReduce123, x, 0);\n"
 				+ "float4 param2;\n"
-				+ "for (int PM_x=1; PM_x<PM_gInputYSizeReduce123; ++PM_x) {\n"
+				+ "for (int PM_x=1; PM_x<rsAllocationGetDimX(PM_gTileReduce123); ++PM_x) {\n"
 				+ "param2 = rsGetElementAt_float4(PM_gInputReduce123, x, PM_x);\n"
 				+ "param1 = reduce123_func(param1, param2);\n"
 				+ "}\n"
@@ -223,7 +252,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 				+ "void reduce123() {\n"
 				+ "float4 param1 = rsGetElementAt_float4(PM_gTileReduce123, 0);\n"
 				+ "float4 param2;\n"
-				+ "for (int PM_x=1; PM_x<PM_gInputXSizeReduce123; ++PM_x) {\n"
+				+ "for (int PM_x=1; PM_x<rsAllocationGetDimX(PM_gInputReduce123); ++PM_x) {\n"
 				+ "param2 = rsGetElementAt_float4(PM_gTileReduce123, PM_x);\n"
 				+ "param1 = reduce123_func(param1, param2);\n"
 				+ "}\n"
@@ -232,77 +261,80 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Parallel with final external variable
 		operation = this.createReduceOperation(ExecutionType.Parallel);
-		Variable finalVar = this.createExternalVariable("final");
+		Variable finalVar = this.createExternalVariable("final", "var1");
 		operation.addExternalVariable(finalVar);
 		translatedFunction = translator.translateOperation(operation);
-		expectedTranslation = "rs_allocation PM_gInputReduce123;\n"
-				+ "rs_allocation PM_gTileReduce123;\n"
-				+ "rs_allocation PM_gOutputDestVarReduce123;\n"
-				+ "int PM_gInputXSizeReduce123;\n"
-				+ "int PM_gInputYSizeReduce123;\n"
-				+ "int PM_gTileSizeReduce123;\n"
-				+ "int PM_gExternalVarReduce123;\n"
-				+ "static float4 reduce123_func(float4 param1, float4 param2) {\n"
-				+ "param1.s0 = 123; \n"
-				+ "param2.s1 = 456; \n"
-				+ "return param2;\n"
-				+ "}\n"
-				+ "float4 __attribute__((kernel)) reduce123_tile(uint32_t x) {\n"
-				+ "float4 param1 = rsGetElementAt_float4(PM_gInputReduce123, x, 0);\n"
-				+ "float4 param2;\n"
-				+ "for (int PM_x=1; PM_x<PM_gInputYSizeReduce123; ++PM_x) {\n"
-				+ "param2 = rsGetElementAt_float4(PM_gInputReduce123, x, PM_x);\n"
-				+ "param1 = reduce123_func(param1, param2);\n"
-				+ "}\n"
-				+ "return param1;\n"
-				+ "}"
-				+ "void reduce123() {\n"
-				+ "float4 param1 = rsGetElementAt_float4(PM_gTileReduce123, 0);\n"
-				+ "float4 param2;\n"
-				+ "for (int PM_x=1; PM_x<PM_gInputXSizeReduce123; ++PM_x) {\n"
-				+ "param2 = rsGetElementAt_float4(PM_gTileReduce123, PM_x);\n"
-				+ "param1 = reduce123_func(param1, param2);\n"
-				+ "}\n"
-				+ "rsSetElementAt_float4(PM_gOutputDestVarReduce123, param1, 0);\n"
-				+ "}";
+		ST st = new ST(
+				"rs_allocation PM_gInputReduce123;\n"
+						+ "rs_allocation PM_gTileReduce123;\n"
+						+ "rs_allocation PM_gOutputDestVarReduce123;\n"
+						+ "int PM_gTileSizeReduce123;\n"
+						+ "<finalVarType> PM_g<finalVarName>Reduce123;\n"
+						+ "static float4 reduce123_func(float4 param1, float4 param2) {\n"
+						+ "param1.s0 = 123; \n"
+						+ "param2.s1 = 456; \n"
+						+ "return param2;\n"
+						+ "}\n"
+						+ "float4 __attribute__((kernel)) reduce123_tile(uint32_t x) {\n"
+						+ "float4 param1 = rsGetElementAt_float4(PM_gInputReduce123, x, 0);\n"
+						+ "float4 param2;\n"
+						+ "for (int PM_x=1; PM_x\\<rsAllocationGetDimX(PM_gTileReduce123); ++PM_x) {\n"
+						+ "param2 = rsGetElementAt_float4(PM_gInputReduce123, x, PM_x);\n"
+						+ "param1 = reduce123_func(param1, param2);\n"
+						+ "}\n"
+						+ "return param1;\n"
+						+ "}"
+						+ "void reduce123() {\n"
+						+ "float4 param1 = rsGetElementAt_float4(PM_gTileReduce123, 0);\n"
+						+ "float4 param2;\n"
+						+ "for (int PM_x=1; PM_x\\<rsAllocationGetDimX(PM_gInputReduce123); ++PM_x) {\n"
+						+ "param2 = rsGetElementAt_float4(PM_gTileReduce123, PM_x);\n"
+						+ "param1 = reduce123_func(param1, param2);\n"
+						+ "}\n"
+						+ "rsSetElementAt_float4(PM_gOutputDestVarReduce123, param1, 0);\n"
+						+ "}");
+		st.add("finalVarType", finalVar.typeName);
+		st.add("finalVarName", upperCaseFirstLetter(finalVar.name));
+		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Parallel with non-final external variable (will be translated to
 		// sequential code)
 		operation = this.createReduceOperation(ExecutionType.Parallel);
-		Variable nonFinalVar = this.createExternalVariable("");
+		Variable nonFinalVar = this.createExternalVariable("", "var2");
 		operation.addExternalVariable(nonFinalVar);
 		translatedFunction = translator.translateOperation(operation);
-		expectedTranslation = "rs_allocation PM_gInputReduce123;\n"
-				+ "rs_allocation PM_gOutputDestVarReduce123;\n"
-				+ "rs_allocation PM_gOutputExternalVarReduce123;\n"
-				+ "int PM_gInputXSizeReduce123;\n"
-				+ "int PM_gInputYSizeReduce123;\n"
-				+ "int PM_gExternalVarReduce123;\n"
-				+ "float4 reduce123_func(float4 param1, float4 param2) {\n"
-				+ "param1.s0 = 123; \n"
-				+ "param2.s1 = 456; \n"
-				+ "return param2;\n"
-				+ "}\n"
-				+ "void reduce123() {\n"
-				+ "float4 param1 = rsGetElementAt_float4(PM_gInputReduce123, 0);\n"
-				+ "float4 param2;\n"
-				+ "for (int PM_x=1; PM_x<PM_gInputXSizeReduce123; ++PM_x) {\n"
-				+ "for (int PM_y=1; PM_y<PM_gInputYSizeReduce123; ++PM_y) {\n"
-				+ "param2 = rsGetElementAt_float4(PM_gInputReduce123, PM_x, PM_y);\n"
-				+ "param1 = reduce123_func(param1, param2);\n"
-				+ "}\n"
-				+ "}\n"
-				+ "rsSetElementAt_float4(PM_gOutputDestVarReduce123, param1, 0);\n"
-				+ "}";
+		st = new ST(
+				"rs_allocation PM_gInputReduce123;\n"
+						+ "rs_allocation PM_gOutputDestVarReduce123;\n"
+						+ "rs_allocation PM_gOutput<nonFinalVarName>Reduce123;\n"
+						+ "<nonFinalVarType> PM_g<nonFinalVarName>Reduce123;\n"
+						+ "static float4 reduce123_func(float4 param1, float4 param2) {\n"
+						+ "param1.s0 = 123; \n"
+						+ "param2.s1 = 456; \n"
+						+ "return param2;\n"
+						+ "}\n"
+						+ "void reduce123() {\n"
+						+ "float4 param1 = rsGetElementAt_float4(PM_gInputReduce123, 0);\n"
+						+ "float4 param2;\n"
+						+ "for (int PM_x=1; PM_x\\<rsAllocationGetDimX(PM_gInputReduce123); ++PM_x) {\n"
+						+ "for (int PM_y=1; PM_y\\<rsAllocationGetDimY(PM_gInputReduce123); ++PM_y) {\n"
+						+ "param2 = rsGetElementAt_float4(PM_gInputReduce123, PM_x, PM_y);\n"
+						+ "param1 = reduce123_func(param1, param2);\n"
+						+ "}\n"
+						+ "}\n"
+						+ "rsSetElementAt_float4(PM_gOutputDestVarReduce123, param1, 0);\n"
+						+ "rsSetElementAt_<nonFinalVarType>(PM_gOutput<nonFinalVarName>Reduce123, PM_g<nonFinalVarName>Reduce123, 0);\n"
+						+ "}");
+		st.add("nonFinalVarType", nonFinalVar.typeName);
+		st.add("nonFinalVarName", upperCaseFirstLetter(nonFinalVar.name));
+		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential
 		operation = this.createReduceOperation(ExecutionType.Sequential);
 		translatedFunction = translator.translateOperation(operation);
 		expectedTranslation = "rs_allocation PM_gInputReduce123;\n"
 				+ "rs_allocation PM_gOutputDestVarReduce123;\n"
-				+ "int PM_gInputXSizeReduce123;\n"
-				+ "int PM_gInputYSizeReduce123;\n"
-				+ "float4 reduce123_func(float4 param1, float4 param2) {\n"
+				+ "static float4 reduce123_func(float4 param1, float4 param2) {\n"
 				+ "param1.s0 = 123; \n"
 				+ "param2.s1 = 456; \n"
 				+ "return param2;\n"
@@ -310,8 +342,8 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 				+ "void reduce123() {\n"
 				+ "float4 param1 = rsGetElementAt_float4(PM_gInputReduce123, 0);\n"
 				+ "float4 param2;\n"
-				+ "for (int PM_x=1; PM_x<PM_gInputXSizeReduce123; ++PM_x) {\n"
-				+ "for (int PM_y=1; PM_y<PM_gInputYSizeReduce123; ++PM_y) {\n"
+				+ "for (int PM_x=1; PM_x<rsAllocationGetDimX(PM_gInputReduce123); ++PM_x) {\n"
+				+ "for (int PM_y=1; PM_y<rsAllocationGetDimY(PM_gInputReduce123); ++PM_y) {\n"
 				+ "param2 = rsGetElementAt_float4(PM_gInputReduce123, PM_x, PM_y);\n"
 				+ "param1 = reduce123_func(param1, param2);\n"
 				+ "}\n"
@@ -319,58 +351,69 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 				+ "rsSetElementAt_float4(PM_gOutputDestVarReduce123, param1, 0);\n"
 				+ "}";
 		this.validateTranslation(expectedTranslation, translatedFunction);
-		// Sequential with final variable
+		// Sequential with non-final and final variable
 		operation = this.createReduceOperation(ExecutionType.Sequential);
 		operation.addExternalVariable(finalVar);
+		operation.addExternalVariable(nonFinalVar);
 		translatedFunction = translator.translateOperation(operation);
-		expectedTranslation = "rs_allocation PM_gInputReduce123;\n"
-				+ "rs_allocation PM_gOutputDestVarReduce123;\n"
-				+ "int PM_gInputXSizeReduce123;\n"
-				+ "int PM_gInputYSizeReduce123;\n"
-				+ "int PM_gExternalVarReduce123;\n"
-				+ "float4 reduce123_func(float4 param1, float4 param2) {\n"
-				+ "param1.s0 = 123; \n"
-				+ "param2.s1 = 456; \n"
-				+ "return param2;\n"
-				+ "}\n"
-				+ "void reduce123() {\n"
-				+ "float4 param1 = rsGetElementAt_float4(PM_gInputReduce123, 0);\n"
-				+ "float4 param2;\n"
-				+ "for (int PM_x=1; PM_x<PM_gInputXSizeReduce123; ++PM_x) {\n"
-				+ "for (int PM_y=1; PM_y<PM_gInputYSizeReduce123; ++PM_y) {\n"
-				+ "param2 = rsGetElementAt_float4(PM_gInputReduce123, PM_x, PM_y);\n"
-				+ "param1 = reduce123_func(param1, param2);\n"
-				+ "}\n"
-				+ "}\n"
-				+ "rsSetElementAt_float4(PM_gOutputDestVarReduce123, param1, 0);\n"
-				+ "}";
+		st = new ST(
+				"rs_allocation PM_gInputReduce123;\n"
+						+ "rs_allocation PM_gOutputDestVarReduce123;\n"
+						+ "rs_allocation PM_gOutput<nonFinalVarName>Reduce123;\n"
+						+ "<finalVarType> PM_g<finalVarName>Reduce123;\n"
+						+ "<nonFinalVarType> PM_g<nonFinalVarName>Reduce123;\n"
+						+ "static float4 reduce123_func(float4 param1, float4 param2) {\n"
+						+ "param1.s0 = 123; \n"
+						+ "param2.s1 = 456; \n"
+						+ "return param2;\n"
+						+ "}\n"
+						+ "void reduce123() {\n"
+						+ "float4 param1 = rsGetElementAt_float4(PM_gInputReduce123, 0);\n"
+						+ "float4 param2;\n"
+						+ "for (int PM_x=1; PM_x\\<rsAllocationGetDimX(PM_gInputReduce123); ++PM_x) {\n"
+						+ "for (int PM_y=1; PM_y\\<rsAllocationGetDimY(PM_gInputReduce123); ++PM_y) {\n"
+						+ "param2 = rsGetElementAt_float4(PM_gInputReduce123, PM_x, PM_y);\n"
+						+ "param1 = reduce123_func(param1, param2);\n"
+						+ "}\n"
+						+ "}\n"
+						+ "rsSetElementAt_float4(PM_gOutputDestVarReduce123, param1, 0);\n"
+						+ "rsSetElementAt_<nonFinalVarType>(PM_gOutput<nonFinalVarName>Reduce123, PM_g<nonFinalVarName>Reduce123, 0);\n"
+						+ "}");
+		st.add("finalVarType", finalVar.typeName);
+		st.add("finalVarName", upperCaseFirstLetter(finalVar.name));
+		st.add("nonFinalVarType", nonFinalVar.typeName);
+		st.add("nonFinalVarName", upperCaseFirstLetter(nonFinalVar.name));
+		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential with non-final variable
 		operation = this.createReduceOperation(ExecutionType.Sequential);
 		operation.addExternalVariable(nonFinalVar);
 		translatedFunction = translator.translateOperation(operation);
-		expectedTranslation = "rs_allocation PM_gInputReduce123;\n"
-				+ "rs_allocation PM_gOutputDestVarReduce123;\n"
-				+ "rs_allocation PM_gOutputExternalVarReduce123;\n"
-				+ "int PM_gInputXSizeReduce123;\n"
-				+ "int PM_gInputYSizeReduce123;\n"
-				+ "int PM_gExternalVarReduce123;\n"
-				+ "float4 reduce123_func(float4 param1, float4 param2) {\n"
-				+ "param1.s0 = 123; \n"
-				+ "param2.s1 = 456; \n"
-				+ "return param2;\n"
-				+ "}\n"
-				+ "void reduce123() {\n"
-				+ "float4 param1 = rsGetElementAt_float4(PM_gInputReduce123, 0);\n"
-				+ "float4 param2;\n"
-				+ "for (int PM_x=1; PM_x<PM_gInputXSizeReduce123; ++PM_x) {\n"
-				+ "for (int PM_y=1; PM_y<PM_gInputYSizeReduce123; ++PM_y) {\n"
-				+ "param2 = rsGetElementAt_float4(PM_gInputReduce123, PM_x, PM_y);\n"
-				+ "param1 = reduce123_func(param1, param2);\n"
-				+ "}\n"
-				+ "}\n"
-				+ "rsSetElementAt_float4(PM_gOutputDestVarReduce123, param1, 0);\n"
-				+ "}";
+		st = new ST(
+				"rs_allocation PM_gInputReduce123;\n"
+						+ "rs_allocation PM_gOutputDestVarReduce123;\n"
+						+ "rs_allocation PM_gOutput<nonFinalVarName>Reduce123;\n"
+						+ "<nonFinalVarType> PM_g<nonFinalVarName>Reduce123;\n"
+						+ "static float4 reduce123_func(float4 param1, float4 param2) {\n"
+						+ "param1.s0 = 123; \n"
+						+ "param2.s1 = 456; \n"
+						+ "return param2;\n"
+						+ "}\n"
+						+ "void reduce123() {\n"
+						+ "float4 param1 = rsGetElementAt_float4(PM_gInputReduce123, 0);\n"
+						+ "float4 param2;\n"
+						+ "for (int PM_x=1; PM_x\\<rsAllocationGetDimX(PM_gInputReduce123); ++PM_x) {\n"
+						+ "for (int PM_y=1; PM_y\\<rsAllocationGetDimY(PM_gInputReduce123); ++PM_y) {\n"
+						+ "param2 = rsGetElementAt_float4(PM_gInputReduce123, PM_x, PM_y);\n"
+						+ "param1 = reduce123_func(param1, param2);\n"
+						+ "}\n"
+						+ "}\n"
+						+ "rsSetElementAt_float4(PM_gOutputDestVarReduce123, param1, 0);\n"
+						+ "rsSetElementAt_<nonFinalVarType>(PM_gOutput<nonFinalVarName>Reduce123, PM_g<nonFinalVarName>Reduce123, 0);\n"
+						+ "}");
+		st.add("nonFinalVarType", nonFinalVar.typeName);
+		st.add("nonFinalVarName", upperCaseFirstLetter(nonFinalVar.name));
+		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 	}
 
@@ -427,15 +470,13 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 		this.validateTranslation(expectedTranslation, translatedFunction);
 	}
 
-
 	/**
 	 * Tests map operation call.
 	 */
 	@Test
 	public void translateMapOperationCall() throws Exception {
 		// Parallel
-		Operation operation = this
-				.createMapOperation(ExecutionType.Parallel);
+		Operation operation = this.createMapOperation(ExecutionType.Parallel);
 		BaseUserLibraryTranslator translator = this.getTranslator();
 		String translatedFunction = translator.translateOperationCall(
 				className, operation);

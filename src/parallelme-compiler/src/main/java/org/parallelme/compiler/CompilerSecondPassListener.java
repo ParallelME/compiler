@@ -258,17 +258,17 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 			UserLibraryClass userLibraryClass = UserLibraryClassFactory
 					.getClass(variable.typeName);
 			// Check if the declared object is a collection
-			if (userLibraryClass instanceof UserLibraryCollectionClass) {
+			if (userLibraryClass instanceof UserLibraryCollection) {
 				if (this.isOperation(variable, ctx)) {
 					this.statementType = StatementType.Operation;
 					this.operationExternalVariables = new LinkedHashMap<>();
 					this.createOperation(variable, ctx);
 				} else if (this.isOutputBind(variable,
-						(UserLibraryCollectionClass) userLibraryClass, ctx)) {
+						(UserLibraryCollection) userLibraryClass, ctx)) {
 					this.statementType = StatementType.OutputBind;
 					this.getOutputBindData(variable, ctx);
 				} else if (this.isValidMethod(
-						(UserLibraryCollectionClass) userLibraryClass, ctx)) {
+						(UserLibraryCollection) userLibraryClass, ctx)) {
 					this.getMethodCallData(variable, ctx);
 				}
 			}
@@ -344,9 +344,9 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 				variableSymbol.modifier, variableSymbol.identifier);
 		OperationType operationType;
 		Variable destinationVariable = null;
-		if (UserLibraryCollectionClass.getOperationMethods().contains(
+		if (UserLibraryCollection.getOperationMethods().contains(
 				this.operationName)) {
-			if (this.operationName.equals(UserLibraryCollectionClass
+			if (this.operationName.equals(UserLibraryCollection
 					.getForeachMethodName())) {
 				operationType = OperationType.Foreach;
 				this.currentOperationData = new Operation(variable,
@@ -355,13 +355,13 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 								this.currentStatement.stop), operationType,
 						destinationVariable);
 			} else {
-				if (this.operationName.equals(UserLibraryCollectionClass
+				if (this.operationName.equals(UserLibraryCollection
 						.getReduceMethodName())) {
 					operationType = OperationType.Reduce;
-				} else if (this.operationName.equals(UserLibraryCollectionClass
+				} else if (this.operationName.equals(UserLibraryCollection
 						.getMapMethodName())) {
 					operationType = OperationType.Map;
-				} else if (this.operationName.equals(UserLibraryCollectionClass
+				} else if (this.operationName.equals(UserLibraryCollection
 						.getFilterMethodName())) {
 					operationType = OperationType.Filter;
 				} else {
@@ -391,7 +391,7 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 	 * runtime.
 	 */
 	private boolean isOutputBind(UserLibraryVariableSymbol variable,
-			UserLibraryCollectionClass userLibraryClass,
+			UserLibraryCollection userLibraryClass,
 			JavaParser.ExpressionContext ctx) {
 		boolean ret = false;
 		if (ctx.parent.getText().equals(
@@ -406,7 +406,7 @@ public class CompilerSecondPassListener extends ScopeDrivenListener {
 	 * Checks if the expression provided that contains a user library object
 	 * corresponds to a valid method call.
 	 */
-	private boolean isValidMethod(UserLibraryCollectionClass userLibraryClass,
+	private boolean isValidMethod(UserLibraryCollection userLibraryClass,
 			JavaParser.ExpressionContext ctx) {
 		boolean ret = false;
 		if (ctx.parent.parent instanceof ExpressionContext) {

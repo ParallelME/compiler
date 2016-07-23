@@ -17,11 +17,12 @@ import org.parallelme.compiler.exception.CompilationException;
 import org.parallelme.compiler.intermediate.*;
 import org.parallelme.compiler.intermediate.Operation.ExecutionType;
 import org.parallelme.compiler.intermediate.Operation.OperationType;
+import org.parallelme.compiler.intermediate.OutputBind.OutputBindType;
 import org.parallelme.compiler.translation.BoxedTypes;
 import org.parallelme.compiler.translation.PrimitiveTypes;
 import org.parallelme.compiler.userlibrary.UserLibraryClass;
 import org.parallelme.compiler.userlibrary.UserLibraryClassFactory;
-import org.parallelme.compiler.userlibrary.UserLibraryCollectionClass;
+import org.parallelme.compiler.userlibrary.UserLibraryCollection;
 import org.parallelme.compiler.userlibrary.classes.Array;
 import org.parallelme.compiler.userlibrary.classes.BitmapImage;
 import org.parallelme.compiler.userlibrary.classes.Float32;
@@ -92,16 +93,16 @@ public class RuntimeCommonDefinitions {
 	public String getOperationName(Operation operation) {
 		String operationName;
 		if (operation.operationType == OperationType.Foreach) {
-			operationName = UserLibraryCollectionClass.getForeachMethodName()
+			operationName = UserLibraryCollection.getForeachMethodName()
 					+ operation.sequentialNumber;
 		} else if (operation.operationType == OperationType.Reduce) {
-			operationName = UserLibraryCollectionClass.getReduceMethodName()
+			operationName = UserLibraryCollection.getReduceMethodName()
 					+ operation.sequentialNumber;
 		} else if (operation.operationType == OperationType.Map) {
-			operationName = UserLibraryCollectionClass.getMapMethodName()
+			operationName = UserLibraryCollection.getMapMethodName()
 					+ operation.sequentialNumber;
 		} else if (operation.operationType == OperationType.Filter) {
-			operationName = UserLibraryCollectionClass.getFilterMethodName()
+			operationName = UserLibraryCollection.getFilterMethodName()
 					+ operation.sequentialNumber;
 		} else {
 			throw new RuntimeException("Operation not supported: "
@@ -406,11 +407,20 @@ public class RuntimeCommonDefinitions {
 	 */
 	public String createJavaMethodSignature(OutputBind outputBind,
 			boolean isInterface) {
-		ArrayList<Variable> parameters = new ArrayList<>();
-		parameters.add(outputBind.destinationObject);
 		String modifier = isInterface ? "" : "public";
-		return this.createJavaMethodSignature(modifier, "void",
-				this.getOutputBindName(outputBind), parameters, false);
+		String ret;
+		if (outputBind.outputBindType == OutputBindType.None) {
+			ArrayList<Variable> parameters = new ArrayList<>();
+			parameters.add(outputBind.destinationObject);
+			ret = this.createJavaMethodSignature(modifier, "void",
+					this.getOutputBindName(outputBind), parameters, false);
+		} else {
+			ret = this.createJavaMethodSignature(modifier,
+					outputBind.destinationObject.typeName,
+					this.getOutputBindName(outputBind),
+					new ArrayList<Variable>(), false);
+		}
+		return ret;
 	}
 
 	/**

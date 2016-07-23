@@ -10,14 +10,14 @@ package org.parallelme.compiler.userlibrary.classes;
 
 import java.util.HashMap;
 
-import org.parallelme.compiler.userlibrary.UserLibraryCollectionClass;
+import org.parallelme.compiler.userlibrary.UserLibraryCollection;
 
 /**
  * Defines the user library collection class Array.
  * 
  * @author Wilson de Carvalho
  */
-public class Array extends UserLibraryCollectionClass {
+public class Array extends UserLibraryCollection {
 	private static final String outputBindMethodName = "toJavaArray";
 	private static final String className = "Array";
 	private static final String packageName = "org.parallelme.userlibrary";

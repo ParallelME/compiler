@@ -21,6 +21,7 @@ import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.intermediate.Operation.ExecutionType;
 import org.parallelme.compiler.intermediate.Operation.OperationType;
 import org.parallelme.compiler.intermediate.OutputBind.OutputBindType;
+import org.parallelme.compiler.userlibrary.classes.Array;
 
 /**
  * Base class for array tests.
@@ -81,6 +82,20 @@ public abstract class ArrayTranslatorTest extends BaseTranslatorTest {
 		UserFunction userFunction = new UserFunction(
 				" { param2.value += param1.value; " + "return param2;}",
 				arguments);
+		operation.setUserFunctionData(userFunction);
+		return operation;
+	}
+	
+	protected Operation createFilterOperation(ExecutionType executionType) {
+		Variable destVar = new Variable("destVar", Array.getInstance()
+				.getClassName(), Arrays.asList(getParameterType()), "", 999);
+		Operation operation = new Operation(this.getUserLibraryVar(), 123,
+				null, OperationType.Filter, destVar);
+		operation.setExecutionType(executionType);
+		List<Variable> arguments = new ArrayList<>();
+		arguments.add(new Variable("param1", getParameterType(), null, "", 10));
+		UserFunction userFunction = new UserFunction(
+				"{\n\treturn param1 > 2;\n}", arguments);
 		operation.setUserFunctionData(userFunction);
 		return operation;
 	}

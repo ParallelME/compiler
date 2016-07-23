@@ -50,7 +50,7 @@ public abstract class PMImageTranslatorTest extends ImageTranslatorTest {
 	protected String getTranslatedMapType() {
 		return "float";
 	}
-	
+
 	/**
 	 * Tests object declaration.
 	 */
@@ -92,7 +92,7 @@ public abstract class PMImageTranslatorTest extends ImageTranslatorTest {
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Parallel with final external variable
 		operation = this.createForeachOperation(ExecutionType.Parallel);
-		Variable finalVar = this.createExternalVariable("final");
+		Variable finalVar = this.createExternalVariable("final", "var1");
 		operation.addExternalVariable(finalVar);
 		translatedFunction = translator.translateOperation(operation);
 		expectedTranslation = String.format(
@@ -105,7 +105,7 @@ public abstract class PMImageTranslatorTest extends ImageTranslatorTest {
 		// Parallel with non-final external variable (will be translated to
 		// sequential code)
 		operation = this.createForeachOperation(ExecutionType.Parallel);
-		Variable nonFinalVar = this.createExternalVariable("");
+		Variable nonFinalVar = this.createExternalVariable("", "var2");
 		operation.addExternalVariable(nonFinalVar);
 		translatedFunction = translator.translateOperation(operation);
 		expectedTranslation = String
@@ -214,7 +214,7 @@ public abstract class PMImageTranslatorTest extends ImageTranslatorTest {
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Parallel with final external variable
 		operation = this.createForeachOperation(ExecutionType.Parallel);
-		Variable finalVar = this.createExternalVariable("final");
+		Variable finalVar = this.createExternalVariable("final", "var1");
 		operation.addExternalVariable(finalVar);
 		translatedFunction = cTranslator.createParallelOperation(operation,
 				this.className);
@@ -282,7 +282,7 @@ public abstract class PMImageTranslatorTest extends ImageTranslatorTest {
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential with non-final variable
 		operation = this.createForeachOperation(ExecutionType.Sequential);
-		Variable nonFinalVar = this.createExternalVariable("");
+		Variable nonFinalVar = this.createExternalVariable("", "var2");
 		operation.addExternalVariable(nonFinalVar);
 		translatedFunction = cTranslator.createSequentialOperation(operation,
 				this.className);
@@ -348,7 +348,7 @@ public abstract class PMImageTranslatorTest extends ImageTranslatorTest {
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Parallel with final external variable
 		operation = this.createReduceOperation(ExecutionType.Parallel);
-		Variable finalVar = this.createExternalVariable("final");
+		Variable finalVar = this.createExternalVariable("final", "var1");
 		operation.addExternalVariable(finalVar);
 		translatedFunction = translator.translateOperation(operation);
 		expectedTranslation = String
@@ -380,7 +380,7 @@ public abstract class PMImageTranslatorTest extends ImageTranslatorTest {
 		// Parallel with non-final external variable (will be translated to
 		// sequential code)
 		operation = this.createReduceOperation(ExecutionType.Parallel);
-		Variable nonFinalVar = this.createExternalVariable("");
+		Variable nonFinalVar = this.createExternalVariable("", "var2");
 		operation.addExternalVariable(nonFinalVar);
 		translatedFunction = translator.translateOperation(operation);
 		String tmpVarName = this.commonDefinitions.getPrefix() + finalVar.name;
@@ -531,7 +531,7 @@ public abstract class PMImageTranslatorTest extends ImageTranslatorTest {
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Parallel with final external variable
 		operation = this.createReduceOperation(ExecutionType.Parallel);
-		Variable finalVar = this.createExternalVariable("final");
+		Variable finalVar = this.createExternalVariable("final", "var1");
 		operation.addExternalVariable(finalVar);
 		translatedFunction = cTranslator.createParallelOperation(operation,
 				this.className);
@@ -626,7 +626,7 @@ public abstract class PMImageTranslatorTest extends ImageTranslatorTest {
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential with non-final variable
 		operation = this.createReduceOperation(ExecutionType.Sequential);
-		Variable nonFinalVar = this.createExternalVariable("");
+		Variable nonFinalVar = this.createExternalVariable("", "var2");
 		operation.addExternalVariable(nonFinalVar);
 		translatedFunction = cTranslator.createSequentialOperation(operation,
 				this.className);

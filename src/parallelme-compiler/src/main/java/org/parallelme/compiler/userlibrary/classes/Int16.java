@@ -10,18 +10,18 @@ package org.parallelme.compiler.userlibrary.classes;
 
 import java.util.HashMap;
 
-import org.parallelme.compiler.userlibrary.UserLibraryClass;
+import org.parallelme.compiler.userlibrary.UserLibraryDataType;
 
 /**
  * Defines the user library class Int16.
  * 
  * @author Wilson de Carvalho
  */
-public class Int16 extends UserLibraryClass {
+public class Int16 extends UserLibraryDataType {
 	private static Int16 instance = new Int16();
 	private static final String className = "Int16";
 	private static final String packageName = "org.parallelme.userlibrary.datatype";
-	
+
 	private Int16() {
 		this.initValidMethodsSet();
 	}
@@ -60,5 +60,21 @@ public class Int16 extends UserLibraryClass {
 	@Override
 	public String getPackageName() {
 		return packageName;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getRenderScriptJavaType() {
+		return "I16";
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getRenderScriptCType() {
+		return "short";
 	}
 }

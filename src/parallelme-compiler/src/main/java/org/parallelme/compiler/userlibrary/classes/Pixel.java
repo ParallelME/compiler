@@ -10,26 +10,26 @@ package org.parallelme.compiler.userlibrary.classes;
 
 import java.util.HashMap;
 
-import org.parallelme.compiler.userlibrary.UserLibraryClass;
+import org.parallelme.compiler.userlibrary.UserLibraryDataType;
 
 /**
  * Defines the user library class Pixel.
  * 
  * @author Wilson de Carvalho
  */
-public class Pixel extends UserLibraryClass {
+public class Pixel extends UserLibraryDataType {
 	private static Pixel instance = new Pixel();
 	private static final String className = "Pixel";
 	private static final String packageName = "org.parallelme.userlibrary.image";
-	
+
 	private Pixel() {
 		this.initValidMethodsSet();
 	}
 
 	public static Pixel getInstance() {
 		return instance;
-	}	
-	
+	}
+
 	/**
 	 * {@inheritDoc}
 	 */
@@ -60,5 +60,21 @@ public class Pixel extends UserLibraryClass {
 	@Override
 	public String getPackageName() {
 		return packageName;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getRenderScriptJavaType() {
+		return "F32_4";
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getRenderScriptCType() {
+		return "float4";
 	}
 }
