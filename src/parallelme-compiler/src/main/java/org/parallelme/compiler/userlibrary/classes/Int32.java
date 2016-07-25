@@ -21,15 +21,15 @@ public class Int32 extends UserLibraryDataType {
 	private static Int32 instance = new Int32();
 	private static final String className = "Int32";
 	private static final String packageName = "org.parallelme.userlibrary.datatype";
-	
+
 	private Int32() {
 		this.initValidMethodsSet();
 	}
 
 	public static Int32 getInstance() {
 		return instance;
-	}	
-	
+	}
+
 	/**
 	 * {@inheritDoc}
 	 */
@@ -74,7 +74,15 @@ public class Int32 extends UserLibraryDataType {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public String getRenderScriptCType() {
+	public String getCType() {
+		return "int";
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getJavaPrimitiveType() {
 		return "int";
 	}
 }

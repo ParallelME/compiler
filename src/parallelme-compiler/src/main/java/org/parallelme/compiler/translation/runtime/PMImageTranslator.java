@@ -105,7 +105,7 @@ public abstract class PMImageTranslator extends PMTranslator implements
 			// filter operations are implemented.
 			if (operation.operationType == OperationType.Reduce) {
 				nativeReturnType = this.commonDefinitions
-						.translateType(operation.variable.typeName);
+						.translateToCType(operation.variable.typeName);
 				methodReturnType = Pixel.getInstance().getClassName();
 				size = "4";
 			}
@@ -142,7 +142,7 @@ public abstract class PMImageTranslator extends PMTranslator implements
 		// Takes the first var, since they must be the same for reduce
 		// operations
 		String varType = this.commonDefinitions
-				.translateType(inputVar1.typeName);
+				.translateToCType(inputVar1.typeName);
 		boolean isSequential = operation.getExecutionType() == ExecutionType.Sequential;
 		String dataVar = isSequential ? getDataVariableName()
 				: getTileVariableName();

@@ -74,7 +74,14 @@ public class Int16 extends UserLibraryDataType {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public String getRenderScriptCType() {
+	public String getCType() {
 		return "short";
 	}
-}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getJavaPrimitiveType() {
+		return "short";
+	}}

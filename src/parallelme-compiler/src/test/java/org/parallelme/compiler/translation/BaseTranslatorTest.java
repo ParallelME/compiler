@@ -136,7 +136,7 @@ abstract public class BaseTranslatorTest {
 		assertEquals(this.flattenString(expectedTranslation),
 				this.flattenString(translatedCode));
 	}
-	
+
 	/**
 	 * 
 	 */

@@ -66,7 +66,7 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 			+ "\t\tif (PM_value > 0) {\n"
 			+ "\t\t\trsSetElementAt_<type>(<outputAllocation>, rsGetElementAt_<type>(<inputAllocation>, PM_value), <varCount>++);\n"
 			+ "\t\t}\n" + "<isImage:{var|\t\\}\n}>" + "\t}\n";
-	private static final String templateParallelFilterTile = "\tif (<userFunctionName>(<varName>)) {\n"
+	private static final String templateParallelFilterTile = "\tif (<userFunctionName>(<varName><isImage:{var|, <xVar>, <yVar>}>)) {\n"
 			+ "\t\trsAtomicInc(&<varCounterName>);\n"
 			+ "\t\treturn x;\n"
 			+ "\t} else {\n" + "\t\treturn -1;\n" + "\t}\n";
@@ -93,6 +93,12 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 			+ "\t<variables:{var|\n\n\t<kernelName>.set_<var.gVariableName>(<var.variableName>);}>"
 			+ "<kernels:{var|\n\n\t<kernelName>.<var.rsOperationName>_<var.functionName>(<var.allocations>);}>"
 			+ "\n}";
+	private static String templateSequentialFilterTile = "if (<userFunction>(rsGetElementAt_<type>(<inputAllocation>, <xVar><isImage:{var|, <yVar>}>))) {\n"
+			+ "\trsSetElementAt_int(<tileAllocation>, <xTileVar>, <xTileVar>);\n"
+			+ "\t<sizeVarName>++;\n"
+			+ "} else {\n"
+			+ "\trsSetElementAt_int(<tileAllocation>, -1, <xTileVar>);\n"
+			+ "}\n" + "<xTileVar>++;";
 
 	protected CTranslator cCodeTranslator;
 
@@ -227,7 +233,7 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 					operation.destinationVariable, operation);
 			String tempVariableName = variableName + "Tmp";
 			String nativeReturnType = commonDefinitions
-					.translateType(operation.destinationVariable.typeName);
+					.translateToJavaType(operation.destinationVariable.typeName);
 			String size = getDestinationArraySize(operation);
 			String returnObjectCreation = getReturnObjectCreation(operation,
 					tempVariableName);
@@ -388,8 +394,7 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 		stIfBody.addAggr(
 				"allocation.{body}",
 				createAllocation(operation, ifSizeVar + "[0]",
-						destVarAllocation, getNativeReturnType(operation),
-						false));
+						destVarAllocation, getReturnType(operation), false));
 		stIfBody.addAggr("variables.{gVariableName, variableName}",
 				getOutputDataVariableName(operation), destVarAllocation);
 		stIfBody.addAggr("variables.{gVariableName, variableName}",
@@ -437,17 +442,18 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 		ST st = new ST(templateSequentialFunction);
 		setCommonParameters(operation, st);
 		setExternalVariables(operation, st);
+		String cType = commonDefinitions
+				.translateToCType(getReturnType(operation));
 		if (operation.operationType == OperationType.Foreach) {
 			// Types in foreach are always the same
-			String type = getNativeReturnType(operation);
-			st.add("body", getSetValuesInAllocations(operation, type, type));
+			st.add("body", getSetValuesInAllocations(operation, cType, cType));
 		} else {
 			// Map has different types for input (get) and output (set)
-			String typeSet = getNativeReturnType(operation);
-			String typeGet = commonDefinitions
-					.translateType(operation.variable.typeParameters.get(0));
-			st.add("body",
-					getSetValuesInAllocations(operation, typeSet, typeGet));
+			String typeGetJava = commonDefinitions.isImage(operation.variable) ? Pixel
+					.getInstance().getClassName()
+					: operation.variable.typeParameters.get(0);
+			String typeGet = commonDefinitions.translateToCType(typeGetJava);
+			st.add("body", getSetValuesInAllocations(operation, cType, typeGet));
 
 		}
 		return createKernelFunction(operation, st.render(),
@@ -487,29 +493,26 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 	}
 
 	/**
-	 * Return a string containing the native return type for a given operation.
+	 * Return a string containing the user library return type for a given
+	 * operation.
 	 */
-	protected String getNativeReturnType(Operation operation) {
-		String ret;
+	private String getReturnType(Operation operation) {
+		String typeName;
 		if (operation.operationType == OperationType.Foreach
 				|| operation.operationType == OperationType.Reduce
 				|| operation.operationType == OperationType.Filter) {
 			if (commonDefinitions.isImage(operation.variable)) {
-				ret = commonDefinitions.translateType(operation
-						.getUserFunctionData().arguments.get(0).typeName);
+				typeName = operation.getUserFunctionData().arguments.get(0).typeName;
 			} else {
-				ret = commonDefinitions
-						.translateType(operation.variable.typeParameters.get(0));
+				typeName = operation.variable.typeParameters.get(0);
 			}
 		} else if (operation.operationType == OperationType.Map) {
-			ret = commonDefinitions
-					.translateType(operation.destinationVariable.typeParameters
-							.get(0));
+			typeName = operation.destinationVariable.typeParameters.get(0);
 		} else {
 			throw new RuntimeException("Operation not supported: "
 					+ operation.operationType);
 		}
-		return ret;
+		return typeName;
 	}
 
 	/**
@@ -525,7 +528,7 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 			if (!variable.isFinal()) {
 				st.addAggr(
 						"setExternalVariables.{type, allocationName, varName}",
-						commonDefinitions.translateType(variable.typeName),
+						commonDefinitions.translateToCType(variable.typeName),
 						getOutputVariableName(variable, operation),
 						getGlobalVariableName(variable, operation));
 			}
@@ -545,7 +548,8 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 		st.add("inputVar2", inputVar2.name);
 		// Takes the first var, since they must be the same for reduce
 		// operations
-		st.add("varType", commonDefinitions.translateType(inputVar1.typeName));
+		st.add("varType",
+				commonDefinitions.translateToCType(inputVar1.typeName));
 		st.add("userFunctionName",
 				commonDefinitions.getOperationUserFunctionName(operation));
 		st.add("dataVar", getInputDataVariableName(operation));
@@ -588,8 +592,8 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 		st.add("tileAllocation", getOutputTileVariableName(operation));
 		st.add("outputAllocation", getOutputDataVariableName(operation));
 		st.add("inputAllocation", getInputDataVariableName(operation));
-		st.add("type", commonDefinitions
-				.translateType(operation.variable.typeParameters.get(0)));
+		st.add("type",
+				commonDefinitions.translateToCType(getReturnType(operation)));
 		st.add("isImage", null);
 		if (commonDefinitions.isImage(operation.variable)) {
 			st.add("isImage", "");
@@ -634,6 +638,13 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 				commonDefinitions.getOperationUserFunctionName(operation));
 		st.add("varName", userFunctionVariable.name);
 		st.add("varCounterName", getOutputXSizeVariableName(operation));
+		if (commonDefinitions.isImage(operation.variable)) {
+			st.add("isImage", "");
+			st.add("xVar", "x");
+			st.add("yVar", "y");
+		} else {
+			st.add("isImage", null);
+		}
 		return st.render();
 	}
 
@@ -641,21 +652,17 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 		ST st = new ST(templateSequentialFunction);
 		setCommonParameters(operation, st);
 		setExternalVariables(operation, st);
-		String templateSequentialFilterTile = "if (<userFunction>(rsGetElementAt_<type>(<inputAllocation>, <xTileVar><isImage:{var|, <yVar>}>))) {\n"
-				+ "\trsSetElementAt_int(<tileAllocation>, <xTileVar>, <xTileVar>);\n"
-				+ "\t<sizeVarName>++;\n"
-				+ "} else {\n"
-				+ "\trsSetElementAt_int(<tileAllocation>, -1, <xTileVar>);\n"
-				+ "}\n" + "<xTileVar>++;";
 		ST stBody = new ST(templateSequentialFilterTile);
 		boolean isImage = commonDefinitions.isImage(operation.variable);
 		stBody.add("isImage", isImage ? "" : null);
 		stBody.add("userFunction",
 				commonDefinitions.getOperationUserFunctionName(operation));
-		stBody.add("type", getNativeReturnType(operation));
+		stBody.add("type",
+				commonDefinitions.translateToCType(getReturnType(operation)));
 		String xTileVar = commonDefinitions.getPrefix() + "tileX";
 		stBody.add("xTileVar", xTileVar);
-		stBody.add("yVar", commonDefinitions.getPrefix() + "Y");
+		stBody.add("xVar", commonDefinitions.getPrefix() + "x");
+		stBody.add("yVar", commonDefinitions.getPrefix() + "y");
 		stBody.add("inputAllocation", getInputDataVariableName(operation));
 		stBody.add("tileAllocation", getOutputTileVariableName(operation));
 		stBody.add("sizeVarName", getOutputXSizeVariableName(operation));
@@ -788,8 +795,14 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 		st.add("isKernel", null);
 		st.add("params", null);
 		for (Variable param : operation.getUserFunctionData().arguments) {
-			String paramType = commonDefinitions.translateType(param.typeName);
+			String paramType = commonDefinitions
+					.translateToCType(param.typeName);
 			st.addAggr("params.{type, name}", paramType, param.name);
+		}
+		if (commonDefinitions.isImage(operation.variable)
+				&& operation.operationType != OperationType.Reduce) {
+			st.addAggr("params.{type, name}", "uint32_t", "x");
+			st.addAggr("params.{type, name}", "uint32_t", "y");
 		}
 		return st.render();
 	}
@@ -801,13 +814,13 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 		String returnType;
 		if (operation.operationType == OperationType.Foreach
 				|| operation.operationType == OperationType.Reduce) {
-			returnType = commonDefinitions.translateType(operation
+			returnType = commonDefinitions.translateToCType(operation
 					.getUserFunctionData().arguments.get(0).typeName);
 		} else if (operation.operationType == OperationType.Filter) {
 			returnType = "bool";
 		} else if (operation.operationType == OperationType.Map) {
 			returnType = commonDefinitions
-					.translateType(operation.destinationVariable.typeParameters
+					.translateToCType(operation.destinationVariable.typeParameters
 							.get(0));
 		} else {
 			throw new RuntimeException("Operation not supported: "
@@ -821,7 +834,7 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 	 */
 	private String initializeForeachSignature(Operation operation,
 			FunctionType functionType) {
-		String returnType = commonDefinitions.translateType(operation
+		String returnType = commonDefinitions.translateToCType(operation
 				.getUserFunctionData().arguments.get(0).typeName);
 		return initializeSingleParameterFunction(operation, returnType,
 				commonDefinitions.getOperationName(operation)).render();
@@ -841,7 +854,7 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 			Variable inputVar1 = operation.getUserFunctionData().arguments
 					.get(0);
 			String inputVar1Type = commonDefinitions
-					.translateType(inputVar1.typeName);
+					.translateToCType(inputVar1.typeName);
 			st.addAggr("params.{type, name}", inputVar1Type, inputVar1.name);
 			st.addAggr("params.{type, name}", "uint32_t", "x");
 			st.addAggr("params.{type, name}", "uint32_t", "y");
@@ -862,7 +875,7 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 		st.add("modifier", null);
 		st.add("isKernel", null);
 		st.add("params", null);
-		String returnType = commonDefinitions.translateType(operation
+		String returnType = commonDefinitions.translateToCType(operation
 				.getUserFunctionData().arguments.get(0).typeName);
 		if (functionType == FunctionType.BaseOperation) {
 			st.add("returnType", "void");
@@ -885,7 +898,7 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 	private String initializeMapSignature(Operation operation,
 			FunctionType functionType) {
 		String returnType = commonDefinitions
-				.translateType(operation.destinationVariable.typeParameters
+				.translateToCType(operation.destinationVariable.typeParameters
 						.get(0));
 		return initializeSingleParameterFunction(operation, returnType,
 				commonDefinitions.getOperationName(operation)).render();
@@ -900,7 +913,7 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 		st.add("modifier", null);
 		st.add("isKernel", null);
 		st.add("params", null);
-		String returnType = commonDefinitions.translateType(operation
+		String returnType = commonDefinitions.translateToCType(operation
 				.getUserFunctionData().arguments.get(0).typeName);
 		if (functionType == FunctionType.BaseOperation) {
 			st.add("returnType", "void");

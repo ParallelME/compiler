@@ -276,7 +276,7 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 	}
 
 	/**
-	 * Tests operation call.
+	 * Tests foreach operation call.
 	 */
 	@Test
 	public void translateForeachOperationCall() throws Exception {
@@ -314,7 +314,6 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 				operation);
 		st = new ST("<kernel>.set_PM_gInputForeach123(<varOut>);\n"
 				+ "<kernel>.invoke_foreach123();");
-		st.add("rsType", getRSType());
 		st.add("varOut",
 				commonDefinitions.getVariableOutName(operation.variable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
@@ -335,7 +334,6 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "<kernel>.set_PM_g<UCFinalVarName>Foreach123(<finalVarName>);\n"
 						+ "<kernel>.invoke_foreach123();\n"
 						+ "PM_gOutput<UCNonFinalVarName>Foreach123.copyTo(<nonFinalVarName>);");
-		st.add("rsType", getRSType());
 		st.add("varOut",
 				commonDefinitions.getVariableOutName(operation.variable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
@@ -357,7 +355,6 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "<kernel>.set_PM_gInputForeach123(<varOut>);\n"
 						+ "<kernel>.invoke_foreach123();\n"
 						+ "PM_gOutput<UCNonFinalVarName>Foreach123.copyTo(<nonFinalVarName>);");
-		st.add("rsType", getRSType());
 		st.add("varOut",
 				commonDefinitions.getVariableOutName(operation.variable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
@@ -1083,7 +1080,7 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "void filter123_tile() {\n"
 						+ "\tint PM_tileX = 0;"
 						+ "\tfor (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gInputFilter123); ++PM_x) {\n"
-						+ "\t\t\tif (filter123_func(rsGetElementAt_<type>(PM_gInputFilter123, PM_tileX))) {\n"
+						+ "\t\t\tif (filter123_func(rsGetElementAt_<type>(PM_gInputFilter123, PM_x))) {\n"
 						+ "\t\t\t\trsSetElementAt_int(PM_gOutputTileFilter123, PM_tileX, PM_tileX);\n"
 						+ "\t\t\t\tPM_gOutputXSizeFilter123++;\n"
 						+ "\t\t\t} else {\n"
@@ -1122,7 +1119,7 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "void filter123_tile() {\n"
 						+ "\tint PM_tileX = 0;"
 						+ "\tfor (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gInputFilter123); ++PM_x) {\n"
-						+ "\t\t\tif (filter123_func(rsGetElementAt_<type>(PM_gInputFilter123, PM_tileX))) {\n"
+						+ "\t\t\tif (filter123_func(rsGetElementAt_<type>(PM_gInputFilter123, PM_x))) {\n"
 						+ "\t\t\t\trsSetElementAt_int(PM_gOutputTileFilter123, PM_tileX, PM_tileX);\n"
 						+ "\t\t\t\tPM_gOutputXSizeFilter123++;\n"
 						+ "\t\t\t} else {\n"
@@ -1164,7 +1161,7 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "void filter123_tile() {\n"
 						+ "\tint PM_tileX = 0;"
 						+ "\tfor (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gInputFilter123); ++PM_x) {\n"
-						+ "\t\t\tif (filter123_func(rsGetElementAt_<type>(PM_gInputFilter123, PM_tileX))) {\n"
+						+ "\t\t\tif (filter123_func(rsGetElementAt_<type>(PM_gInputFilter123, PM_x))) {\n"
 						+ "\t\t\t\trsSetElementAt_int(PM_gOutputTileFilter123, PM_tileX, PM_tileX);\n"
 						+ "\t\t\t\tPM_gOutputXSizeFilter123++;\n"
 						+ "\t\t\t} else {\n"
@@ -1208,7 +1205,7 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "void filter123_tile() {\n"
 						+ "\tint PM_tileX = 0;"
 						+ "\tfor (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gInputFilter123); ++PM_x) {\n"
-						+ "\t\t\tif (filter123_func(rsGetElementAt_<type>(PM_gInputFilter123, PM_tileX))) {\n"
+						+ "\t\t\tif (filter123_func(rsGetElementAt_<type>(PM_gInputFilter123, PM_x))) {\n"
 						+ "\t\t\t\trsSetElementAt_int(PM_gOutputTileFilter123, PM_tileX, PM_tileX);\n"
 						+ "\t\t\t\tPM_gOutputXSizeFilter123++;\n"
 						+ "\t\t\t} else {\n"

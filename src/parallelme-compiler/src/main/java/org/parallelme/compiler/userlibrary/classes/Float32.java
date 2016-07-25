@@ -74,7 +74,15 @@ public class Float32 extends UserLibraryDataType {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public String getRenderScriptCType() {
+	public String getCType() {
+		return "float";
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getJavaPrimitiveType() {
 		return "float";
 	}
 }

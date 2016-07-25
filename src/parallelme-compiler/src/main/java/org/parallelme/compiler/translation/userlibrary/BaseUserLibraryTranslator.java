@@ -86,7 +86,7 @@ public abstract class BaseUserLibraryTranslator implements
 
 	public String translatePixelVariable(Variable variable, String code) {
 		String ret = code.replaceAll(variable.typeName,
-				this.commonDefinitions.translateType(variable.typeName));
+				this.commonDefinitions.translateToCType(variable.typeName));
 		ret = ret.replaceAll(variable.name + ".x", "x");
 		ret = ret.replaceAll(variable.name + ".y", "y");
 		ret = ret
@@ -102,7 +102,7 @@ public abstract class BaseUserLibraryTranslator implements
 
 	public String translateNumericVariable(Variable variable, String code) {
 		String ret = code.replaceAll(variable.typeName,
-				this.commonDefinitions.translateType(variable.typeName));
+				this.commonDefinitions.translateToCType(variable.typeName));
 		ret = ret.replaceAll(variable.name + ".value", variable.name);
 		return ret;
 	}

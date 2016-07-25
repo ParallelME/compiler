@@ -435,10 +435,10 @@ public class ParallelMERuntimeCTranslation {
 				.getClassName())
 				|| operation.variable.typeName.equals(BitmapImage.getInstance()
 						.getClassName())) {
-			type = RuntimeCommonDefinitions.getInstance().translateType(
+			type = RuntimeCommonDefinitions.getInstance().translateToCType(
 					operation.variable.typeName);
 		} else {
-			type = RuntimeCommonDefinitions.getInstance().translateType(
+			type = RuntimeCommonDefinitions.getInstance().translateToCType(
 					operation.destinationVariable.typeName);
 		}
 		return type;

@@ -123,7 +123,7 @@ public class PMArrayTranslator extends PMTranslator implements ArrayTranslator {
 			// filter operations are implemented.
 			if (operation.operationType == OperationType.Reduce) {
 				nativeReturnType = this.commonDefinitions
-						.translateType(operation.variable.typeParameters.get(0));
+						.translateToCType(operation.variable.typeParameters.get(0));
 				methodReturnType = UserLibraryClassFactory.getClass(
 						operation.variable.typeParameters.get(0))
 						.getClassName();
@@ -161,7 +161,7 @@ public class PMArrayTranslator extends PMTranslator implements ArrayTranslator {
 		// Takes the first var, since they must be the same for reduce
 		// operations
 		String varType = this.commonDefinitions
-				.translateType(inputVar1.typeName);
+				.translateToCType(inputVar1.typeName);
 		boolean isSequential = operation.getExecutionType() == ExecutionType.Sequential;
 		String dataVar = isSequential ? getDataVariableName()
 				: getTileVariableName();

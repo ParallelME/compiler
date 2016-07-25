@@ -27,9 +27,13 @@ import org.stringtemplate.v4.ST;
  */
 public abstract class RSImageTranslator extends RSTranslator implements
 		ImageTranslator {
-	private static final String templateOutputBindCall1 = "Bitmap <destinationObject> = Bitmap.createBitmap(<inputAllocation>.getType().getX(), "
-			+ "<inputAllocation>.getType().getY(), Bitmap.Config.ARGB_8888);\n"
-			+ "return <destinationObject>;";
+	private static final String templateOutputBindCall1 = "if (<inputAllocation> != null) {\n"
+			+ "\tBitmap <destinationObject> = Bitmap.createBitmap(<inputAllocation>.getType().getX(), "
+			+ "\t<inputAllocation>.getType().getY(), Bitmap.Config.ARGB_8888);\n"
+			+ "<callRSFunction:{var|\t\t<var.value>\n}>"
+			+ "\treturn <destinationObject>;"
+			+ "} else {\n"
+			+ "\treturn null;\n" + "}";
 	private static final String templateOutputBindCall2 = "<kernelName>.forEach_toBitmap<classType>(<outputObject>, <inputObject>);\n"
 			+ "<inputObject>.copyTo(<destinationObject>);";
 
@@ -71,30 +75,29 @@ public abstract class RSImageTranslator extends RSTranslator implements
 	@Override
 	public String translateOutputBindCall(String className,
 			OutputBind outputBind) {
-		StringBuilder ret = new StringBuilder();
 		String inputObject = this.commonDefinitions
 				.getVariableInName(outputBind.variable);
 		String outputObject = this.commonDefinitions
 				.getVariableOutName(outputBind.variable);
 		String destinationObject = outputBind.destinationObject.name;
+		ST st2 = new ST(templateOutputBindCall2);
+		st2.add("classType", outputBind.variable.typeName);
+		st2.add("kernelName",
+				this.commonDefinitions.getKernelName(className));
+		st2.add("outputObject", outputObject);
+		st2.add("inputObject", inputObject);
+		st2.add("destinationObject", destinationObject);
 		// If it is an object assignment, must declare the destination
 		// object type and name.
 		if (outputBind.outputBindType != OutputBindType.None) {
-			ST st = new ST(templateOutputBindCall1);
-			st.add("inputAllocation", inputObject);
-			st.add("destinationObject", destinationObject);
-			ret.append(st.render());
+			ST st1 = new ST(templateOutputBindCall1);
+			st1.add("inputAllocation", inputObject);
+			st1.add("destinationObject", destinationObject);
+			st1.addAggr("callRSFunction.{value}", st2.render());
+			return st1.render();
 		} else {
-			ST st = new ST(templateOutputBindCall2);
-			st.add("classType", outputBind.variable.typeName);
-			st.add("kernelName",
-					this.commonDefinitions.getKernelName(className));
-			st.add("outputObject", outputObject);
-			st.add("inputObject", inputObject);
-			st.add("destinationObject", destinationObject);
-			ret.append(st.render());
+			return st2.render();
 		}
-		return ret.toString();
 	}
 
 	/**
@@ -132,9 +135,6 @@ public abstract class RSImageTranslator extends RSTranslator implements
 	@Override
 	protected void fillReduceOperationCall(ST st, Operation operation) {
 		super.fillReduceOperationCall(st, operation);
-		st.addAggr("inputSize.{name, XYZ, allocationName}",
-				this.getInputYSizeVariableName(operation), "Y",
-				commonDefinitions.getVariableOutName(operation.variable));
 		if (operation.getExecutionType() == ExecutionType.Parallel) {
 			st.addAggr("tileSize.{name, expression}",
 					getTileSizeVariableName(operation), String.format(
@@ -164,7 +164,7 @@ public abstract class RSImageTranslator extends RSTranslator implements
 				commonDefinitions.getOperationUserFunctionName(operation));
 		// Takes the first var, since they must be the same for reduce
 		// operations
-		String varType = commonDefinitions.translateType(inputVar1.typeName);
+		String varType = commonDefinitions.translateToCType(inputVar1.typeName);
 		st.add("varType", varType);
 		stForBody.add("varType", varType);
 		boolean isSequential = operation.getExecutionType() == ExecutionType.Sequential;

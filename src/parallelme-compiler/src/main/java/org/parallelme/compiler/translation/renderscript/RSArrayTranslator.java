@@ -167,7 +167,7 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 				commonDefinitions.getOperationUserFunctionName(operation));
 		// Takes the first var, since they must be the same for reduce
 		// operations
-		String varType = commonDefinitions.translateType(inputVar1.typeName);
+		String varType = commonDefinitions.translateToCType(inputVar1.typeName);
 		st.add("varType", varType);
 		stForBody.add("varType", varType);
 		boolean isSequential = operation.getExecutionType() == ExecutionType.Sequential;

@@ -74,7 +74,15 @@ public class Pixel extends UserLibraryDataType {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public String getRenderScriptCType() {
+	public String getCType() {
 		return "float4";
+	}
+
+	/**
+	 * {@inheritDoc}
+	 */
+	@Override
+	public String getJavaPrimitiveType() {
+		return "float";
 	}
 }

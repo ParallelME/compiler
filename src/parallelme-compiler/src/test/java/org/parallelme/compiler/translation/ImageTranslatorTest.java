@@ -64,12 +64,25 @@ public abstract class ImageTranslatorTest extends BaseTranslatorTest {
 		List<Variable> arguments = new ArrayList<>();
 		arguments.add(new Variable("param1", getParameterType(), null, "", 10));
 		UserFunction userFunction = new UserFunction(String.format("{\n"
-				+ "\t%s ret = new %s(param1.rgba.blue);\n"
-				+ "\tparam1.rgba.blue;\n"
+				+ "\tfloat ret;\n"
+				+ "\tret = param1.rgba.blue * 1.5f;\n"
 				+ "\treturn ret;"
 				+ "}", getMapType(), getMapType()), arguments);
 		operation.setUserFunctionData(userFunction);
 		return operation;
 	}
-
+	
+	protected Operation createFilterOperation(ExecutionType executionType) {
+		Variable destVar = new Variable("destVar", Array.getInstance()
+				.getClassName(), Arrays.asList(getParameterType()), "", 999);
+		Operation operation = new Operation(this.getUserLibraryVar(), 123,
+				null, OperationType.Filter, destVar);
+		operation.setExecutionType(executionType);
+		List<Variable> arguments = new ArrayList<>();
+		arguments.add(new Variable("param1", getParameterType(), null, "", 10));
+		UserFunction userFunction = new UserFunction(
+				"{\n\treturn param1.rgba.blue > 2;\n}", arguments);
+		operation.setUserFunctionData(userFunction);
+		return operation;
+	}
 }

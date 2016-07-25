@@ -110,7 +110,7 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 					.add(String.format(
 							"%s %s = %s[%s];",
 							this.commonDefinitions
-									.translateType(userFunctionVariable.typeName),
+									.translateToCType(userFunctionVariable.typeName),
 							userFunctionVariable.name, this
 									.getDataVariableName(), gid));
 			dataReturnStatements
@@ -166,7 +166,7 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 			stForY.add("varMaxVal", this.getHeightVariableName());
 			dataInDeclaration = String.format("%s %s = %s[%s*%s+%s];\n",
 					this.commonDefinitions
-							.translateType(userFunctionVariable.typeName),
+							.translateToCType(userFunctionVariable.typeName),
 					userFunctionVariable.name, this.getDataVariableName(), y,
 					this.getWidthVariableName(), x);
 			dataOutReturn = String.format("%s[%s*%s+%s] = %s;\n",
@@ -185,7 +185,7 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 			stForY.add("varMaxVal", this.getLengthVariableName());
 			dataInDeclaration = String.format("%s %s = %s[%s];\n",
 					this.commonDefinitions
-							.translateType(userFunctionVariable.typeName),
+							.translateToCType(userFunctionVariable.typeName),
 					userFunctionVariable.name, this.getDataVariableName(), x);
 			dataOutReturn = String.format("%s[%s] = %s;\n",
 					this.getDataVariableName(), x, userFunctionVariable.name);
@@ -234,7 +234,7 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 		// Takes the first var, since they must be the same for reduce
 		// operations
 		st.add("varType",
-				this.commonDefinitions.translateType(inputVar1.typeName));
+				this.commonDefinitions.translateToCType(inputVar1.typeName));
 		st.add("userFunctionName",
 				this.commonDefinitions.getOperationUserFunctionName(operation));
 		st.add("dataVar", this.getDataVariableName());
@@ -340,7 +340,7 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 		st.add("functionName",
 				this.commonDefinitions.getOperationName(operation));
 		st.addAggr("params.{type, name}", String.format("__global %s*",
-				this.commonDefinitions.translateType(operation
+				this.commonDefinitions.translateToCType(operation
 						.getUserFunctionData().arguments.get(0).typeName)),
 				this.getDataVariableName());
 		if (operation.getExecutionType() == ExecutionType.Sequential)
@@ -353,7 +353,7 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 		ST st = new ST(templateFunctionDecl);
 		boolean isSequential = operation.getExecutionType() == ExecutionType.Sequential;
 		boolean isImage = commonDefinitions.isImage(operation.variable);
-		String reduceType = this.commonDefinitions.translateType(operation
+		String reduceType = this.commonDefinitions.translateToCType(operation
 				.getUserFunctionData().arguments.get(0).typeName);
 		if (functionType == FunctionType.BaseOperation) {
 			st.add("returnType", "void");
@@ -404,7 +404,7 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 			// Considering there are only 3 function types, the third type
 			// is considered here
 			st.add("returnType", this.commonDefinitions
-					.translateType(operation.destinationVariable.typeName));
+					.translateToCType(operation.destinationVariable.typeName));
 			st.add("isKernel", null);
 			st.add("functionName", this.commonDefinitions
 					.getOperationUserFunctionName(operation));
@@ -413,10 +413,10 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 			Variable inputVar2 = operation.getUserFunctionData().arguments
 					.get(1);
 			st.addAggr("params.{type, name}",
-					this.commonDefinitions.translateType(inputVar1.typeName),
+					this.commonDefinitions.translateToCType(inputVar1.typeName),
 					inputVar1.name);
 			st.addAggr("params.{type, name}",
-					this.commonDefinitions.translateType(inputVar2.typeName),
+					this.commonDefinitions.translateToCType(inputVar2.typeName),
 					inputVar2.name);
 		}
 		// Functions that encapsulate user code doesn't need

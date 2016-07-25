@@ -41,10 +41,10 @@ public class RSBitmapImageTranslatorTest extends RSImageTranslatorTest {
 	}
 
 	@Override
-	protected String getRSType() {
-		return "F32_3";
+	protected String getClassName() {
+		return "BitmapImage";
 	}
-	
+
 	@Override
 	protected InputBind createInputBind() {
 		List<Parameter> parameters = new ArrayList<>();
@@ -139,53 +139,6 @@ public class RSBitmapImageTranslatorTest extends RSImageTranslatorTest {
 		BaseUserLibraryTranslator translator = this.getTranslator();
 		String translatedFunction = translator.translateOutputBind(className,
 				null);
-		this.validateTranslation(expectedTranslation, translatedFunction);
-	}
-
-	/**
-	 * Tests output bind call.
-	 */
-	@Test
-	public void translateOutputBindCall() throws Exception {
-		// imageVar.toBitmap(bitmapVar);
-		OutputBind outputBind = this.createOutputBind(OutputBindType.None);
-		String kernelName = this.commonDefinitions.getKernelName(className);
-		String varInName = this.commonDefinitions
-				.getVariableInName(outputBind.variable);
-		String varOutName = this.commonDefinitions
-				.getVariableOutName(outputBind.variable);
-		ST st = new ST(
-				"<kernel>.forEach_toBitmapBitmapImage(<varOut>,<varIn>);"
-						+ "<varIn>.copyTo(<varDest>);");
-		st.add("kernel", kernelName);
-		st.add("varIn", varInName);
-		st.add("varOut", varOutName);
-		st.add("varDest", outputBind.destinationObject);
-		String expectedTranslation = st.render();
-		BaseUserLibraryTranslator translator = this.getTranslator();
-		String translatedFunction = translator.translateOutputBindCall(
-				className, outputBind);
-		this.validateTranslation(expectedTranslation, translatedFunction);
-		// bitmapVar = imageVar.toBitmap();
-		outputBind = this.createOutputBind(OutputBindType.Assignment);
-		st = new ST(
-				"<varDest>=Bitmap.createBitmap(<varIn>.getType().getX(), <varIn>.getType().getY(), "
-						+ "Bitmap.Config.ARGB_8888);"
-						+ "<kernel>.forEach_toBitmapBitmapImage(<varOut>,<varIn>);"
-						+ "<varIn>.copyTo(<varDest>);");
-		st.add("kernel", kernelName);
-		st.add("varIn", varInName);
-		st.add("varOut", varOutName);
-		st.add("varDest", outputBind.destinationObject);
-		expectedTranslation = st.render();
-		translatedFunction = translator.translateOutputBindCall(className,
-				outputBind);
-		this.validateTranslation(expectedTranslation, translatedFunction);
-		// Bitmap bitmapVar = imageVar.toBitmap();
-		outputBind = this
-				.createOutputBind(OutputBindType.DeclarativeAssignment);
-		translatedFunction = translator.translateOutputBindCall(className,
-				outputBind);
 		this.validateTranslation(expectedTranslation, translatedFunction);
 	}
 }

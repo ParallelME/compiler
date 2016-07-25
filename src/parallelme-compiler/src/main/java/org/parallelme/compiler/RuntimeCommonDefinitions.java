@@ -23,6 +23,7 @@ import org.parallelme.compiler.translation.PrimitiveTypes;
 import org.parallelme.compiler.userlibrary.UserLibraryClass;
 import org.parallelme.compiler.userlibrary.UserLibraryClassFactory;
 import org.parallelme.compiler.userlibrary.UserLibraryCollection;
+import org.parallelme.compiler.userlibrary.UserLibraryDataType;
 import org.parallelme.compiler.userlibrary.classes.Array;
 import org.parallelme.compiler.userlibrary.classes.BitmapImage;
 import org.parallelme.compiler.userlibrary.classes.Float32;
@@ -444,15 +445,15 @@ public class RuntimeCommonDefinitions {
 	}
 
 	/**
-	 * Translates a given type to an equivalent runtime type. Example: translate
-	 * RGB type to float3 in RenderScript.
+	 * Translates a given type to an equivalent C type. Example: translate RGB
+	 * type to float3 in RenderScript or ParallelME runtime.
 	 * 
 	 * @param typeName
 	 *            Type that must be translated.
 	 * @return A string with the equivalent type for RenderScript and ParallelME
 	 *         runtimes.
 	 */
-	public String translateType(String typeName) {
+	public String translateToCType(String typeName) {
 		String translatedType = "";
 		if (typeName.equals(Pixel.getInstance().getClassName())) {
 			translatedType = "float4";
@@ -472,6 +473,28 @@ public class RuntimeCommonDefinitions {
 			translatedType = BoxedTypes.getCType(typeName);
 		}
 		return translatedType;
+	}
+
+	/**
+	 * Returns an equivalent Java type for a given user-library data type.
+	 */
+	public String translateToJavaType(String typeName) {
+		UserLibraryClass userLibraryClass = UserLibraryClassFactory
+				.getClass(typeName);
+		if (userLibraryClass != null) {
+			if (!(userLibraryClass instanceof UserLibraryDataType)) {
+				throw new RuntimeException(String.format(
+						"'%s' is not convertible to a Java primitive type.",
+						typeName));
+			}
+			return ((UserLibraryDataType) userLibraryClass)
+					.getJavaPrimitiveType();
+		} else {
+			throw new RuntimeException(String.format(
+					"'%s' is not a valid primitiveUser Library "
+							+ "Data Type convertible to a Java primitive type.",
+					typeName));
+		}
 	}
 
 	public String removeCurlyBraces(String code) {

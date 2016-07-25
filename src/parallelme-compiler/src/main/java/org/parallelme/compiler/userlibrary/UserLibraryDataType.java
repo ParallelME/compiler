@@ -20,7 +20,12 @@ public abstract class UserLibraryDataType extends UserLibraryClass {
 	abstract public String getRenderScriptJavaType();
 
 	/**
-	 * Gets RenderScript C equivalent type.
+	 * Gets equivalent C type.
 	 */
-	abstract public String getRenderScriptCType();
+	abstract public String getCType();
+
+	/**
+	 * Gets equivalent Java primitive type.
+	 */
+	abstract public String getJavaPrimitiveType();
 }

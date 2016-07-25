@@ -137,13 +137,13 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 			// destination variable, since it is based on the image class type
 			variable = new Variable(RuntimeCommonDefinitions.getInstance()
 					.getPrefix() + operation.destinationVariable.name,
-					RuntimeCommonDefinitions.getInstance().translateType(
+					RuntimeCommonDefinitions.getInstance().translateToCType(
 							operation.variable.typeName)
 							+ "[]", null, "", -1);
 		} else {
 			variable = new Variable(RuntimeCommonDefinitions.getInstance()
 					.getPrefix() + operation.destinationVariable.name,
-					RuntimeCommonDefinitions.getInstance().translateType(
+					RuntimeCommonDefinitions.getInstance().translateToCType(
 							operation.destinationVariable.typeName)
 							+ "[]", null, "", -1);
 		}
