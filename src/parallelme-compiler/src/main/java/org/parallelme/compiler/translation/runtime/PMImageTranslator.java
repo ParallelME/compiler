@@ -162,14 +162,7 @@ public abstract class PMImageTranslator extends PMTranslator implements
 							getHeightVariableName() + "*"
 									+ getWidthVariableName()));
 		}
-		stForBody.add("params", null);
-		for (Variable variable : operation.getExternalVariables()) {
-			stForBody.addAggr("params.{name}", variable.name);
-			if (isSequential && !variable.isFinal()) {
-				stForBody.addAggr("params.{name}",
-						this.commonDefinitions.getPrefix() + variable.name);
-			}
-		}
+		setExternalVariables(stForBody, operation, false);
 		if (isSequential) {
 			stForLoop.add("initValue", "0");
 		} else {

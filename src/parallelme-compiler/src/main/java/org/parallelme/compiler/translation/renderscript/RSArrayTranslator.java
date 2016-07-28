@@ -114,27 +114,25 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 	@Override
 	public String translateOutputBindCall(String className,
 			OutputBind outputBind) {
-		StringBuilder ret = new StringBuilder();
 		String allocationObject = commonDefinitions
 				.getVariableOutName(outputBind.variable);
 		String destinationObject = outputBind.destinationObject.name;
 		// If it is an object assignment, must declare the destination
 		// object type and name.
+		ST st;
 		if (outputBind.outputBindType != OutputBindType.None) {
-			ST st = new ST(templateOutputBindCall1);
+			st = new ST(templateOutputBindCall1);
 			st.add("name", commonDefinitions.getPrefix() + "javaArray");
 			String baseType = outputBind.destinationObject.typeName
 					.replaceAll("\\[", "").replaceAll("\\]", "").trim();
 			st.add("baseType", baseType);
 			st.add("inputAllocation", allocationObject);
-			ret.append(st.render());
 		} else {
-			ST st = new ST(templateOutputBindCall2);
+			st = new ST(templateOutputBindCall2);
 			st.add("inputObject", allocationObject);
 			st.add("destinationObject", destinationObject);
-			ret.append(st.render());
 		}
-		return ret.toString();
+		return st.render();
 	}
 
 	/**
