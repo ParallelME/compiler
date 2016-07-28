@@ -203,9 +203,82 @@ public abstract class BaseUserLibraryTranslator implements
 		return ret.toString();
 	}
 
-	abstract protected String getOperationFunctionSignature(
-			Operation operation, FunctionType functionType);
+	/**
+	 * Create a function signature for a given operation.
+	 */
+	protected String getOperationFunctionSignature(Operation operation,
+			FunctionType functionType) {
+		String ret;
+		if (functionType == FunctionType.UserCode) {
+			ret = initializeUserFunctionSignature(operation);
+		} else if (operation.operationType == OperationType.Foreach) {
+			ret = initializeForeachSignature(operation, functionType);
+		} else if (operation.operationType == OperationType.Reduce) {
+			ret = initializeReduceSignature(operation, functionType);
+		} else if (operation.operationType == OperationType.Map) {
+			ret = initializeMapSignature(operation, functionType);
+		} else if (operation.operationType == OperationType.Filter) {
+			ret = initializeFilterSignature(operation, functionType);
+		} else {
+			throw new RuntimeException("Operation not supported: "
+					+ operation.operationType);
+		}
+		return ret;
+	}
 
+	/**
+	 * Initialize the user function signature.
+	 */
+	abstract protected String initializeUserFunctionSignature(
+			Operation operation);
+
+	/**
+	 * Initialize foreach function signature.
+	 */
+	abstract protected String initializeForeachSignature(Operation operation,
+			FunctionType functionType);
+
+	/**
+	 * Initialize reduce function signature.
+	 */
+	abstract protected String initializeReduceSignature(Operation operation,
+			FunctionType functionType);
+
+	/**
+	 * Initialize map function signature.
+	 */
+	abstract protected String initializeMapSignature(Operation operation,
+			FunctionType functionType);
+
+	/**
+	 * Initialize filter function signature.
+	 */
+	abstract protected String initializeFilterSignature(Operation operation,
+			FunctionType functionType);
+
+
+	/**
+	 * Get the equivalent C return type for each operation function type.
+	 */
+	protected String getFunctionReturnType(Operation operation) {
+		String returnType;
+		if (operation.operationType == OperationType.Foreach
+				|| operation.operationType == OperationType.Reduce) {
+			returnType = commonDefinitions.translateToCType(operation
+					.getUserFunctionData().arguments.get(0).typeName);
+		} else if (operation.operationType == OperationType.Filter) {
+			returnType = "bool";
+		} else if (operation.operationType == OperationType.Map) {
+			returnType = commonDefinitions
+					.translateToCType(operation.destinationVariable.typeParameters
+							.get(0));
+		} else {
+			throw new RuntimeException("Operation not supported: "
+					+ operation.operationType);
+		}
+		return returnType;
+	}
+	
 	/**
 	 * Name for base variable that is used to index allocation data in C kernel
 	 * code.

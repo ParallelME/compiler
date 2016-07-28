@@ -108,32 +108,32 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		OutputBind outputBind = this.createOutputBind(OutputBindType.None);
 		String varName = this.commonDefinitions
 				.getPointerName(outputBind.variable);
-		String expectedTranslation = String.format(
-				"ParallelMERuntime.getInstance().toArray(%s, %s);", varName,
-				outputBind.destinationObject);
+		ST st = new ST(
+				"ParallelMERuntime.getInstance().toArray(<varName>, <varDest>);");
+		st.add("varName", varName);
+		st.add("varDest", outputBind.destinationObject);
 		BaseUserLibraryTranslator translator = this.getTranslator();
 		String translatedFunction = translator.translateOutputBindCall(
 				className, outputBind);
-		this.validateTranslation(expectedTranslation, translatedFunction);
+		this.validateTranslation(st.render(), translatedFunction);
 		// bitmapVar = imageVar.toBitmap();
 		outputBind = this.createOutputBind(OutputBindType.Assignment);
-		expectedTranslation = String
-				.format("%s = (%s) java.lang.reflect.Array.newInstance(%s.class, "
-						+ "\tParallelMERuntime.getInstance().getLength(%s));\n",
-						outputBind.destinationObject,
-						outputBind.destinationObject.typeName,
-						outputBind.destinationObject.typeName.replaceAll("\\[",
-								"").replaceAll("\\]", ""), varName)
-				+ "\n" + expectedTranslation;
+		st = new ST(
+				"<type>[] PM_javaArray = new <type>[ParallelMERuntime.getInstance().getLength(<varDest>)];\n"
+						+ "ParallelMERuntime.getInstance().toArray(<varDest>, PM_javaArray);\n"
+						+ "return PM_javaArray;");
+		st.add("varName", varName);
+		st.add("varDest", commonDefinitions.getPointerName(outputBind.variable));
+		st.add("type", getTranslatedParameterType());
 		translatedFunction = translator.translateOutputBindCall(className,
 				outputBind);
-		this.validateTranslation(expectedTranslation, translatedFunction);
+		this.validateTranslation(st.render(), translatedFunction);
 		// Bitmap bitmapVar = imageVar.toBitmap();
 		outputBind = this
 				.createOutputBind(OutputBindType.DeclarativeAssignment);
 		translatedFunction = translator.translateOutputBindCall(className,
 				outputBind);
-		this.validateTranslation(expectedTranslation, translatedFunction);
+		this.validateTranslation(st.render(), translatedFunction);
 	}
 
 	/**
@@ -147,10 +147,12 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		BaseUserLibraryTranslator translator = this.getTranslator();
 		List<String> translatedFunction = translator
 				.translateOperation(operation);
-		ST st = new ST("__kernel void foreach123(__global <type>* PM_data) {"
-				+ "int PM_gid = get_global_id(0);"
-				+ "<type> param1 = PM_data[PM_gid];" + "param1 = 123; "
-				+ "PM_data[PM_gid] = param1;" + "}");
+		ST st = new ST("static <type> foreach123_func(<type> param1) {\n"
+				+ "\tparam1 = 123;\n\n" + "\treturn param1;\n" + "}\n"
+				+ "__kernel void foreach123(__global <type>* PM_data) {\n"
+				+ "\tint PM_gid = get_global_id(0);\n"
+				+ "\tPM_data[PM_gid] = foreach123_func(PM_data[PM_gid]);\n"
+				+ "}");
 		st.add("type", getTranslatedParameterType());
 		String expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
@@ -160,11 +162,14 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		operation.addExternalVariable(finalVar);
 		translatedFunction = translator.translateOperation(operation);
 		st = new ST(
-				"__kernel void foreach123(__global <type>* PM_data, <finalVarType> <finalVar>) {"
-						+ "int PM_gid = get_global_id(0);"
-						+ "<type> param1 = PM_data[PM_gid];"
-						+ "param1 = 123; "
-						+ "PM_data[PM_gid] = param1;" + "}");
+				"static <type> foreach123_func(<type> param1, <finalVarType> <finalVar>) {\n"
+						+ "\tparam1 = 123;\n\n"
+						+ "\treturn param1;\n"
+						+ "}\n"
+						+ "__kernel void foreach123(__global <type>* PM_data, <finalVarType> <finalVar>) {\n"
+						+ "\tint PM_gid = get_global_id(0);\n"
+						+ "\tPM_data[PM_gid] = foreach123_func(PM_data[PM_gid], <finalVar>);\n"
+						+ "}");
 		st.add("type", getTranslatedParameterType());
 		st.add("finalVarType", finalVar.typeName);
 		st.add("finalVar", finalVar.name);
@@ -177,12 +182,14 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		operation.addExternalVariable(nonFinalVar);
 		translatedFunction = translator.translateOperation(operation);
 		st = new ST(
-				"__kernel void foreach123(__global <type> *PM_data, int PM_length, <nonFinalVarType> <nonFinalVar>, __global <nonFinalVarType>* PM_<nonFinalVar>) {"
+				"static <type> foreach123_func(<type> param1, __global <nonFinalVarType>* PM_<nonFinalVar>) {\n"
+						+ "\tparam1 = 123;\n\n"
+						+ "\treturn param1;\n"
+						+ "}\n"
+						+ "__kernel void foreach123(__global <type> *PM_data, int PM_length, __global <nonFinalVarType>* PM_<nonFinalVar>) {"
 						+ "for(int PM_x=0; PM_x\\<PM_length; ++PM_x) {"
-						+ "<type> param1 = PM_data[PM_x];"
-						+ "param1 = 123;"
-						+ "PM_data[PM_x] = param1;"
-						+ "}*PM_<nonFinalVar>=<nonFinalVar>;}");
+						+ "\tPM_data[PM_x] = foreach123_func(PM_data[PM_x], PM_<nonFinalVar>);\n"
+						+ "}}");
 		st.add("type", getTranslatedParameterType());
 		st.add("nonFinalVarType", nonFinalVar.typeName);
 		st.add("nonFinalVar", nonFinalVar.name);
@@ -192,10 +199,14 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		operation = this.createForeachOperation(ExecutionType.Sequential);
 		translatedFunction = translator.translateOperation(operation);
 		st = new ST(
-				"__kernel void foreach123(__global <type> *PM_data, int PM_length) {"
+				"static <type> foreach123_func(<type> param1) {\n"
+						+ "\tparam1 = 123;\n\n"
+						+ "\treturn param1;\n"
+						+ "}\n"
+						+ "__kernel void foreach123(__global <type> *PM_data, int PM_length) {"
 						+ "for(int PM_x=0; PM_x\\<PM_length; ++PM_x) {"
-						+ "<type> param1 = PM_data[PM_x];" + "param1 = 123;"
-						+ "PM_data[PM_x] = param1;" + "}}");
+						+ "\tPM_data[PM_x] = foreach123_func(PM_data[PM_x]);\n"
+						+ "}}");
 		st.add("type", getTranslatedParameterType());
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
@@ -204,11 +215,14 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		operation.addExternalVariable(finalVar);
 		translatedFunction = translator.translateOperation(operation);
 		st = new ST(
-				"__kernel void foreach123(__global <type> *PM_data, int PM_length, <finalVarType> <finalVar>) {"
+				"static <type> foreach123_func(<type> param1, <finalVarType> <finalVar>) {\n"
+						+ "\tparam1 = 123;\n\n"
+						+ "\treturn param1;\n"
+						+ "}\n"
+						+ "__kernel void foreach123(__global <type> *PM_data, int PM_length, <finalVarType> <finalVar>) {"
 						+ "for(int PM_x=0; PM_x\\<PM_length; ++PM_x) {"
-						+ "<type> param1 = PM_data[PM_x];"
-						+ "param1 = 123;"
-						+ "PM_data[PM_x] = param1;" + "}}");
+						+ "\tPM_data[PM_x] = foreach123_func(PM_data[PM_x], <finalVar>);\n"
+						+ "}}");
 		st.add("type", getTranslatedParameterType());
 		st.add("finalVarType", finalVar.typeName);
 		st.add("finalVar", finalVar.name);
@@ -219,12 +233,14 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		operation.addExternalVariable(nonFinalVar);
 		translatedFunction = translator.translateOperation(operation);
 		st = new ST(
-				"__kernel void foreach123(__global <type> *PM_data, int PM_length, <nonFinalVarType> <nonFinalVar>, __global <nonFinalVarType>* PM_<nonFinalVar>) {"
+				"static <type> foreach123_func(<type> param1, __global <nonFinalVarType>* PM_<nonFinalVar>) {\n"
+						+ "\tparam1 = 123;\n\n"
+						+ "\treturn param1;\n"
+						+ "}\n"
+						+ "__kernel void foreach123(__global <type> *PM_data, int PM_length, __global <nonFinalVarType>* PM_<nonFinalVar>) {"
 						+ "for(int PM_x=0; PM_x\\<PM_length; ++PM_x) {"
-						+ "<type> param1 = PM_data[PM_x];"
-						+ "param1 = 123;"
-						+ "PM_data[PM_x] = param1;"
-						+ "}*PM_<nonFinalVar>=<nonFinalVar>;}");
+						+ "\tPM_data[PM_x] = foreach123_func(PM_data[PM_x], PM_<nonFinalVar>);\n"
+						+ "}}");
 		st.add("type", getTranslatedParameterType());
 		st.add("nonFinalVarType", nonFinalVar.typeName);
 		st.add("nonFinalVar", nonFinalVar.name);
@@ -257,6 +273,143 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 	}
 
 	/**
+	 * Tests foreach operation JNI interface.
+	 */
+	@Test
+	public void translateForeachOperationJNI() throws Exception {
+		// Parallel
+		Operation operation = this
+				.createForeachOperation(ExecutionType.Parallel);
+		ParallelMERuntimeCTranslation cTranslator = new ParallelMERuntimeCTranslation();
+		String translatedFunction = cTranslator.createParallelOperation(
+				operation, this.className);
+		String expectedTranslation = "JNIEXPORT void JNICALL Java_SomeClass_foreach123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr) {\n"
+				+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
+				+ "auto variablePtr = (ArrayData *) varPtr;\n"
+				+ "auto task = std::make_unique<Task>(runtimePtr->program);\n"
+				+ "task->addKernel(\"foreach123\");\n"
+				+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+				+ "kernelHash[\"foreach123\"]\n"
+				+ "->setArg(0, variablePtr->buffer)\n"
+				+ "->setWorkSize(variablePtr->workSize);\n"
+				+ "});\n"
+				+ "runtimePtr->runtime->submitTask(std::move(task));\n"
+				+ "runtimePtr->runtime->finish();\n" + "}";
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Parallel with final external variable
+		operation = this.createForeachOperation(ExecutionType.Parallel);
+		Variable finalVar = this.createExternalVariable("final", "var1");
+		operation.addExternalVariable(finalVar);
+		translatedFunction = cTranslator.createParallelOperation(operation,
+				this.className);
+		ST st = new ST(
+				"JNIEXPORT void JNICALL Java_SomeClass_foreach123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr, <finalVarType> <finalVar>) {\n"
+						+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
+						+ "auto variablePtr = (ArrayData *) varPtr;\n"
+						+ "auto task = std::make_unique\\<Task>(runtimePtr->program);\n"
+						+ "task->addKernel(\"foreach123\");\n"
+						+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"foreach123\"]\n"
+						+ "->setArg(0, variablePtr->buffer)\n"
+						+ "->setArg(1, <finalVar>)\n"
+						+ "->setWorkSize(variablePtr->workSize);\n"
+						+ "});\n"
+						+ "runtimePtr->runtime->submitTask(std::move(task));\n"
+						+ "runtimePtr->runtime->finish();\n" + "}");
+		st.add("finalVarType", finalVar.typeName);
+		st.add("finalVar", finalVar.name);
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Sequential with non-final and final variable
+		operation = this.createForeachOperation(ExecutionType.Sequential);
+		Variable nonFinalVar = this.createExternalVariable("", "var2");
+		operation.addExternalVariable(nonFinalVar);
+		operation.addExternalVariable(finalVar);
+		translatedFunction = cTranslator.createSequentialOperation(operation,
+				this.className);
+		st = new ST(
+				"JNIEXPORT void JNICALL Java_SomeClass_foreach123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr, "
+						+ "j<nonFinalVarType>Array PM_<nonFinalVar>, <finalVarType> <finalVar>) {\n"
+						+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
+						+ "auto variablePtr = (ArrayData *) varPtr;\n"
+						+ "auto task = std::make_unique\\<Task>(runtimePtr->program, Task::Score(1.0f,2.0f));\n"
+						+ "auto <nonFinalVar>Buffer = std::make_shared\\<Buffer>(sizeof(<nonFinalVarType>));\n"
+						+ "<nonFinalVar>Buffer->setJArraySource(env, PM_<nonFinalVar>);\n"
+						+ "task->addKernel(\"foreach123\");\n"
+						+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"foreach123\"]\n"
+						+ "->setArg(0, variablePtr->buffer)\n"
+						+ "->setArg(1, variablePtr->length)\n"
+						+ "->setArg(2, <nonFinalVar>Buffer)\n"
+						+ "->setArg(3, <finalVar>)\n"
+						+ "->setWorkSize(1);\n"
+						+ "});\n"
+						+ "runtimePtr->runtime->submitTask(std::move(task));\n"
+						+ "runtimePtr->runtime->finish();\n"
+						+ "<nonFinalVar>Buffer->copyToJArray(env, PM_<nonFinalVar>);"
+						+ "}");
+		st.add("finalVarType", finalVar.typeName);
+		st.add("finalVar", finalVar.name);
+		st.add("nonFinalVarType", nonFinalVar.typeName);
+		st.add("nonFinalVar", nonFinalVar.name);
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Sequential with final variable
+		operation = this.createForeachOperation(ExecutionType.Sequential);
+		operation.addExternalVariable(finalVar);
+		translatedFunction = cTranslator.createSequentialOperation(operation,
+				this.className);
+		st = new ST(
+				"JNIEXPORT void JNICALL Java_SomeClass_foreach123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr, <finalVarType> <finalVar>) {\n"
+						+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
+						+ "auto variablePtr = (ArrayData *) varPtr;\n"
+						+ "auto task = std::make_unique\\<Task>(runtimePtr->program, Task::Score(1.0f,2.0f));\n"
+						+ "task->addKernel(\"foreach123\");\n"
+						+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"foreach123\"]\n"
+						+ "->setArg(0, variablePtr->buffer)\n"
+						+ "->setArg(1, variablePtr->length)\n"
+						+ "->setArg(2, <finalVar>)\n"
+						+ "->setWorkSize(1);\n"
+						+ "});\n"
+						+ "runtimePtr->runtime->submitTask(std::move(task));\n"
+						+ "runtimePtr->runtime->finish();\n" + "}");
+		st.add("finalVarType", finalVar.typeName);
+		st.add("finalVar", finalVar.name);
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Sequential with non-final variable
+		operation = this.createForeachOperation(ExecutionType.Sequential);
+		operation.addExternalVariable(nonFinalVar);
+		translatedFunction = cTranslator.createSequentialOperation(operation,
+				this.className);
+		st = new ST(
+				"JNIEXPORT void JNICALL Java_SomeClass_foreach123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr, "
+						+ "j<nonFinalVarType>Array PM_<nonFinalVar>) {\n"
+						+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
+						+ "auto variablePtr = (ArrayData *) varPtr;\n"
+						+ "auto task = std::make_unique\\<Task>(runtimePtr->program, Task::Score(1.0f,2.0f));\n"
+						+ "auto <nonFinalVar>Buffer = std::make_shared\\<Buffer>(sizeof(<nonFinalVarType>));\n"
+						+ "<nonFinalVar>Buffer->setJArraySource(env, PM_<nonFinalVar>);\n"
+						+ "task->addKernel(\"foreach123\");\n"
+						+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"foreach123\"]\n"
+						+ "->setArg(0, variablePtr->buffer)\n"
+						+ "->setArg(1, variablePtr->length)\n"
+						+ "->setArg(2, <nonFinalVar>Buffer)\n"
+						+ "->setWorkSize(1);\n"
+						+ "});\n"
+						+ "runtimePtr->runtime->submitTask(std::move(task));\n"
+						+ "runtimePtr->runtime->finish();\n"
+						+ "<nonFinalVar>Buffer->copyToJArray(env, PM_<nonFinalVar>);"
+						+ "}");
+		st.add("nonFinalVarType", nonFinalVar.typeName);
+		st.add("nonFinalVar", nonFinalVar.name);
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+	}
+
+	/**
 	 * Tests reduce operation translation.
 	 */
 	@Test
@@ -268,7 +421,7 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		List<String> translatedFunction = translator
 				.translateOperation(operation);
 		ST st = new ST(
-				"<type> reduce123_func(<type> param1, <type> param2) {\n"
+				"static <type> reduce123_func(<type> param1, <type> param2) {\n"
 						+ "param2 += param1;"
 						+ "return param2;} \n"
 						+ "__kernel void reduce123_tile(__global <type>* PM_data, __global <type>* PM_tile, int PM_tileSize) {"
@@ -302,7 +455,7 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		operation.addExternalVariable(finalVar);
 		translatedFunction = translator.translateOperation(operation);
 		st = new ST(
-				"<type> reduce123_func(<type> param1, <type> param2, <finalVarType> <finalVar>) {\n"
+				"static <type> reduce123_func(<type> param1, <type> param2, <finalVarType> <finalVar>) {\n"
 						+ "param2 += param1;"
 						+ "return param2;} \n"
 						+ "__kernel void reduce123_tile(__global <type>* PM_data, __global <type>* PM_tile, int PM_tileSize, <finalVarType> <finalVar>) {"
@@ -339,15 +492,15 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		operation.addExternalVariable(nonFinalVar);
 		translatedFunction = translator.translateOperation(operation);
 		st = new ST(
-				"<type> reduce123_func(<type> param1, <type> param2, <nonFinalVarType> <nonFinalVar>, __global <nonFinalVarType>* PM_<nonFinalVar>) {\n"
+				"static <type> reduce123_func(<type> param1, <type> param2, __global <nonFinalVarType>* PM_<nonFinalVar>) {\n"
 						+ "param2 += param1;"
 						+ "return param2;} \n"
-						+ "__kernel void reduce123(__global <type>* PM_destVar, __global <type>* PM_data, int PM_length, <nonFinalVarType> <nonFinalVar>, __global <nonFinalVarType>* PM_<nonFinalVar>) {"
+						+ "__kernel void reduce123(__global <type>* PM_destVar, __global <type>* PM_data, int PM_length, __global <nonFinalVarType>* PM_<nonFinalVar>) {"
 						+ "<type> param1 = PM_data[0];"
 						+ "<type> param2;"
 						+ "for (int PM_x=1; PM_x\\<PM_length; ++PM_x) {"
 						+ "param2 = PM_data[PM_x];"
-						+ "param1 = reduce123_func(param1, param2, <nonFinalVar>, PM_<nonFinalVar>);"
+						+ "param1 = reduce123_func(param1, param2, PM_<nonFinalVar>);"
 						+ "}" + "*PM_destVar = param1; }");
 		st.add("nonFinalVar", nonFinalVar.name);
 		st.add("nonFinalVarType", nonFinalVar.typeName);
@@ -358,7 +511,7 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		operation = this.createReduceOperation(ExecutionType.Sequential);
 		translatedFunction = translator.translateOperation(operation);
 		st = new ST(
-				"<type> reduce123_func(<type> param1, <type> param2) {\n"
+				"static <type> reduce123_func(<type> param1, <type> param2) {\n"
 						+ "param2 += param1;"
 						+ "return param2;} \n"
 						+ "__kernel void reduce123(__global <type>* PM_destVar, __global <type>* PM_data, int PM_length) {"
@@ -375,7 +528,7 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		operation.addExternalVariable(finalVar);
 		translatedFunction = translator.translateOperation(operation);
 		st = new ST(
-				"<type> reduce123_func(<type> param1, <type> param2, <finalVarType> <finalVar>) {\n"
+				"static <type> reduce123_func(<type> param1, <type> param2, <finalVarType> <finalVar>) {\n"
 						+ "param2 += param1;"
 						+ "return param2;} \n"
 						+ "__kernel void reduce123(__global <type>* PM_destVar, __global <type>* PM_data, int PM_length, <finalVarType> <finalVar>) {"
@@ -395,15 +548,15 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		operation.addExternalVariable(nonFinalVar);
 		translatedFunction = translator.translateOperation(operation);
 		st = new ST(
-				"<type> reduce123_func(<type> param1, <type> param2, <nonFinalVarType> <nonFinalVar>, __global <nonFinalVarType>* PM_<nonFinalVar>) {\n"
+				"static <type> reduce123_func(<type> param1, <type> param2, __global <nonFinalVarType>* PM_<nonFinalVar>) {\n"
 						+ "param2 += param1;"
 						+ "return param2;} \n"
-						+ "__kernel void reduce123(__global <type>* PM_destVar, __global <type>* PM_data, int PM_length, <nonFinalVarType> <nonFinalVar>, __global <nonFinalVarType>* PM_<nonFinalVar>) {"
+						+ "__kernel void reduce123(__global <type>* PM_destVar, __global <type>* PM_data, int PM_length, __global <nonFinalVarType>* PM_<nonFinalVar>) {"
 						+ "<type> param1 = PM_data[0];"
 						+ "<type> param2;"
 						+ "for (int PM_x=1; PM_x\\<PM_length; ++PM_x) {"
 						+ "param2 = PM_data[PM_x];"
-						+ "param1 = reduce123_func(param1, param2, <nonFinalVar>, PM_<nonFinalVar>);"
+						+ "param1 = reduce123_func(param1, param2, PM_<nonFinalVar>);"
 						+ "}" + "*PM_destVar = param1; }");
 		st.add("nonFinalVar", nonFinalVar.name);
 		st.add("nonFinalVarType", nonFinalVar.typeName);
@@ -441,6 +594,198 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		operation = this.createReduceOperation(ExecutionType.Sequential);
 		translatedFunction = translator.translateOperationCall(className,
 				operation);
+		this.validateTranslation(expectedTranslation, translatedFunction);
+	}
+
+	/**
+	 * Tests reduce operation JNI interface.
+	 */
+	@Test
+	public void translateReduceOperationJNI() throws Exception {
+		// Parallel
+		Operation operation = this
+				.createReduceOperation(ExecutionType.Parallel);
+		ParallelMERuntimeCTranslation cTranslator = new ParallelMERuntimeCTranslation();
+		String translatedFunction = cTranslator.createParallelOperation(
+				operation, this.className);
+		ST st = new ST(
+				"JNIEXPORT void JNICALL Java_SomeClass_reduce123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr, j<type>Array <destName>) {\n"
+						+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
+						+ "auto variablePtr = (ArrayData *) varPtr;\n"
+						+ "auto task = std::make_unique\\<Task>(runtimePtr->program);\n"
+						+ "int tileSize = floor(sqrt((float)variablePtr->length));\n"
+						+ "auto tileBuffer = std::make_shared\\<Buffer>(sizeof(<type>) * tileSize);"
+						+ "auto <destName>Buffer = std::make_shared\\<Buffer>(sizeof(<type>));\n"
+						+ "task->addKernel(\"reduce123_tile\");\n"
+						+ "task->addKernel(\"reduce123\");\n"
+						+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"reduce123_tile\"]\n"
+						+ "->setArg(0, variablePtr->buffer)\n"
+						+ "->setArg(1, tileBuffer)\n"
+						+ "->setArg(2, tileSize)\n"
+						+ "->setWorkSize(tileSize);\n"
+						+ "kernelHash[\"reduce123\"]\n"
+						+ "->setArg(0, <destName>Buffer)\n"
+						+ "->setArg(1, variablePtr->buffer)\n"
+						+ "->setArg(2, tileBuffer)\n"
+						+ "->setArg(3, variablePtr->length)\n"
+						+ "->setArg(4, tileSize)\n"
+						+ "->setWorkSize(1);\n"
+						+ "});\n"
+						+ "runtimePtr->runtime->submitTask(std::move(task));\n"
+						+ "runtimePtr->runtime->finish();\n"
+						+ "<destName>Buffer->copyToJArray(env, <destName>);\n"
+						+ "}");
+		st.add("destName", operation.destinationVariable.name);
+		st.add("type", getTranslatedParameterType());
+		String expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Parallel with final external variable
+		operation = this.createReduceOperation(ExecutionType.Parallel);
+		Variable finalVar = this.createExternalVariable("final", "var1");
+		operation.addExternalVariable(finalVar);
+		translatedFunction = cTranslator.createParallelOperation(operation,
+				this.className);
+		st = new ST(
+				"JNIEXPORT void JNICALL Java_SomeClass_reduce123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr, "
+						+ "<finalVarType> <finalVar>, j<type>Array <destName>) {\n"
+						+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
+						+ "auto variablePtr = (ArrayData *) varPtr;\n"
+						+ "auto task = std::make_unique\\<Task>(runtimePtr->program);\n"
+						+ "int tileSize = floor(sqrt((float)variablePtr->length));\n"
+						+ "auto tileBuffer = std::make_shared\\<Buffer>(sizeof(<type>) * tileSize);"
+						+ "auto <destName>Buffer = std::make_shared\\<Buffer>(sizeof(<type>));\n"
+						+ "task->addKernel(\"reduce123_tile\");\n"
+						+ "task->addKernel(\"reduce123\");\n"
+						+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"reduce123_tile\"]\n"
+						+ "->setArg(0, variablePtr->buffer)\n"
+						+ "->setArg(1, tileBuffer)\n"
+						+ "->setArg(2, tileSize)\n"
+						+ "->setArg(3, <finalVar>)\n"
+						+ "->setWorkSize(tileSize);\n"
+						+ "kernelHash[\"reduce123\"]\n"
+						+ "->setArg(0, <destName>Buffer)\n"
+						+ "->setArg(1, variablePtr->buffer)\n"
+						+ "->setArg(2, tileBuffer)\n"
+						+ "->setArg(3, variablePtr->length)\n"
+						+ "->setArg(4, tileSize)\n"
+						+ "->setArg(5, <finalVar>)\n"
+						+ "->setWorkSize(1);\n"
+						+ "});\n"
+						+ "runtimePtr->runtime->submitTask(std::move(task));\n"
+						+ "runtimePtr->runtime->finish();\n"
+						+ "<destName>Buffer->copyToJArray(env, <destName>);\n"
+						+ "}");
+		st.add("destName", operation.destinationVariable.name);
+		st.add("type", getTranslatedParameterType());
+		st.add("finalVarType", finalVar.typeName);
+		st.add("finalVar", finalVar.name);
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Sequential with non-final and final variable
+		operation = this.createReduceOperation(ExecutionType.Sequential);
+		Variable nonFinalVar = this.createExternalVariable("", "var2");
+		operation.addExternalVariable(nonFinalVar);
+		operation.addExternalVariable(finalVar);
+		translatedFunction = cTranslator.createSequentialOperation(operation,
+				this.className);
+		st = new ST(
+				"JNIEXPORT void JNICALL Java_SomeClass_reduce123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr, "
+						+ "j<nonFinalVarType>Array PM_<nonFinalVar>, <finalVarType> <finalVar>, j<type>Array <destName>) {\n"
+						+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
+						+ "auto variablePtr = (ArrayData *) varPtr;\n"
+						+ "auto task = std::make_unique\\<Task>(runtimePtr->program, Task::Score(1.0f,2.0f));\n"
+						+ "auto <destName>Buffer = std::make_shared\\<Buffer>(sizeof(<type>)*env->GetArrayLength(<destName>));\n"
+						+ "auto <nonFinalVar>Buffer = std::make_shared\\<Buffer>(sizeof(<nonFinalVarType>));\n"
+						+ "<nonFinalVar>Buffer->setJArraySource(env, PM_<nonFinalVar>);\n"
+						+ "task->addKernel(\"reduce123\");\n"
+						+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"reduce123\"]\n"
+						+ "->setArg(0, <destName>Buffer)\n"
+						+ "->setArg(1, variablePtr->buffer)\n"
+						+ "->setArg(2, variablePtr->length)\n"
+						+ "->setArg(3, <nonFinalVar>Buffer)\n"
+						+ "->setArg(4, <finalVar>)\n"
+						+ "->setWorkSize(1);\n"
+						+ "});\n"
+						+ "runtimePtr->runtime->submitTask(std::move(task));\n"
+						+ "runtimePtr->runtime->finish();\n"
+						+ "<nonFinalVar>Buffer->copyToJArray(env, PM_<nonFinalVar>);\n"
+						+ "<destName>Buffer->copyToJArray(env, <destName>);\n"
+						+ "}");
+		st.add("destName", operation.destinationVariable.name);
+		st.add("type", getTranslatedParameterType());
+		st.add("nonFinalVarType", nonFinalVar.typeName);
+		st.add("nonFinalVar", nonFinalVar.name);
+		st.add("finalVarType", finalVar.typeName);
+		st.add("finalVar", finalVar.name);
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Sequential with final variable
+		operation = this.createReduceOperation(ExecutionType.Sequential);
+		operation.addExternalVariable(finalVar);
+		translatedFunction = cTranslator.createSequentialOperation(operation,
+				this.className);
+		st = new ST(
+				"JNIEXPORT void JNICALL Java_SomeClass_reduce123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr, "
+						+ "<finalVarType> <finalVar>, j<type>Array <destName>) {\n"
+						+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
+						+ "auto variablePtr = (ArrayData *) varPtr;\n"
+						+ "auto task = std::make_unique\\<Task>(runtimePtr->program, Task::Score(1.0f,2.0f));\n"
+						+ "auto <destName>Buffer = std::make_shared\\<Buffer>(sizeof(<type>)*env->GetArrayLength(<destName>));\n"
+						+ "task->addKernel(\"reduce123\");\n"
+						+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"reduce123\"]\n"
+						+ "->setArg(0, <destName>Buffer)\n"
+						+ "->setArg(1, variablePtr->buffer)\n"
+						+ "->setArg(2, variablePtr->length)\n"
+						+ "->setArg(3, <finalVar>)\n"
+						+ "->setWorkSize(1);\n"
+						+ "});\n"
+						+ "runtimePtr->runtime->submitTask(std::move(task));\n"
+						+ "runtimePtr->runtime->finish();\n"
+						+ "<destName>Buffer->copyToJArray(env, <destName>);\n"
+						+ "}");
+		st.add("destName", operation.destinationVariable.name);
+		st.add("type", getTranslatedParameterType());
+		st.add("finalVarType", finalVar.typeName);
+		st.add("finalVar", finalVar.name);
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Sequential with non-final variable
+		operation = this.createReduceOperation(ExecutionType.Sequential);
+		operation.addExternalVariable(nonFinalVar);
+		translatedFunction = cTranslator.createSequentialOperation(operation,
+				this.className);
+		st = new ST(
+				"JNIEXPORT void JNICALL Java_SomeClass_reduce123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr, "
+						+ "j<nonFinalVarType>Array PM_<nonFinalVar>, j<type>Array <destName>) {\n"
+						+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
+						+ "auto variablePtr = (ArrayData *) varPtr;\n"
+						+ "auto task = std::make_unique\\<Task>(runtimePtr->program, Task::Score(1.0f,2.0f));\n"
+						+ "auto <destName>Buffer = std::make_shared\\<Buffer>(sizeof(<type>)*env->GetArrayLength(<destName>));\n"
+						+ "auto <nonFinalVar>Buffer = std::make_shared\\<Buffer>(sizeof(<nonFinalVarType>));\n"
+						+ "<nonFinalVar>Buffer->setJArraySource(env, PM_<nonFinalVar>);\n"
+						+ "task->addKernel(\"reduce123\");\n"
+						+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"reduce123\"]\n"
+						+ "->setArg(0, <destName>Buffer)\n"
+						+ "->setArg(1, variablePtr->buffer)\n"
+						+ "->setArg(2, variablePtr->length)\n"
+						+ "->setArg(3, <nonFinalVar>Buffer)\n"
+						+ "->setWorkSize(1);\n"
+						+ "});\n"
+						+ "runtimePtr->runtime->submitTask(std::move(task));\n"
+						+ "runtimePtr->runtime->finish();\n"
+						+ "<nonFinalVar>Buffer->copyToJArray(env, PM_<nonFinalVar>);\n"
+						+ "<destName>Buffer->copyToJArray(env, <destName>);\n"
+						+ "}");
+		st.add("destName", operation.destinationVariable.name);
+		st.add("type", getTranslatedParameterType());
+		st.add("nonFinalVarType", nonFinalVar.typeName);
+		st.add("nonFinalVar", nonFinalVar.name);
+		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 	}
 

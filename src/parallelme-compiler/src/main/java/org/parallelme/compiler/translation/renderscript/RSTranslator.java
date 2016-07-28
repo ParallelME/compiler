@@ -760,33 +760,10 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 	}
 
 	/**
-	 * Create a function signature for a given operation.
+	 * {@inheritDoc}
 	 */
 	@Override
-	protected String getOperationFunctionSignature(Operation operation,
-			FunctionType functionType) {
-		String ret;
-		if (functionType == FunctionType.UserCode) {
-			ret = initializeUserFunctionSignature(operation);
-		} else if (operation.operationType == OperationType.Foreach) {
-			ret = initializeForeachSignature(operation, functionType);
-		} else if (operation.operationType == OperationType.Reduce) {
-			ret = initializeReduceSignature(operation, functionType);
-		} else if (operation.operationType == OperationType.Map) {
-			ret = initializeMapSignature(operation, functionType);
-		} else if (operation.operationType == OperationType.Filter) {
-			ret = initializeFilterSignature(operation, functionType);
-		} else {
-			throw new RuntimeException("Operation not supported: "
-					+ operation.operationType);
-		}
-		return ret;
-	}
-
-	/**
-	 * Initialize the user function signature.
-	 */
-	private String initializeUserFunctionSignature(Operation operation) {
+	protected String initializeUserFunctionSignature(Operation operation) {
 		ST st = new ST(templateFunctionDecl);
 		st.add("functionName",
 				commonDefinitions.getOperationUserFunctionName(operation));
@@ -808,31 +785,10 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 	}
 
 	/**
-	 * Get the equivalent C return type for each operation function type.
+	 * {@inheritDoc}
 	 */
-	private String getFunctionReturnType(Operation operation) {
-		String returnType;
-		if (operation.operationType == OperationType.Foreach
-				|| operation.operationType == OperationType.Reduce) {
-			returnType = commonDefinitions.translateToCType(operation
-					.getUserFunctionData().arguments.get(0).typeName);
-		} else if (operation.operationType == OperationType.Filter) {
-			returnType = "bool";
-		} else if (operation.operationType == OperationType.Map) {
-			returnType = commonDefinitions
-					.translateToCType(operation.destinationVariable.typeParameters
-							.get(0));
-		} else {
-			throw new RuntimeException("Operation not supported: "
-					+ operation.operationType);
-		}
-		return returnType;
-	}
-
-	/**
-	 * Initialize foreach function signature.
-	 */
-	private String initializeForeachSignature(Operation operation,
+	@Override
+	protected String initializeForeachSignature(Operation operation,
 			FunctionType functionType) {
 		String returnType = commonDefinitions.translateToCType(operation
 				.getUserFunctionData().arguments.get(0).typeName);
@@ -867,9 +823,10 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 	}
 
 	/**
-	 * Initialize reduce function signature.
+	 * {@inheritDoc}
 	 */
-	private String initializeReduceSignature(Operation operation,
+	@Override
+	protected String initializeReduceSignature(Operation operation,
 			FunctionType functionType) {
 		ST st = new ST(templateFunctionDecl);
 		st.add("modifier", null);
@@ -893,9 +850,10 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 	}
 
 	/**
-	 * Initialize map function signature.
+	 * {@inheritDoc}
 	 */
-	private String initializeMapSignature(Operation operation,
+	@Override
+	protected String initializeMapSignature(Operation operation,
 			FunctionType functionType) {
 		String returnType = commonDefinitions
 				.translateToCType(operation.destinationVariable.typeParameters
@@ -905,9 +863,10 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 	}
 
 	/**
-	 * Initialize filter function signature.
+	 * {@inheritDoc}
 	 */
-	private String initializeFilterSignature(Operation operation,
+	@Override
+	protected String initializeFilterSignature(Operation operation,
 			FunctionType functionType) {
 		ST st = new ST(templateFunctionDecl);
 		st.add("modifier", null);

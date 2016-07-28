@@ -31,8 +31,9 @@ import org.stringtemplate.v4.ST;
  */
 public class PMArrayTranslator extends PMTranslator implements ArrayTranslator {
 	private static final String templateInputBindObjCreation = "<arrayPointer> = ParallelMERuntime.getInstance().createArray(<arrayName>);";
-	private static final String templateOutputBindCall1 = "<name> = (<type>) java.lang.reflect.Array.newInstance(<baseType>.class,\n"
-			+ "\tParallelMERuntime.getInstance().getLength(<arrayPointer>));\n";
+	private static final String templateOutputBindCall1 = "<baseType>[] <name> = new <baseType>[ParallelMERuntime.getInstance().getLength(<arrayPointer>)];\n"
+			+ "ParallelMERuntime.getInstance().toArray(<arrayPointer>, <name>);\n"
+			+ "return <name>;";
 	private static final String templateOutputBindCall2 = "ParallelMERuntime.getInstance().toArray(<arrayPointer>, <arrayName>);";
 	private static final String templateOperationCall = "<destinationVariable:{var|<var.nativeReturnType>[] <var.name> = new <var.nativeReturnType>[<var.size>];\n}>"
 			+ "<operationName>(<params:{var|<var.name>}; separator=\", \">);"
@@ -78,26 +79,25 @@ public class PMArrayTranslator extends PMTranslator implements ArrayTranslator {
 	@Override
 	public String translateOutputBindCall(String className,
 			OutputBind outputBind) {
-		StringBuilder ret = new StringBuilder();
 		String arrayPointer = this.commonDefinitions
 				.getPointerName(outputBind.variable);
 		// If it is an object assignment, must declare the destination
 		// object type and name.
+		ST st;
 		if (outputBind.outputBindType != OutputBindType.None) {
-			ST st = new ST(templateOutputBindCall1);
-			st.add("type", outputBind.destinationObject.typeName);
-			st.add("name", outputBind.destinationObject.name);
+			st = new ST(templateOutputBindCall1);
+			st.add("name", commonDefinitions.getPrefix() + "javaArray");
 			String baseType = outputBind.destinationObject.typeName
 					.replaceAll("\\[", "").replaceAll("\\]", "").trim();
-			st.add("arrayPointer", arrayPointer);
 			st.add("baseType", baseType);
-			ret.append(st.render());
+			st.add("type", outputBind.destinationObject.typeName);
+			st.add("arrayPointer", arrayPointer);
+		} else {
+			st = new ST(templateOutputBindCall2);
+			st.add("arrayPointer", arrayPointer);
+			st.add("arrayName", outputBind.destinationObject.name);
 		}
-		ST st = new ST(templateOutputBindCall2);
-		st.add("arrayPointer", arrayPointer);
-		st.add("arrayName", outputBind.destinationObject.name);
-		ret.append(st.render());
-		return ret.toString();
+		return st.render();
 	}
 
 	/**
@@ -123,7 +123,8 @@ public class PMArrayTranslator extends PMTranslator implements ArrayTranslator {
 			// filter operations are implemented.
 			if (operation.operationType == OperationType.Reduce) {
 				nativeReturnType = this.commonDefinitions
-						.translateToCType(operation.variable.typeParameters.get(0));
+						.translateToCType(operation.variable.typeParameters
+								.get(0));
 				methodReturnType = UserLibraryClassFactory.getClass(
 						operation.variable.typeParameters.get(0))
 						.getClassName();
@@ -146,7 +147,6 @@ public class PMArrayTranslator extends PMTranslator implements ArrayTranslator {
 	protected String translateReduce(Operation operation) {
 		ST st = new ST(templateReduce);
 		ST stForLoop = new ST(templateForLoop);
-		ST stForLoop2 = new ST(templateForLoop);
 		ST stForBody = new ST(templateReduceForBody);
 		String xVar = this.commonDefinitions.getPrefix() + "x";
 		stForLoop.add("varName", xVar);
@@ -172,14 +172,7 @@ public class PMArrayTranslator extends PMTranslator implements ArrayTranslator {
 				getExpression(varType, inputVar1.name, dataVar + "[0]"));
 		st.addAggr("decl.{expression}",
 				getExpression(varType, inputVar2.name, ""));
-		stForBody.add("params", null);
-		for (Variable variable : operation.getExternalVariables()) {
-			stForBody.addAggr("params.{name}", variable.name);
-			if (isSequential && !variable.isFinal()) {
-				stForBody.addAggr("params.{name}",
-						this.commonDefinitions.getPrefix() + variable.name);
-			}
-		}
+		setExternalVariables(stForBody, operation, false);
 		stForLoop.add("initValue", "1");
 		stForLoop.add("varMaxVal", isSequential ? getLengthVariableName()
 				: getTileSizeVariableName());
@@ -188,6 +181,7 @@ public class PMArrayTranslator extends PMTranslator implements ArrayTranslator {
 		stForBody.remove("dataVar");
 		stForBody.add("dataVar", getDataVariableName());
 		if (!isSequential) {
+			ST stForLoop2 = new ST(templateForLoop);
 			stForLoop2.add("initValue", String.format(
 					"(int) pow(floor(sqrt((float)%s)), 2)",
 					getLengthVariableName()));

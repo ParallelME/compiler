@@ -19,7 +19,6 @@ import org.parallelme.compiler.RuntimeCommonDefinitions;
 import org.parallelme.compiler.RuntimeDefinitionImpl;
 import org.parallelme.compiler.exception.CompilationException;
 import org.parallelme.compiler.intermediate.*;
-import org.parallelme.compiler.intermediate.Operation.ExecutionType;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.userlibrary.classes.*;
 import org.parallelme.compiler.util.ResourceWriter;
@@ -30,6 +29,9 @@ import org.parallelme.compiler.util.ResourceWriter;
  * @author Wilson de Carvalho
  */
 public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
+	RuntimeCommonDefinitions commonDefinitions = RuntimeCommonDefinitions
+			.getInstance();
+
 	public ParallelMERuntimeDefinition(CTranslator cCodeTranslator,
 			String outputDestinationFolder) {
 		super(cCodeTranslator, outputDestinationFolder);
@@ -96,29 +98,23 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 			// Sequential operations must create an array for each variable.
 			// This array will be used to store the output value.
 			List<Variable> externalVariables = operation.getExternalVariables();
-			boolean isSequential = operation.getExecutionType() == ExecutionType.Sequential;
-			if (isSequential) {
-				for (Variable foo : externalVariables) {
+			for (Variable foo : externalVariables) {
+				if (foo.isFinal()) {
 					parameters.add(foo);
-					if (!foo.isFinal())
-						parameters.add(new Variable(RuntimeCommonDefinitions
-								.getInstance().getPrefix() + foo.name,
-								foo.typeName + "[]", null, "", -1));
+				} else {
+					parameters.add(new Variable(RuntimeCommonDefinitions
+							.getInstance().getPrefix() + foo.name, foo.typeName
+							+ "[]", null, "", -1));
 				}
-			} else {
-				parameters.addAll(externalVariables);
 			}
 			if (operation.destinationVariable != null) {
 				// Last parameter is the destination variable
 				parameters.add(this
 						.createDestinationVariableParameter(operation));
 			}
-			String name = RuntimeCommonDefinitions.getInstance()
-					.getOperationName(operation);
-			ret.add(RuntimeCommonDefinitions.getInstance()
-					.createJavaMethodSignature("private native", "void", name,
-							parameters, false)
-					+ ";");
+			String name = commonDefinitions.getOperationName(operation);
+			ret.add(commonDefinitions.createJavaMethodSignature(
+					"private native", "void", name, parameters, false) + ";");
 		}
 		return ret;
 	}
@@ -129,22 +125,20 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 	 */
 	private Variable createDestinationVariableParameter(Operation operation) {
 		Variable variable;
-		if (operation.variable.typeName.equals(BitmapImage.getInstance()
-				.getClassName())
-				|| operation.variable.typeName.equals(HDRImage.getInstance()
-						.getClassName())) {
+		if (commonDefinitions.isImage(operation.variable)) {
 			// translateType call must inform the operation variable, not the
 			// destination variable, since it is based on the image class type
-			variable = new Variable(RuntimeCommonDefinitions.getInstance()
-					.getPrefix() + operation.destinationVariable.name,
-					RuntimeCommonDefinitions.getInstance().translateToCType(
-							operation.variable.typeName)
+			variable = new Variable(commonDefinitions.getPrefix()
+					+ operation.destinationVariable.name,
+					commonDefinitions
+							.translateToCType(operation.variable.typeName)
 							+ "[]", null, "", -1);
 		} else {
-			variable = new Variable(RuntimeCommonDefinitions.getInstance()
-					.getPrefix() + operation.destinationVariable.name,
-					RuntimeCommonDefinitions.getInstance().translateToCType(
-							operation.destinationVariable.typeName)
+			variable = new Variable(
+					commonDefinitions.getPrefix()
+							+ operation.destinationVariable.name,
+					commonDefinitions
+							.translateToCType(operation.destinationVariable.typeName)
 							+ "[]", null, "", -1);
 		}
 		return variable;
@@ -195,8 +189,8 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 		ParallelMERuntimeCTranslation cTranslation = new ParallelMERuntimeCTranslation();
 		cTranslation.createKernelFile(className, operationsAndBinds,
 				this.translators, this.outputDestinationFolder);
-		String cClassName = RuntimeCommonDefinitions.getInstance()
-				.getJavaWrapperClassName(className, TargetRuntime.ParallelME);
+		String cClassName = commonDefinitions.getJavaWrapperClassName(
+				className, TargetRuntime.ParallelME);
 		cTranslation.createCPPFile(packageName, cClassName,
 				operationsAndBinds.operations, this.outputDestinationFolder);
 		cTranslation.createHFile(packageName, cClassName,
