@@ -28,7 +28,7 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 	private static final String templateFunctionDecl = "<modifier:{var|<var.value> }><isKernel:{var|__kernel }><returnType> "
 			+ "<functionName>(<params:{var|<var.type> <var.name>}; separator=\", \">)";
 	protected static final String templateForLoop = "for (int <varName>=<initValue>; <varName> \\< <varMaxVal>; ++<varName>) {\n\t<body>}\n";
-	private static String templateParallelForeachMapFunction = "<isImage:{var|\t\tint <xVar> = get_global_id(0);\n"
+	private static String templateParallelForeachMapFunction = "<isImage:{var|\tint <xVar> = get_global_id(0);\n"
 			+ "\tint <yVar> = get_global_id(1);\n"
 			+ "\tint <varGID> = <yVar> * <xSizeVar> + <xVar>;\n}>"
 			+ "<isArray:{var|\tint <varGID> = get_global_id(0);\n}>"

@@ -65,7 +65,6 @@ public class ParallelMERuntimeCTranslation {
 			+ "\truntimePtr->runtime->finish();\n"
 			+ "<destinationVariable:{var|\t\t<var.bufferName>->copyToJArray(env, <var.name>);\n}>"
 			+ "\\}";
-
 	private static final String templateSequentialOperation = "<functionDecl> {\n"
 			+ "\tauto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
 			+ "\tauto variablePtr = (<objectType> *) varPtr;\n"
