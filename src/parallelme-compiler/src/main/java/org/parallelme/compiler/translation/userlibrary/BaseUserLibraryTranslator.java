@@ -256,29 +256,6 @@ public abstract class BaseUserLibraryTranslator implements
 	abstract protected String initializeFilterSignature(Operation operation,
 			FunctionType functionType);
 
-
-	/**
-	 * Get the equivalent C return type for each operation function type.
-	 */
-	protected String getFunctionReturnType(Operation operation) {
-		String returnType;
-		if (operation.operationType == OperationType.Foreach
-				|| operation.operationType == OperationType.Reduce) {
-			returnType = commonDefinitions.translateToCType(operation
-					.getUserFunctionData().arguments.get(0).typeName);
-		} else if (operation.operationType == OperationType.Filter) {
-			returnType = "bool";
-		} else if (operation.operationType == OperationType.Map) {
-			returnType = commonDefinitions
-					.translateToCType(operation.destinationVariable.typeParameters
-							.get(0));
-		} else {
-			throw new RuntimeException("Operation not supported: "
-					+ operation.operationType);
-		}
-		return returnType;
-	}
-	
 	/**
 	 * Name for base variable that is used to index allocation data in C kernel
 	 * code.

@@ -61,9 +61,19 @@ public abstract class RSImageTranslator extends RSTranslator implements
 	public String translateObjDeclaration(Operation operation) {
 		if (operation.operationType == OperationType.Map
 				|| operation.operationType == OperationType.Filter) {
+			StringBuilder ret = new StringBuilder();
 			String outAllocation = this.commonDefinitions
 					.getVariableOutName(operation.destinationVariable);
-			return String.format("private Allocation %s;", outAllocation);
+			ret.append(String.format("private Allocation %s;", outAllocation));
+			// The "FromImage" boolean is used to control if the last call for a
+			// given variable is originated from an image element. In case
+			// positive, the outputbind must multiply by 4 the lenght of the
+			// returning array.
+			ret.append("\nprivate boolean "
+					+ commonDefinitions
+							.getFromImageBooleanName(operation.destinationVariable)
+					+ " = false;");
+			return ret.toString();
 		} else {
 			return "";
 		}
@@ -82,8 +92,7 @@ public abstract class RSImageTranslator extends RSTranslator implements
 		String destinationObject = outputBind.destinationObject.name;
 		ST st2 = new ST(templateOutputBindCall2);
 		st2.add("classType", outputBind.variable.typeName);
-		st2.add("kernelName",
-				this.commonDefinitions.getKernelName(className));
+		st2.add("kernelName", this.commonDefinitions.getKernelName(className));
 		st2.add("outputObject", outputObject);
 		st2.add("inputObject", inputObject);
 		st2.add("destinationObject", destinationObject);

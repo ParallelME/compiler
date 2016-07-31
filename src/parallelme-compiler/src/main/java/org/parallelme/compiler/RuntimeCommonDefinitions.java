@@ -204,6 +204,14 @@ public class RuntimeCommonDefinitions {
 	}
 
 	/**
+	 * Gets the "FromImage" boolean name for a given variable.
+	 */
+	public String getFromImageBooleanName(Variable variable) {
+		return this.getPrefix() + variable.name + variable.sequentialNumber
+				+ "FromImage";
+	}
+
+	/**
 	 * Gets the runtime pointer name.
 	 */
 	public String getRuntimePointerName() {
@@ -271,6 +279,20 @@ public class RuntimeCommonDefinitions {
 		return this.getPrefix() + "parallelME";
 	}
 
+	/**
+	 * Return the base name for data variables.
+	 */
+	public String getDataVarName() {
+		return this.getPrefix() + "data";
+	}
+
+	/**
+	 * Return the base name for data return variables.
+	 */
+	public String getDataReturnVarName() {
+		return this.getPrefix() + "dataRet";
+	}
+	
 	/**
 	 * Creates a method's signature that can be used in Java code.
 	 * 
@@ -490,10 +512,11 @@ public class RuntimeCommonDefinitions {
 			return ((UserLibraryDataType) userLibraryClass)
 					.getJavaPrimitiveType();
 		} else {
-			throw new RuntimeException(String.format(
-					"'%s' is not a valid primitiveUser Library "
-							+ "Data Type convertible to a Java primitive type.",
-					typeName));
+			throw new RuntimeException(
+					String.format(
+							"'%s' is not a valid primitiveUser Library "
+									+ "Data Type convertible to a Java primitive type.",
+							typeName));
 		}
 	}
 
@@ -513,5 +536,78 @@ public class RuntimeCommonDefinitions {
 				.getClassName())
 				|| variable.typeName.equals(HDRImage.getInstance()
 						.getClassName());
+	}
+
+	/**
+	 * Get the equivalent C return type for each operation type.
+	 */
+	public String getCReturnType(Operation operation) {
+		String returnType;
+		if (operation.operationType == OperationType.Foreach
+				|| operation.operationType == OperationType.Reduce) {
+			returnType = translateToCType(operation.getUserFunctionData().arguments
+					.get(0).typeName);
+		} else if (operation.operationType == OperationType.Filter) {
+			returnType = "bool";
+		} else if (operation.operationType == OperationType.Map) {
+			returnType = translateToCType(operation.destinationVariable.typeParameters
+					.get(0));
+		} else {
+			throw new RuntimeException("Operation not supported: "
+					+ operation.operationType);
+		}
+		return returnType;
+	}
+
+	/**
+	 * Get the equivalent Java return type for each operation type.
+	 */
+	public String getJavaReturnType(Operation operation) {
+		String returnType;
+		if (operation.operationType == OperationType.Foreach
+				|| operation.operationType == OperationType.Reduce
+				|| operation.operationType == OperationType.Filter) {
+			returnType = translateToJavaType(operation.getUserFunctionData().arguments
+					.get(0).typeName);
+		} else if (operation.operationType == OperationType.Map) {
+			returnType = translateToJavaType(operation.destinationVariable.typeParameters
+					.get(0));
+		} else {
+			throw new RuntimeException("Operation not supported: "
+					+ operation.operationType);
+		}
+		return returnType;
+	}
+
+	/**
+	 * Get the equivalent user library data return type for each operation type.
+	 */
+	public String getUserLibraryReturnType(Operation operation) {
+		String returnType;
+		boolean isImage = isImage(operation.variable);
+		if (operation.operationType == OperationType.Foreach
+				|| operation.operationType == OperationType.Reduce
+				|| operation.operationType == OperationType.Filter) {
+			if (isImage) {
+				returnType = Pixel.getInstance().getClassName();
+			} else {
+				returnType = UserLibraryClassFactory
+						.getClass(
+								operation.getUserFunctionData().arguments
+										.get(0).typeName).getClassName();
+			}
+		} else if (operation.operationType == OperationType.Map) {
+			if (isImage) {
+				returnType = Pixel.getInstance().getClassName();
+			} else {
+				returnType = UserLibraryClassFactory.getClass(
+						operation.destinationVariable.typeParameters.get(0))
+						.getClassName();
+			}
+		} else {
+			throw new RuntimeException("Operation not supported: "
+					+ operation.operationType);
+		}
+		return returnType;
 	}
 }

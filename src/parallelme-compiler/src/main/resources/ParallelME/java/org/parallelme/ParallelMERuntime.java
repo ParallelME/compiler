@@ -26,19 +26,35 @@ public class ParallelMERuntime {
 	}
 
 	private native long nativeInit();
+
 	private native void nativeCleanUpRuntime(long runtimePointer);
-	private native long nativeCreateShortArray(short[] array, int length);
-	private native void nativeToShortArray(long arrayPointer, short[] array);
-	private native long nativeCreateIntArray(int[] array, int length);
-	private native void nativeToIntArray(long arrayPointer, int[] array);
-	private native long nativeCreateFloatArray(float[] array, int length);
-	private native void nativeToFloatArray(long arrayPointer, float[] array);
-	private native long nativeCreateBitmapImage(long runtimePointer, Bitmap bitmap, int width, int height);
-	private native void nativeToBitmapBitmapImage(long runtimePointer, long imagePointer, Bitmap bitmap);
-	private native long nativeCreateHDRImage(long runtimePointer, byte[] data, int width, int height);
-	private native void nativeToBitmapHDRImage(long runtimePointer, long imagePointer, Bitmap bitmap);
+
+	private native long nativeCreateArray(int length, int typeNo);
+
+	private native long nativeCreateArray(int length, int typeNo,
+			Object sourceArray);
+
+	private native void nativeToArray(long arrayPointer, Object destArray);
+
+	private native long nativeCreateBitmapImage(long runtimePointer,
+			Bitmap bitmap, int width, int height);
+
+	private native long nativeCreateBitmapImage(long runtimePointer, int width,
+			int height);
+
+	private native void nativeToBitmapBitmapImage(long runtimePointer,
+			long imagePointer, Bitmap bitmap);
+
+	private native long nativeCreateHDRImage(long runtimePointer, byte[] data,
+			int width, int height);
+
+	private native void nativeToBitmapHDRImage(long runtimePointer,
+			long imagePointer, Bitmap bitmap);
+
 	private native int nativeGetHeight(long imagePointer);
+
 	private native int nativeGetWidth(long imagePointer);
+
 	private native int nativeGetLength(long arrayPointer);
 
 	private ParallelMERuntime() {
@@ -52,32 +68,45 @@ public class ParallelMERuntime {
 		super.finalize();
 	}
 
-	public long createArray(short[] array) {
-		return nativeCreateShortArray(array, array.length);
+	public long createArray(Class<?> classType, int length) {
+		if (classType == short.class)
+			return nativeCreateArray(length, 1);
+		else if (classType == int.class)
+			return nativeCreateArray(length, 2);
+		else if (classType == float.class)
+			return nativeCreateArray(length, 3);
+		else
+			throw new RuntimeException("Type not support by ParallelME: "
+					+ classType);
 	}
 
-	public void toArray(long arrayPointer, short[] array) {
-		nativeToShortArray(arrayPointer, array);
+	public long createArray(short[] sourceArray) {
+		return nativeCreateArray(sourceArray.length, 1, sourceArray);
 	}
 
-	public long createArray(int[] array) {
-		return nativeCreateIntArray(array, array.length);
+	public long createArray(int[] sourceArray) {
+		return nativeCreateArray(sourceArray.length, 2, sourceArray);
 	}
 
-	public void toArray(long arrayPointer, int[] array) {
-		nativeToIntArray(arrayPointer, array);
+	public long createArray(float[] sourceArray) {
+		return nativeCreateArray(sourceArray.length, 3, sourceArray);
 	}
 
-	public long createArray(float[] array) {
-		return nativeCreateFloatArray(array, array.length);
+	public void toArray(long arrayPointer, short[] destArray) {
+		nativeToArray(arrayPointer, destArray);
 	}
 
-	public void toArray(long arrayPointer, float[] array) {
-		nativeToFloatArray(arrayPointer, array);
+	public void toArray(long arrayPointer, int[] destArray) {
+		nativeToArray(arrayPointer, destArray);
 	}
-	
+
+	public void toArray(long arrayPointer, float[] destArray) {
+		nativeToArray(arrayPointer, destArray);
+	}
+
 	public void createBitmapImage(Bitmap bitmap) {
-		nativeCreateBitmapImage(runtimePointer, bitmap, bitmap.getWidth(), bitmap.getHeight());
+		nativeCreateBitmapImage(runtimePointer, bitmap, bitmap.getWidth(),
+				bitmap.getHeight());
 	}
 
 	public void toBitmapBitmapImage(long imagePointer, Bitmap bitmap) {

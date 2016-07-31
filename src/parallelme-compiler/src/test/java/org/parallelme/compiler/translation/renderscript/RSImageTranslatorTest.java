@@ -202,10 +202,14 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 		BaseUserLibraryTranslator translator = this.getTranslator();
 		String translatedFunction = translator.translateOperationCall(
 				className, operation);
-		ST st = new ST("<kernel>.forEach_foreach123(<varOut>, <varOut>);");
+		ST st = new ST("<kernel>.forEach_foreach123(<varOut>, <varOut>);\n"
+				+ "<varFromImage> = true;");
+		st.add("varName", commonDefinitions.getPointerName(operation.variable));
 		st.add("varOut",
 				commonDefinitions.getVariableOutName(operation.variable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
+		st.add("varFromImage",
+				commonDefinitions.getFromImageBooleanName(operation.variable));
 		String expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Parallel with final external variable
@@ -216,12 +220,15 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 				operation);
 		st = new ST(
 				"<kernel>.set_PM_g<UCFinalVarName>Foreach123(<finalVarName>);\n"
-						+ "<kernel>.forEach_foreach123(<varOut>, <varOut>);");
+						+ "<kernel>.forEach_foreach123(<varOut>, <varOut>);\n"
+						+ "<varFromImage> = true;");
 		st.add("varOut",
 				commonDefinitions.getVariableOutName(operation.variable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
 		st.add("UCFinalVarName", upperCaseFirstLetter(finalVar.name));
 		st.add("finalVarName", finalVar.name);
+		st.add("varFromImage",
+				commonDefinitions.getFromImageBooleanName(operation.variable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential
@@ -229,10 +236,12 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 		translatedFunction = translator.translateOperationCall(className,
 				operation);
 		st = new ST("<kernel>.set_PM_gInputForeach123(<varOut>);\n"
-				+ "<kernel>.invoke_foreach123();");
+				+ "<kernel>.invoke_foreach123();\n" + "<varFromImage> = true;");
 		st.add("varOut",
 				commonDefinitions.getVariableOutName(operation.variable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
+		st.add("varFromImage",
+				commonDefinitions.getFromImageBooleanName(operation.variable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential non-final and final variable
@@ -249,7 +258,8 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "<kernel>.set_PM_gInputForeach123(<varOut>);\n"
 						+ "<kernel>.set_PM_g<UCFinalVarName>Foreach123(<finalVarName>);\n"
 						+ "<kernel>.invoke_foreach123();\n"
-						+ "PM_gOutput<UCNonFinalVarName>Foreach123.copyTo(<nonFinalVarName>);");
+						+ "PM_gOutput<UCNonFinalVarName>Foreach123.copyTo(<nonFinalVarName>);\n"
+						+ "<varFromImage> = true;");
 		st.add("varOut",
 				commonDefinitions.getVariableOutName(operation.variable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
@@ -257,6 +267,8 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 		st.add("nonFinalVarName", nonFinalVar.name);
 		st.add("UCFinalVarName", upperCaseFirstLetter(finalVar.name));
 		st.add("finalVarName", finalVar.name);
+		st.add("varFromImage",
+				commonDefinitions.getFromImageBooleanName(operation.variable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential non-final
@@ -270,12 +282,15 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "<kernel>.set_PM_gOutput<UCNonFinalVarName>Foreach123(PM_gOutput<UCNonFinalVarName>Foreach123);"
 						+ "<kernel>.set_PM_gInputForeach123(<varOut>);\n"
 						+ "<kernel>.invoke_foreach123();\n"
-						+ "PM_gOutput<UCNonFinalVarName>Foreach123.copyTo(<nonFinalVarName>);");
+						+ "PM_gOutput<UCNonFinalVarName>Foreach123.copyTo(<nonFinalVarName>);\n"
+						+ "<varFromImage> = true;");
 		st.add("varOut",
 				commonDefinitions.getVariableOutName(operation.variable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
 		st.add("UCNonFinalVarName", upperCaseFirstLetter(nonFinalVar.name));
 		st.add("nonFinalVarName", nonFinalVar.name);
+		st.add("varFromImage",
+				commonDefinitions.getFromImageBooleanName(operation.variable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 	}
@@ -782,13 +797,16 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ ".setX(<varIn>.getType().getX() * <varIn>.getType().getY())"
 						+ ".create();"
 						+ "<varOut> = Allocation.createTyped(PM_mRS, <varOut>Type);"
-						+ "<kernel>.forEach_map123(<varIn>, <varOut>);");
+						+ "<kernel>.forEach_map123(<varIn>, <varOut>);\n"
+						+ "<varFromImage> = true;");
 		st.add("rsType", getMapRSType());
 		st.add("varIn",
 				commonDefinitions.getVariableOutName(operation.variable));
 		st.add("varOut", commonDefinitions
 				.getVariableOutName(operation.destinationVariable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
+		st.add("varFromImage", commonDefinitions
+				.getFromImageBooleanName(operation.destinationVariable));
 		String expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Parallel with final variable
@@ -803,7 +821,8 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ ".create();"
 						+ "<varOut> = Allocation.createTyped(PM_mRS, <varOut>Type);"
 						+ "<kernel>.set_PM_g<UCFinalVarName>Map123(<finalVarName>);"
-						+ "<kernel>.forEach_map123(<varIn>, <varOut>);");
+						+ "<kernel>.forEach_map123(<varIn>, <varOut>);\n"
+						+ "<varFromImage> = true;");
 		st.add("rsType", getMapRSType());
 		st.add("varIn",
 				commonDefinitions.getVariableOutName(operation.variable));
@@ -812,6 +831,8 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 		st.add("kernel", commonDefinitions.getKernelName(className));
 		st.add("finalVarName", finalVar.name);
 		st.add("UCFinalVarName", upperCaseFirstLetter(finalVar.name));
+		st.add("varFromImage", commonDefinitions
+				.getFromImageBooleanName(operation.destinationVariable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential
@@ -825,13 +846,16 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "<varOut> = Allocation.createTyped(PM_mRS, <varOut>Type);"
 						+ "<kernel>.set_PM_gInputMap123(<varIn>);"
 						+ "<kernel>.set_PM_gOutputMap123(<varOut>);"
-						+ "<kernel>.invoke_map123();");
+						+ "<kernel>.invoke_map123();\n"
+						+ "<varFromImage> = true;");
 		st.add("rsType", getMapRSType());
 		st.add("varIn",
 				commonDefinitions.getVariableOutName(operation.variable));
 		st.add("varOut", commonDefinitions
 				.getVariableOutName(operation.destinationVariable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
+		st.add("varFromImage", commonDefinitions
+				.getFromImageBooleanName(operation.destinationVariable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential with non-final and final variable
@@ -853,7 +877,8 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "<kernel>.set_PM_gOutputMap123(<varOut>);"
 						+ "<kernel>.set_PM_g<UCFinalVarName>Map123(<finalVarName>);\n"
 						+ "<kernel>.invoke_map123();"
-						+ "PM_gOutput<UCNonFinalVarName>Map123.copyTo(<nonFinalVarName>);\n");
+						+ "PM_gOutput<UCNonFinalVarName>Map123.copyTo(<nonFinalVarName>);\n\n"
+						+ "<varFromImage> = true;");
 		st.add("rsType", getMapRSType());
 		st.add("varIn",
 				commonDefinitions.getVariableOutName(operation.variable));
@@ -864,6 +889,8 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 		st.add("nonFinalVarName", nonFinalVar.name);
 		st.add("UCFinalVarName", upperCaseFirstLetter(finalVar.name));
 		st.add("finalVarName", finalVar.name);
+		st.add("varFromImage", commonDefinitions
+				.getFromImageBooleanName(operation.destinationVariable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential with non-final variable
@@ -882,7 +909,8 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "<kernel>.set_PM_gInputMap123(<varIn>);"
 						+ "<kernel>.set_PM_gOutputMap123(<varOut>);"
 						+ "<kernel>.invoke_map123();"
-						+ "PM_gOutput<UCNonFinalVarName>Map123.copyTo(<nonFinalVarName>);\n");
+						+ "PM_gOutput<UCNonFinalVarName>Map123.copyTo(<nonFinalVarName>);\n\n"
+						+ "<varFromImage> = true;");
 		st.add("rsType", getMapRSType());
 		st.add("varIn",
 				commonDefinitions.getVariableOutName(operation.variable));
@@ -891,6 +919,8 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 		st.add("kernel", commonDefinitions.getKernelName(className));
 		st.add("UCNonFinalVarName", upperCaseFirstLetter(nonFinalVar.name));
 		st.add("nonFinalVarName", nonFinalVar.name);
+		st.add("varFromImage", commonDefinitions
+				.getFromImageBooleanName(operation.destinationVariable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 	}
@@ -933,10 +963,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "\t\tint PM_value = rsGetElementAt_int(PM_gOutputTileFilter123, PM_x, PM_y);\n"
 						+ "\t\tif (PM_value > 0) {\n"
 						+ "\t\t\trsSetElementAt_<type>(PM_gOutputFilter123, rsGetElementAt_<type>(PM_gInputFilter123, PM_value), PM_count++);\n"
-						+ "\t\t}\n" 
-						+ "\t}\n" 
-						+ "\t}\n" 
-						+ "}");
+						+ "\t\t}\n" + "\t}\n" + "\t}\n" + "}");
 		st.add("type", getTranslatedParameterType());
 		String expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
@@ -973,10 +1000,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "\t\tint PM_value = rsGetElementAt_int(PM_gOutputTileFilter123, PM_x, PM_y);\n"
 						+ "\t\tif (PM_value > 0) {\n"
 						+ "\t\t\trsSetElementAt_<type>(PM_gOutputFilter123, rsGetElementAt_<type>(PM_gInputFilter123, PM_value), PM_count++);\n"
-						+ "\t\t}\n" 
-						+ "\t}\n" 
-						+ "\t}\n" 
-						+ "}");
+						+ "\t\t}\n" + "\t}\n" + "\t}\n" + "}");
 		st.add("type", getTranslatedParameterType());
 		st.add("finalVarType", finalVar.typeName);
 		st.add("finalVarName", upperCaseFirstLetter(finalVar.name));
@@ -1024,10 +1048,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "\t\tint PM_value = rsGetElementAt_int(PM_gOutputTileFilter123, PM_x, PM_y);\n"
 						+ "\t\tif (PM_value > 0) {\n"
 						+ "\t\t\trsSetElementAt_<type>(PM_gOutputFilter123, rsGetElementAt_<type>(PM_gInputFilter123, PM_value), PM_count++);\n"
-						+ "\t\t}\n" 
-						+ "\t}\n" 
-						+ "\t}\n" 
-						+ "}");
+						+ "\t\t}\n" + "\t}\n" + "\t}\n" + "}");
 		st.add("UCNonFinalVarName", upperCaseFirstLetter(nonFinalVar.name));
 		st.add("type", getTranslatedParameterType());
 		expectedTranslation = st.render();
@@ -1068,10 +1089,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "\t\tint PM_value = rsGetElementAt_int(PM_gOutputTileFilter123, PM_x, PM_y);\n"
 						+ "\t\tif (PM_value > 0) {\n"
 						+ "\t\t\trsSetElementAt_<type>(PM_gOutputFilter123, rsGetElementAt_<type>(PM_gInputFilter123, PM_value), PM_count++);\n"
-						+ "\t\t}\n" 
-						+ "\t}\n" 
-						+ "\t}\n" 
-						+ "}");
+						+ "\t\t}\n" + "\t}\n" + "\t}\n" + "}");
 		st.add("type", getTranslatedParameterType());
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
@@ -1117,10 +1135,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "\t\tint PM_value = rsGetElementAt_int(PM_gOutputTileFilter123, PM_x, PM_y);\n"
 						+ "\t\tif (PM_value > 0) {\n"
 						+ "\t\t\trsSetElementAt_<type>(PM_gOutputFilter123, rsGetElementAt_<type>(PM_gInputFilter123, PM_value), PM_count++);\n"
-						+ "\t\t}\n" 
-						+ "\t}\n" 
-						+ "\t}\n" 
-						+ "}");
+						+ "\t\t}\n" + "\t}\n" + "\t}\n" + "}");
 		st.add("UCNonFinalVarName", upperCaseFirstLetter(nonFinalVar.name));
 		st.add("finalVarType", finalVar.typeName);
 		st.add("finalVarName", upperCaseFirstLetter(finalVar.name));
@@ -1167,10 +1182,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "\t\tint PM_value = rsGetElementAt_int(PM_gOutputTileFilter123, PM_x, PM_y);\n"
 						+ "\t\tif (PM_value > 0) {\n"
 						+ "\t\t\trsSetElementAt_<type>(PM_gOutputFilter123, rsGetElementAt_<type>(PM_gInputFilter123, PM_value), PM_count++);\n"
-						+ "\t\t}\n" 
-						+ "\t}\n" 
-						+ "\t}\n" 
-						+ "}");
+						+ "\t\t}\n" + "\t}\n" + "\t}\n" + "}");
 		st.add("UCNonFinalVarName", upperCaseFirstLetter(nonFinalVar.name));
 		st.add("type", getTranslatedParameterType());
 		expectedTranslation = st.render();
@@ -1208,6 +1220,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "\t\t.setX(PM_size[0])\n"
 						+ "\t\t.create();\n"
 						+ "\t<varOut> = Allocation.createTyped(PM_mRS, <varOut>Type);\n"
+						+ "\t<varFromImage> = true;\n"
 						+ "\t<kernel>.set_PM_gOutputFilter123(<varOut>);\n"
 						+ "\t<kernel>.set_PM_gInputFilter123(<varIn>);\n"
 						+ "\t<kernel>.invoke_filter123();\n" + "}");
@@ -1217,6 +1230,8 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 		st.add("varOut", commonDefinitions
 				.getVariableOutName(operation.destinationVariable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
+		st.add("varFromImage", commonDefinitions
+				.getFromImageBooleanName(operation.destinationVariable));
 		String expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Parallel with final variable
@@ -1246,6 +1261,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "\t\t.setX(PM_size[0])\n"
 						+ "\t\t.create();\n"
 						+ "\t<varOut> = Allocation.createTyped(PM_mRS, <varOut>Type);\n"
+						+ "\t<varFromImage> = true;\n"
 						+ "\t<kernel>.set_PM_gOutputFilter123(<varOut>);\n"
 						+ "\t<kernel>.set_PM_gInputFilter123(<varIn>);\n"
 						+ "\t<kernel>.invoke_filter123();\n" + "}");
@@ -1257,6 +1273,8 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 		st.add("kernel", commonDefinitions.getKernelName(className));
 		st.add("finalVarName", finalVar.name);
 		st.add("UCFinalVarName", upperCaseFirstLetter(finalVar.name));
+		st.add("varFromImage", commonDefinitions
+				.getFromImageBooleanName(operation.destinationVariable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential
@@ -1284,6 +1302,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "\t\t\t.setX(PM_size[0])\n"
 						+ "\t\t\t.create();\n"
 						+ "\t<varOut> = Allocation.createTyped(PM_mRS, <varOut>Type);\n"
+						+ "\t<varFromImage> = true;\n"
 						+ "\t<kernel>.set_PM_gOutputFilter123(<varOut>);\n"
 						+ "\t<kernel>.set_PM_gInputFilter123(<varIn>);\n"
 						+ "\t<kernel>.invoke_filter123();\n" + "}");
@@ -1293,6 +1312,8 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 		st.add("varOut", commonDefinitions
 				.getVariableOutName(operation.destinationVariable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
+		st.add("varFromImage", commonDefinitions
+				.getFromImageBooleanName(operation.destinationVariable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential with non-final and final variable
@@ -1328,6 +1349,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "\t\t\t.setX(PM_size[0])\n"
 						+ "\t\t\t.create();\n"
 						+ "\t<varOut> = Allocation.createTyped(PM_mRS, <varOut>Type);\n"
+						+ "\t<varFromImage> = true;\n"
 						+ "\t<kernel>.set_PM_gOutputFilter123(<varOut>);\n"
 						+ "\t<kernel>.set_PM_gInputFilter123(<varIn>);\n"
 						+ "\t<kernel>.invoke_filter123();\n" + "}");
@@ -1341,6 +1363,8 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 		st.add("nonFinalVarName", nonFinalVar.name);
 		st.add("UCFinalVarName", upperCaseFirstLetter(finalVar.name));
 		st.add("finalVarName", finalVar.name);
+		st.add("varFromImage", commonDefinitions
+				.getFromImageBooleanName(operation.destinationVariable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential with non-final variable
@@ -1373,6 +1397,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "\t\t\t.setX(PM_size[0])\n"
 						+ "\t\t\t.create();\n"
 						+ "\t<varOut> = Allocation.createTyped(PM_mRS, <varOut>Type);\n"
+						+ "\t<varFromImage> = true;\n"
 						+ "\t<kernel>.set_PM_gOutputFilter123(<varOut>);\n"
 						+ "\t<kernel>.set_PM_gInputFilter123(<varIn>);\n"
 						+ "\t<kernel>.invoke_filter123();\n" + "}");
@@ -1384,6 +1409,8 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 		st.add("kernel", commonDefinitions.getKernelName(className));
 		st.add("UCNonFinalVarName", upperCaseFirstLetter(nonFinalVar.name));
 		st.add("nonFinalVarName", nonFinalVar.name);
+		st.add("varFromImage", commonDefinitions
+				.getFromImageBooleanName(operation.destinationVariable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 	}

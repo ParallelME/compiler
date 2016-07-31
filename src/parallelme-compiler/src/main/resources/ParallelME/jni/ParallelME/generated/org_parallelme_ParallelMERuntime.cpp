@@ -40,54 +40,33 @@ JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativeCleanUpRuntim
 		delete (ParallelMERuntimeData *) rtmPtr;
 }
 
-JNIEXPORT jlong JNICALL Java_org_parallelme_ParallelMERuntime_nativeCreateShortArray(JNIEnv *env, jobject self, jarray data, jint length) {
+JNIEXPORT jlong JNICALL Java_org_parallelme_ParallelMERuntime_nativeCreateArray__II(JNIEnv *env, jobject self, jint length, jint typeNo) {
 	auto arrayPtr = new ArrayData();
 	arrayPtr->length = length;
 	arrayPtr->workSize = length;
-
-	arrayPtr->buffer = std::make_shared<Buffer>(Buffer::sizeGenerator(arrayPtr->workSize, Buffer::SHORT));
-	arrayPtr->buffer->setJArraySource(env, data);
-
+	if (typeNo == 1) {
+		arrayPtr->buffer = std::make_shared<Buffer>(Buffer::sizeGenerator(arrayPtr->workSize, Buffer::SHORT));
+	} else if (typeNo == 2) {
+		arrayPtr->buffer = std::make_shared<Buffer>(Buffer::sizeGenerator(arrayPtr->workSize, Buffer::INT));
+	} else if (typeNo == 3) {
+		arrayPtr->buffer = std::make_shared<Buffer>(Buffer::sizeGenerator(arrayPtr->workSize, Buffer::FLOAT));
+	} else {
+		__android_log_print(ANDROID_LOG_ERROR, "ParallelME Runtime", "Type not supported for nativeCreateArray: %d", typeNo);
+	}
 	return (jlong) arrayPtr;
 }
 
-JNIEXPORT jlong JNICALL Java_org_parallelme_ParallelMERuntime_nativeCreateIntArray(JNIEnv *env, jobject self, jarray data, jint length) {
-	auto arrayPtr = new ArrayData();
-	arrayPtr->length = length;
-	arrayPtr->workSize = length;
-
-	arrayPtr->buffer = std::make_shared<Buffer>(Buffer::sizeGenerator(arrayPtr->workSize, Buffer::INT));
-	arrayPtr->buffer->setJArraySource(env, data);
-
+JNIEXPORT jlong JNICALL Java_org_parallelme_ParallelMERuntime_nativeCreateArray__IILjava_lang_Object_2(JNIEnv *env, jobject self, jint length, jint typeNo, jobject data) {
+	auto arrayPtr = reinterpret_cast<ArrayData*>(Java_org_parallelme_ParallelMERuntime_nativeCreateArray__II(env, self, length, typeNo));
+	jarray *arr = reinterpret_cast<jarray*>(&data);
+	arrayPtr->buffer->setJArraySource(env, *arr);
 	return (jlong) arrayPtr;
 }
 
-JNIEXPORT jlong JNICALL Java_org_parallelme_ParallelMERuntime_nativeCreateFloatArray(JNIEnv *env, jobject self, jarray data, jint length) {
-	auto arrayPtr = new ArrayData();
-	arrayPtr->length = length;
-	arrayPtr->workSize = length;
-
-	arrayPtr->buffer = std::make_shared<Buffer>(Buffer::sizeGenerator(arrayPtr->workSize, Buffer::FLOAT));
-	arrayPtr->buffer->setJArraySource(env, data);
-
-	return (jlong) arrayPtr;
-}
-
-JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativeToShortArray(JNIEnv *env, jobject self, jlong arrPtr, jshortArray data) {
+JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativeToArray(JNIEnv *env, jobject self, jlong arrPtr, jobject data) {
 	auto arrayPtr = (ArrayData *) arrPtr;
-	arrayPtr->buffer->copyToJArray(env, data);
-	delete arrayPtr;
-}
-
-JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativeToIntArray(JNIEnv *env, jobject self, jlong arrPtr, jintArray data) {
-	auto arrayPtr = (ArrayData *) arrPtr;
-	arrayPtr->buffer->copyToJArray(env, data);
-	delete arrayPtr;
-}
-
-JNIEXPORT void JNICALL Java_org_parallelme_ParallelMERuntime_nativeToFloatArray(JNIEnv *env, jobject self, jlong arrPtr, jfloatArray data) {
-	auto arrayPtr = (ArrayData *) arrPtr;
-	arrayPtr->buffer->copyToJArray(env, data);
+	jarray *arr = reinterpret_cast<jarray*>(&data);
+	arrayPtr->buffer->copyToJArray(env, *arr);
 	delete arrayPtr;
 }
 

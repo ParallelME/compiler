@@ -34,7 +34,9 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 			+ "<allocation>.copyFrom(<inputArray>);";
 	private static final String templateOutputBindCall1 = "<baseType>[] <name>;\n"
 			+ "if (<inputAllocation> != null) {\n"
-			+ "\t<name> = new <baseType>[<inputAllocation>.getType().getX()];\n"
+			+ "\tint <size> = <inputAllocation>.getType().getX();\n"
+			+ "\t<size> = <fromImageVar> ? <size> * 4 : <size>;\n"
+			+ "\t<name> = new <baseType>[<size>];\n"
 			+ "\t<inputAllocation>.copyTo(<name>);\n"
 			+ "} else {\n"
 			+ "\t<name> = new <baseType>[0];\n" + "}\n" + "return <name>;";
@@ -85,7 +87,8 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 	@Override
 	public String translateObjDeclaration(Operation operation) {
 		if (operation.operationType == OperationType.Map
-				|| operation.operationType == OperationType.Filter) {
+				|| operation.operationType == OperationType.Filter
+				|| operation.operationType == OperationType.Foreach) {
 			return translateObjDeclaration(operation.destinationVariable);
 		} else {
 			return "";
@@ -96,8 +99,14 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 	 * Returns the creation statement for a given variable's allocation.
 	 */
 	private String translateObjDeclaration(Variable variable) {
-		String inAllocation = commonDefinitions.getVariableOutName(variable);
-		return String.format("private Allocation %s;", inAllocation);
+		// The "FromImage" boolean is used to control if the last call for a
+		// given variable is originated from an image element. In case
+		// positive, the outputbind must multiply by 4 the lenght of the
+		// returning array.
+		return String.format(
+				"private Allocation %s;\nprivate boolean %s = false;",
+				commonDefinitions.getVariableOutName(variable),
+				commonDefinitions.getFromImageBooleanName(variable));
 	}
 
 	/**
@@ -123,6 +132,9 @@ public class RSArrayTranslator extends RSTranslator implements ArrayTranslator {
 		if (outputBind.outputBindType != OutputBindType.None) {
 			st = new ST(templateOutputBindCall1);
 			st.add("name", commonDefinitions.getPrefix() + "javaArray");
+			st.add("size", commonDefinitions.getPrefix() + "size");
+			st.add("fromImageVar", commonDefinitions
+					.getFromImageBooleanName(outputBind.variable));
 			String baseType = outputBind.destinationObject.typeName
 					.replaceAll("\\[", "").replaceAll("\\]", "").trim();
 			st.add("baseType", baseType);

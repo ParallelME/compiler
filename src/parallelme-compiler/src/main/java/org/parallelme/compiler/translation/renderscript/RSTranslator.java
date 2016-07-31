@@ -36,7 +36,8 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 			+ "<additionalStatements:{var|\n\n<var.value>}>"
 			+ "<destinationVariable:{var|\n\n<var.nativeReturnType>[] <var.tmpName> = new <var.nativeReturnType>[<var.size>];\n"
 			+ "<var.name>.copyTo(<var.tmpName>);\n"
-			+ "return new <var.returnObjectCreation>;}>";
+			+ "return new <var.returnObjectCreation>;}>"
+			+ "<fromImage:{var|\n\n<var.name> = <var.value>;}>";
 	private static final String templateAllocationRSFile = "<allocation:{var|rs_allocation <var.name>;\n}>"
 			+ "<sizeVar:{var|int <var.name>;\n}>"
 			+ "<externalVariables:{var|<var.type> <var.name>;\n}>\n";
@@ -90,6 +91,7 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 			+ "<kernelName>.get_<gSizeVariableName>().copyTo(<sizeVarName>);\n"
 			+ "if (<sizeVarName>[0] > 0) {\n"
 			+ "\t<allocation:{var|<var.body>}; separator=\"\\n\">"
+			+ "\t<fromImage:{var|\n\n\t<var.name> = <var.value>;}>"
 			+ "\t<variables:{var|\n\n\t<kernelName>.set_<var.gVariableName>(<var.variableName>);}>"
 			+ "<kernels:{var|\n\n\t<kernelName>.<var.rsOperationName>_<var.functionName>(<var.allocations>);}>"
 			+ "\n}";
@@ -121,6 +123,7 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 		st.add("destinationVariable", null);
 		st.add("sequentialNonFinalVariables", null);
 		st.add("additionalStatements", null);
+		st.add("fromImage", null);
 		if (operation.operationType == OperationType.Reduce) {
 			fillReduceOperationCall(st, operation);
 		} else if (operation.operationType == OperationType.Foreach) {
@@ -291,6 +294,11 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 					commonDefinitions.getOperationName(operation),
 					variableAllocation + ", " + variableAllocation, "forEach");
 		}
+		boolean isImage = commonDefinitions.isImage(operation.variable);
+		String fromImageVar = commonDefinitions
+				.getFromImageBooleanName(operation.variable);
+		st.addAggr("fromImage.{name, value}", fromImageVar, isImage ? "true"
+				: "false");
 	}
 
 	/**
@@ -303,7 +311,8 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 		String varAllocation = commonDefinitions
 				.getVariableOutName(operation.variable);
 		String expression;
-		if (commonDefinitions.isImage(operation.variable)) {
+		boolean isImage = commonDefinitions.isImage(operation.variable);
+		if (isImage) {
 			expression = String.format(
 					"%s.getType().getX() * %s.getType().getY()", varAllocation,
 					varAllocation);
@@ -333,6 +342,10 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 					commonDefinitions.getOperationName(operation), inAllocation
 							+ ", " + outAllocation, "forEach");
 		}
+		String fromImageVar = commonDefinitions
+				.getFromImageBooleanName(operation.destinationVariable);
+		st.addAggr("fromImage.{name, value}", fromImageVar, isImage ? "true"
+				: "false");
 	}
 
 	/**
@@ -345,7 +358,8 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 		String varAllocation = commonDefinitions
 				.getVariableOutName(operation.variable);
 		String expression;
-		if (commonDefinitions.isImage(operation.variable)) {
+		boolean isImage = commonDefinitions.isImage(operation.variable);
+		if (isImage) {
 			expression = String.format(
 					"%s.getType().getX() * %s.getType().getY()", varAllocation,
 					varAllocation);
@@ -402,6 +416,10 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 		stIfBody.addAggr(
 				"kernels.{functionName, allocations, rsOperationName}",
 				commonDefinitions.getOperationName(operation), "", "invoke");
+		String fromImageVar = commonDefinitions
+				.getFromImageBooleanName(operation.destinationVariable);
+		stIfBody.addAggr("fromImage.{name, value}", fromImageVar,
+				isImage ? "true" : "false");
 		st.addAggr("additionalStatements.{value}", stIfBody.render());
 	}
 
@@ -767,7 +785,7 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 		ST st = new ST(templateFunctionDecl);
 		st.add("functionName",
 				commonDefinitions.getOperationUserFunctionName(operation));
-		st.add("returnType", getFunctionReturnType(operation));
+		st.add("returnType", commonDefinitions.getCReturnType(operation));
 		st.addAggr("modifier.{value}", "static");
 		st.add("isKernel", null);
 		st.add("params", null);

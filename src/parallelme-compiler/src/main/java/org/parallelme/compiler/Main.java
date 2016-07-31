@@ -17,7 +17,6 @@ import org.parallelme.compiler.exception.CompilationException;
  * @author Wilson de Carvalho
  */
 public class Main {
-
 	public static void main(String[] args) {
 		try {
 			CompilerParameters parameters = null;

@@ -19,6 +19,7 @@ import org.parallelme.compiler.RuntimeCommonDefinitions;
 import org.parallelme.compiler.RuntimeDefinitionImpl;
 import org.parallelme.compiler.exception.CompilationException;
 import org.parallelme.compiler.intermediate.*;
+import org.parallelme.compiler.intermediate.Operation.OperationType;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.userlibrary.classes.*;
 import org.parallelme.compiler.util.ResourceWriter;
@@ -90,11 +91,17 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 			throws CompilationException {
 		List<String> ret = new ArrayList<>();
 		Variable runtimePtr = new Variable("runtimePtr", "long", null, "", -1);
-		Variable variablePointer = new Variable("varPtr", "long", null, "", -1);
+		Variable dataPointer = new Variable("dataPtr", "long", null, "", -1);
+		Variable dataRetPointer = new Variable("dataRetPtr", "long", null, "",
+				-1);
 		for (Operation operation : operations) {
 			List<Parameter> parameters = new ArrayList<>();
 			parameters.add(runtimePtr);
-			parameters.add(variablePointer);
+			parameters.add(dataPointer);
+			if (operation.operationType == OperationType.Map)
+				parameters.add(dataRetPointer);
+			else if (operation.operationType == OperationType.Reduce)
+				parameters.add(createDestinationVariableParameter(operation));
 			// Sequential operations must create an array for each variable.
 			// This array will be used to store the output value.
 			List<Variable> externalVariables = operation.getExternalVariables();
@@ -106,11 +113,6 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 							.getInstance().getPrefix() + foo.name, foo.typeName
 							+ "[]", null, "", -1));
 				}
-			}
-			if (operation.destinationVariable != null) {
-				// Last parameter is the destination variable
-				parameters.add(this
-						.createDestinationVariableParameter(operation));
 			}
 			String name = commonDefinitions.getOperationName(operation);
 			ret.add(commonDefinitions.createJavaMethodSignature(

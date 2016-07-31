@@ -82,9 +82,11 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 	public void translateInputBindObjDeclaration() throws Exception {
 		InputBind inputBind = createInputBind();
 		BaseUserLibraryTranslator translator = this.getTranslator();
-		ST st = new ST("private Allocation <varName>;");
+		ST st = new ST("private Allocation <varName>;\nprivate boolean <fromImageVar> = false;");
 		st.add("varName",
 				commonDefinitions.getVariableOutName(inputBind.variable));
+		st.add("fromImageVar",
+				commonDefinitions.getFromImageBooleanName(inputBind.variable));
 		String expectedTranslation = st.render();
 		String translatedFunction = translator
 				.translateObjDeclaration(inputBind);
@@ -123,13 +125,17 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		// bitmapVar = imageVar.toBitmap();
 		outputBind = this.createOutputBind(OutputBindType.Assignment);
 		st = new ST("<type>[] PM_javaArray;\n" + "if (<varDest> != null) {\n"
-				+ "\tPM_javaArray = new <type>[<varDest>.getType().getX()];\n"
+				+ "\tint PM_size = <varDest>.getType().getX();\n"
+				+ "\tPM_size = <varFromImage> ? PM_size * 4 : PM_size;\n"
+				+ "\tPM_javaArray = new <type>[PM_size];\n"
 				+ "\t<varDest>.copyTo(PM_javaArray);\n" + "} else {\n"
 				+ "\tPM_javaArray = new <type>[0];\n" + "}\n"
 				+ "return PM_javaArray;");
 		st.add("varName", varName);
 		st.add("varDest",
 				commonDefinitions.getVariableOutName(outputBind.variable));
+		st.add("varFromImage",
+				commonDefinitions.getFromImageBooleanName(outputBind.variable));
 		st.add("type", getTranslatedParameterType());
 		expectedTranslation = st.render();
 		translatedFunction = translator.translateOutputBindCall(className,
@@ -286,10 +292,13 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		BaseUserLibraryTranslator translator = this.getTranslator();
 		String translatedFunction = translator.translateOperationCall(
 				className, operation);
-		ST st = new ST("<kernel>.forEach_foreach123(<varOut>, <varOut>);");
+		ST st = new ST("<kernel>.forEach_foreach123(<varOut>, <varOut>);\n"
+				+ "<varFromImage> = false;");
 		st.add("varOut",
 				commonDefinitions.getVariableOutName(operation.variable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
+		st.add("varFromImage",
+				commonDefinitions.getFromImageBooleanName(operation.variable));
 		String expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Parallel with final external variable
@@ -300,12 +309,15 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 				operation);
 		st = new ST(
 				"<kernel>.set_PM_g<UCFinalVarName>Foreach123(<finalVarName>);\n"
-						+ "<kernel>.forEach_foreach123(<varOut>, <varOut>);");
+						+ "<kernel>.forEach_foreach123(<varOut>, <varOut>);\n"
+						+ "<varFromImage> = false;");
 		st.add("varOut",
 				commonDefinitions.getVariableOutName(operation.variable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
 		st.add("UCFinalVarName", upperCaseFirstLetter(finalVar.name));
 		st.add("finalVarName", finalVar.name);
+		st.add("varFromImage",
+				commonDefinitions.getFromImageBooleanName(operation.variable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential
@@ -313,10 +325,12 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		translatedFunction = translator.translateOperationCall(className,
 				operation);
 		st = new ST("<kernel>.set_PM_gInputForeach123(<varOut>);\n"
-				+ "<kernel>.invoke_foreach123();");
+				+ "<kernel>.invoke_foreach123();\n" + "<varFromImage> = false;");
 		st.add("varOut",
 				commonDefinitions.getVariableOutName(operation.variable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
+		st.add("varFromImage",
+				commonDefinitions.getFromImageBooleanName(operation.variable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential non-final and final variable
@@ -333,7 +347,8 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "<kernel>.set_PM_gInputForeach123(<varOut>);\n"
 						+ "<kernel>.set_PM_g<UCFinalVarName>Foreach123(<finalVarName>);\n"
 						+ "<kernel>.invoke_foreach123();\n"
-						+ "PM_gOutput<UCNonFinalVarName>Foreach123.copyTo(<nonFinalVarName>);");
+						+ "PM_gOutput<UCNonFinalVarName>Foreach123.copyTo(<nonFinalVarName>);\n"
+						+ "<varFromImage> = false;");
 		st.add("varOut",
 				commonDefinitions.getVariableOutName(operation.variable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
@@ -341,6 +356,8 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		st.add("nonFinalVarName", nonFinalVar.name);
 		st.add("UCFinalVarName", upperCaseFirstLetter(finalVar.name));
 		st.add("finalVarName", finalVar.name);
+		st.add("varFromImage",
+				commonDefinitions.getFromImageBooleanName(operation.variable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential non-final
@@ -354,12 +371,15 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "<kernel>.set_PM_gOutput<UCNonFinalVarName>Foreach123(PM_gOutput<UCNonFinalVarName>Foreach123);"
 						+ "<kernel>.set_PM_gInputForeach123(<varOut>);\n"
 						+ "<kernel>.invoke_foreach123();\n"
-						+ "PM_gOutput<UCNonFinalVarName>Foreach123.copyTo(<nonFinalVarName>);");
+						+ "PM_gOutput<UCNonFinalVarName>Foreach123.copyTo(<nonFinalVarName>);\n"
+						+ "<varFromImage> = false;");
 		st.add("varOut",
 				commonDefinitions.getVariableOutName(operation.variable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
 		st.add("UCNonFinalVarName", upperCaseFirstLetter(nonFinalVar.name));
 		st.add("nonFinalVarName", nonFinalVar.name);
+		st.add("varFromImage",
+				commonDefinitions.getFromImageBooleanName(operation.variable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 	}
@@ -868,13 +888,16 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ ".setX(<varIn>.getType().getX())"
 						+ ".create();"
 						+ "<varOut> = Allocation.createTyped(PM_mRS, <varOut>Type);"
-						+ "<kernel>.forEach_map123(<varIn>, <varOut>);");
+						+ "<kernel>.forEach_map123(<varIn>, <varOut>);\n"
+						+ "<varFromImage> = false;");
 		st.add("rsType", getMapRSType());
 		st.add("varIn",
 				commonDefinitions.getVariableOutName(operation.variable));
 		st.add("varOut", commonDefinitions
 				.getVariableOutName(operation.destinationVariable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
+		st.add("varFromImage",
+				commonDefinitions.getFromImageBooleanName(operation.destinationVariable));
 		String expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Parallel with final variable
@@ -889,7 +912,8 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ ".create();"
 						+ "<varOut> = Allocation.createTyped(PM_mRS, <varOut>Type);"
 						+ "<kernel>.set_PM_g<UCFinalVarName>Map123(<finalVarName>);"
-						+ "<kernel>.forEach_map123(<varIn>, <varOut>);");
+						+ "<kernel>.forEach_map123(<varIn>, <varOut>);\n"
+						+ "<varFromImage> = false;");
 		st.add("rsType", getMapRSType());
 		st.add("varIn",
 				commonDefinitions.getVariableOutName(operation.variable));
@@ -898,6 +922,8 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		st.add("kernel", commonDefinitions.getKernelName(className));
 		st.add("finalVarName", finalVar.name);
 		st.add("UCFinalVarName", upperCaseFirstLetter(finalVar.name));
+		st.add("varFromImage", commonDefinitions
+				.getFromImageBooleanName(operation.destinationVariable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential
@@ -911,13 +937,16 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "<varOut> = Allocation.createTyped(PM_mRS, <varOut>Type);"
 						+ "<kernel>.set_PM_gInputMap123(<varIn>);"
 						+ "<kernel>.set_PM_gOutputMap123(<varOut>);"
-						+ "<kernel>.invoke_map123();");
+						+ "<kernel>.invoke_map123();\n"
+						+ "<varFromImage> = false;");
 		st.add("rsType", getMapRSType());
 		st.add("varIn",
 				commonDefinitions.getVariableOutName(operation.variable));
 		st.add("varOut", commonDefinitions
 				.getVariableOutName(operation.destinationVariable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
+		st.add("varFromImage", commonDefinitions
+				.getFromImageBooleanName(operation.destinationVariable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential with non-final and final variable
@@ -938,8 +967,9 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "<kernel>.set_PM_gInputMap123(<varIn>);"
 						+ "<kernel>.set_PM_gOutputMap123(<varOut>);"
 						+ "<kernel>.set_PM_g<UCFinalVarName>Map123(<finalVarName>);\n"
-						+ "<kernel>.invoke_map123();"
-						+ "PM_gOutput<UCNonFinalVarName>Map123.copyTo(<nonFinalVarName>);\n");
+						+ "<kernel>.invoke_map123();\n"
+						+ "PM_gOutput<UCNonFinalVarName>Map123.copyTo(<nonFinalVarName>);\n"
+						+ "<varFromImage> = false;");
 		st.add("rsType", getMapRSType());
 		st.add("varIn",
 				commonDefinitions.getVariableOutName(operation.variable));
@@ -950,6 +980,8 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		st.add("nonFinalVarName", nonFinalVar.name);
 		st.add("UCFinalVarName", upperCaseFirstLetter(finalVar.name));
 		st.add("finalVarName", finalVar.name);
+		st.add("varFromImage", commonDefinitions
+				.getFromImageBooleanName(operation.destinationVariable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential with non-final variable
@@ -968,7 +1000,8 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "<kernel>.set_PM_gInputMap123(<varIn>);"
 						+ "<kernel>.set_PM_gOutputMap123(<varOut>);"
 						+ "<kernel>.invoke_map123();"
-						+ "PM_gOutput<UCNonFinalVarName>Map123.copyTo(<nonFinalVarName>);\n");
+						+ "PM_gOutput<UCNonFinalVarName>Map123.copyTo(<nonFinalVarName>);\n"
+						+ "<varFromImage> = false;");
 		st.add("rsType", getMapRSType());
 		st.add("varIn",
 				commonDefinitions.getVariableOutName(operation.variable));
@@ -977,6 +1010,8 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		st.add("kernel", commonDefinitions.getKernelName(className));
 		st.add("UCNonFinalVarName", upperCaseFirstLetter(nonFinalVar.name));
 		st.add("nonFinalVarName", nonFinalVar.name);
+		st.add("varFromImage", commonDefinitions
+				.getFromImageBooleanName(operation.destinationVariable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 	}
@@ -1262,6 +1297,7 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "\t\t.setX(PM_size[0])\n"
 						+ "\t\t.create();\n"
 						+ "\t<varOut> = Allocation.createTyped(PM_mRS, <varOut>Type);\n"
+						+ "\t<varFromImage> = false;\n"
 						+ "\t<kernel>.set_PM_gOutputFilter123(<varOut>);\n"
 						+ "\t<kernel>.set_PM_gInputFilter123(<varIn>);\n"
 						+ "\t<kernel>.invoke_filter123();\n" + "}");
@@ -1271,6 +1307,8 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		st.add("varOut", commonDefinitions
 				.getVariableOutName(operation.destinationVariable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
+		st.add("varFromImage", commonDefinitions
+				.getFromImageBooleanName(operation.destinationVariable));
 		String expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Parallel with final variable
@@ -1300,6 +1338,7 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "\t\t.setX(PM_size[0])\n"
 						+ "\t\t.create();\n"
 						+ "\t<varOut> = Allocation.createTyped(PM_mRS, <varOut>Type);\n"
+						+ "\t<varFromImage> = false;\n"
 						+ "\t<kernel>.set_PM_gOutputFilter123(<varOut>);\n"
 						+ "\t<kernel>.set_PM_gInputFilter123(<varIn>);\n"
 						+ "\t<kernel>.invoke_filter123();\n" + "}");
@@ -1311,6 +1350,8 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		st.add("kernel", commonDefinitions.getKernelName(className));
 		st.add("finalVarName", finalVar.name);
 		st.add("UCFinalVarName", upperCaseFirstLetter(finalVar.name));
+		st.add("varFromImage", commonDefinitions
+				.getFromImageBooleanName(operation.destinationVariable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential
@@ -1338,6 +1379,7 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "\t\t\t.setX(PM_size[0])\n"
 						+ "\t\t\t.create();\n"
 						+ "\t<varOut> = Allocation.createTyped(PM_mRS, <varOut>Type);\n"
+						+ "\t<varFromImage> = false;\n"
 						+ "\t<kernel>.set_PM_gOutputFilter123(<varOut>);\n"
 						+ "\t<kernel>.set_PM_gInputFilter123(<varIn>);\n"
 						+ "\t<kernel>.invoke_filter123();\n" + "}");
@@ -1347,6 +1389,8 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		st.add("varOut", commonDefinitions
 				.getVariableOutName(operation.destinationVariable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
+		st.add("varFromImage", commonDefinitions
+				.getFromImageBooleanName(operation.destinationVariable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential with non-final and final variable
@@ -1382,6 +1426,7 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "\t\t\t.setX(PM_size[0])\n"
 						+ "\t\t\t.create();\n"
 						+ "\t<varOut> = Allocation.createTyped(PM_mRS, <varOut>Type);\n"
+						+ "\t<varFromImage> = false;\n"
 						+ "\t<kernel>.set_PM_gOutputFilter123(<varOut>);\n"
 						+ "\t<kernel>.set_PM_gInputFilter123(<varIn>);\n"
 						+ "\t<kernel>.invoke_filter123();\n" + "}");
@@ -1395,6 +1440,8 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		st.add("nonFinalVarName", nonFinalVar.name);
 		st.add("UCFinalVarName", upperCaseFirstLetter(finalVar.name));
 		st.add("finalVarName", finalVar.name);
+		st.add("varFromImage", commonDefinitions
+				.getFromImageBooleanName(operation.destinationVariable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential with non-final variable
@@ -1427,6 +1474,7 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "\t\t\t.setX(PM_size[0])\n"
 						+ "\t\t\t.create();\n"
 						+ "\t<varOut> = Allocation.createTyped(PM_mRS, <varOut>Type);\n"
+						+ "\t<varFromImage> = false;\n"
 						+ "\t<kernel>.set_PM_gOutputFilter123(<varOut>);\n"
 						+ "\t<kernel>.set_PM_gInputFilter123(<varIn>);\n"
 						+ "\t<kernel>.invoke_filter123();\n" + "}");
@@ -1438,6 +1486,8 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		st.add("kernel", commonDefinitions.getKernelName(className));
 		st.add("UCNonFinalVarName", upperCaseFirstLetter(nonFinalVar.name));
 		st.add("nonFinalVarName", nonFinalVar.name);
+		st.add("varFromImage", commonDefinitions
+				.getFromImageBooleanName(operation.destinationVariable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 	}

@@ -16,12 +16,10 @@ import org.parallelme.compiler.intermediate.MethodCall;
 import org.parallelme.compiler.intermediate.Operation;
 import org.parallelme.compiler.intermediate.OutputBind;
 import org.parallelme.compiler.intermediate.Operation.ExecutionType;
-import org.parallelme.compiler.intermediate.Operation.OperationType;
 import org.parallelme.compiler.intermediate.OutputBind.OutputBindType;
 import org.parallelme.compiler.intermediate.Variable;
 import org.parallelme.compiler.translation.CTranslator;
 import org.parallelme.compiler.translation.userlibrary.ArrayTranslator;
-import org.parallelme.compiler.userlibrary.UserLibraryClassFactory;
 import org.stringtemplate.v4.ST;
 
 /**
@@ -31,13 +29,12 @@ import org.stringtemplate.v4.ST;
  */
 public class PMArrayTranslator extends PMTranslator implements ArrayTranslator {
 	private static final String templateInputBindObjCreation = "<arrayPointer> = ParallelMERuntime.getInstance().createArray(<arrayName>);";
-	private static final String templateOutputBindCall1 = "<baseType>[] <name> = new <baseType>[ParallelMERuntime.getInstance().getLength(<arrayPointer>)];\n"
+	private static final String templateOutputBindCall1 = "int <size> = ParallelMERuntime.getInstance().getLength(<arrayPointer>);\n"
+			+ "<size> = <fromImageVar> ? <size> * 4 : <size>;\n"
+			+ "<baseType>[] <name> = new <baseType>[<size>];\n"
 			+ "ParallelMERuntime.getInstance().toArray(<arrayPointer>, <name>);\n"
 			+ "return <name>;";
 	private static final String templateOutputBindCall2 = "ParallelMERuntime.getInstance().toArray(<arrayPointer>, <arrayName>);";
-	private static final String templateOperationCall = "<destinationVariable:{var|<var.nativeReturnType>[] <var.name> = new <var.nativeReturnType>[<var.size>];\n}>"
-			+ "<operationName>(<params:{var|<var.name>}; separator=\", \">);"
-			+ "<destinationVariable:{var|\n\nreturn new <var.methodReturnType>(<var.name>[0]);}>";
 
 	public PMArrayTranslator(CTranslator cCodeTranslator) {
 		super(cCodeTranslator);
@@ -87,6 +84,9 @@ public class PMArrayTranslator extends PMTranslator implements ArrayTranslator {
 		if (outputBind.outputBindType != OutputBindType.None) {
 			st = new ST(templateOutputBindCall1);
 			st.add("name", commonDefinitions.getPrefix() + "javaArray");
+			st.add("size", commonDefinitions.getPrefix() + "size");
+			st.add("fromImageVar", commonDefinitions
+					.getFromImageBooleanName(outputBind.variable));
 			String baseType = outputBind.destinationObject.typeName
 					.replaceAll("\\[", "").replaceAll("\\]", "").trim();
 			st.add("baseType", baseType);
@@ -105,39 +105,6 @@ public class PMArrayTranslator extends PMTranslator implements ArrayTranslator {
 	 */
 	public String translateMethodCall(String className, MethodCall methodCall) {
 		return "";
-	}
-
-	/**
-	 * {@inheritDoc}
-	 */
-	public String translateOperationCall(String className, Operation operation) {
-		ST st = new ST(templateOperationCall);
-		this.fillOperationCallBaseInfo(st, operation);
-		if (operation.destinationVariable != null) {
-			String nativeReturnType = "";
-			String methodReturnType = "";
-			String size = "";
-			String variableName = this.commonDefinitions.getPrefix()
-					+ operation.destinationVariable.name;
-			// These variables must be set to different values when map and
-			// filter operations are implemented.
-			if (operation.operationType == OperationType.Reduce) {
-				nativeReturnType = this.commonDefinitions
-						.translateToCType(operation.variable.typeParameters
-								.get(0));
-				methodReturnType = UserLibraryClassFactory.getClass(
-						operation.variable.typeParameters.get(0))
-						.getClassName();
-				size = "1";
-			}
-			st.addAggr(
-					"destinationVariable.{name, nativeReturnType, methodReturnType, size}",
-					variableName, nativeReturnType, methodReturnType, size);
-			st.addAggr("params.{name}", variableName);
-		} else {
-			st.add("destinationVariable", null);
-		}
-		return st.render();
 	}
 
 	/**

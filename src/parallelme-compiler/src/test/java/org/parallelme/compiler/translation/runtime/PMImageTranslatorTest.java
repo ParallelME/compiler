@@ -8,8 +8,6 @@
 
 package org.parallelme.compiler.translation.runtime;
 
-import static org.junit.Assert.*;
-
 import java.util.List;
 
 import org.junit.Test;
@@ -58,19 +56,34 @@ public abstract class PMImageTranslatorTest extends ImageTranslatorTest {
 	public void translateObjDeclaration() throws Exception {
 		BaseUserLibraryTranslator translator = this.getTranslator();
 		InputBind inputBind = createInputBind();
-		assertEquals(translator.translateObjDeclaration(inputBind),
-				String.format("private long  PM_%s%sPtr;", inputBind.variable,
-						inputBind.variable.sequentialNumber));
+		ST st = new ST("private long <varName>;\nprivate boolean <fromImageVar> = false;");
+		st.add("varName", commonDefinitions.getPointerName(inputBind.variable));
+		st.add("fromImageVar",
+				commonDefinitions.getFromImageBooleanName(inputBind.variable));
+		validateTranslation(st.render(),
+				translator.translateObjDeclaration(inputBind));
+		st.add("fromImageVar",
+				commonDefinitions.getFromImageBooleanName(inputBind.variable));
+		// Parallel operation
 		Operation operation = createMapOperation(ExecutionType.Sequential);
-		assertEquals(translator.translateObjDeclaration(operation),
-				String.format("private long  PM_%s%sPtr;",
-						operation.destinationVariable,
-						operation.destinationVariable.sequentialNumber));
+		st = new ST("private long <varName>;\n"
+				+ "private boolean <varFromImage> = false;");
+		st.add("varName",
+				commonDefinitions.getPointerName(operation.destinationVariable));
+		st.add("varFromImage", commonDefinitions
+				.getFromImageBooleanName(operation.destinationVariable));
+		validateTranslation(st.render(),
+				translator.translateObjDeclaration(operation));
+		// Sequential operation
 		operation = createMapOperation(ExecutionType.Parallel);
-		assertEquals(translator.translateObjDeclaration(operation),
-				String.format("private long  PM_%s%sPtr;",
-						operation.destinationVariable,
-						operation.destinationVariable.sequentialNumber));
+		st.remove("varName");
+		st.remove("varFromImage");
+		st.add("varName",
+				commonDefinitions.getPointerName(operation.destinationVariable));
+		st.add("varFromImage", commonDefinitions
+				.getFromImageBooleanName(operation.destinationVariable));
+		validateTranslation(st.render(),
+				translator.translateObjDeclaration(operation));
 	}
 
 	/**
@@ -217,17 +230,18 @@ public abstract class PMImageTranslatorTest extends ImageTranslatorTest {
 		BaseUserLibraryTranslator translator = this.getTranslator();
 		String translatedFunction = translator.translateOperationCall(
 				className, operation);
-		String varName = this.commonDefinitions
-				.getPointerName(operation.variable);
-		String expectedTranslation = String
-				.format("foreach123(ParallelMERuntime.getInstance().runtimePointer, %s);",
-						varName);
-		this.validateTranslation(expectedTranslation, translatedFunction);
+		ST st = new ST(
+				"foreach123(ParallelMERuntime.getInstance().runtimePointer, <varName>);\n"
+						+ "<varFromImage> = true;");
+		st.add("varFromImage",
+				commonDefinitions.getFromImageBooleanName(operation.variable));
+		st.add("varName", commonDefinitions.getPointerName(operation.variable));
+		validateTranslation(st.render(), translatedFunction);
 		// Sequential
 		operation = this.createForeachOperation(ExecutionType.Sequential);
 		translatedFunction = translator.translateOperationCall(className,
 				operation);
-		this.validateTranslation(expectedTranslation, translatedFunction);
+		validateTranslation(st.render(), translatedFunction);
 	}
 
 	/**
@@ -241,19 +255,19 @@ public abstract class PMImageTranslatorTest extends ImageTranslatorTest {
 		ParallelMERuntimeCTranslation cTranslator = new ParallelMERuntimeCTranslation();
 		String translatedFunction = cTranslator.createParallelOperation(
 				operation, this.className);
-		String expectedTranslation = "JNIEXPORT void JNICALL Java_SomeClass_foreach123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr) {\n"
-				+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
-				+ "auto variablePtr = (ImageData *) varPtr;\n"
-				+ "auto task = std::make_unique<Task>(runtimePtr->program);\n"
-				+ "task->addKernel(\"foreach123\");\n"
-				+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+		String expectedTranslation = "JNIEXPORT void JNICALL Java_SomeClass_foreach123(JNIEnv *env, jobject self, jlong PM_runtime, jlong PM_data) {\n"
+				+ "auto PM_runtimePtr = (ParallelMERuntimeData *) PM_runtime;\n"
+				+ "auto PM_dataPtr = (ImageData *) PM_data;\n"
+				+ "auto PM_task = std::make_unique<Task>(PM_runtimePtr->program);\n"
+				+ "PM_task->addKernel(\"foreach123\");\n"
+				+ "PM_task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
 				+ "kernelHash[\"foreach123\"]\n"
-				+ "->setArg(0, variablePtr->outputBuffer)\n"
-				+ "->setArg(1, variablePtr->width)\n"
-				+ "->setWorkSize(variablePtr->width, variablePtr->height);\n"
+				+ "->setArg(0, PM_dataPtr->outputBuffer)\n"
+				+ "->setArg(1, PM_dataPtr->width)\n"
+				+ "->setWorkSize(PM_dataPtr->width, PM_dataPtr->height);\n"
 				+ "});\n"
-				+ "runtimePtr->runtime->submitTask(std::move(task));\n"
-				+ "runtimePtr->runtime->finish();\n" + "}";
+				+ "PM_runtimePtr->runtime->submitTask(std::move(PM_task));\n"
+				+ "PM_runtimePtr->runtime->finish();\n" + "}";
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Parallel with final external variable
 		operation = this.createForeachOperation(ExecutionType.Parallel);
@@ -262,20 +276,20 @@ public abstract class PMImageTranslatorTest extends ImageTranslatorTest {
 		translatedFunction = cTranslator.createParallelOperation(operation,
 				this.className);
 		ST st = new ST(
-				"JNIEXPORT void JNICALL Java_SomeClass_foreach123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr, <finalVarType> <finalVar>) {\n"
-						+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
-						+ "auto variablePtr = (ImageData *) varPtr;\n"
-						+ "auto task = std::make_unique\\<Task>(runtimePtr->program);\n"
-						+ "task->addKernel(\"foreach123\");\n"
-						+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+				"JNIEXPORT void JNICALL Java_SomeClass_foreach123(JNIEnv *env, jobject self, jlong PM_runtime, jlong PM_data, <finalVarType> <finalVar>) {\n"
+						+ "auto PM_runtimePtr = (ParallelMERuntimeData *) PM_runtime;\n"
+						+ "auto PM_dataPtr = (ImageData *) PM_data;\n"
+						+ "auto PM_task = std::make_unique\\<Task>(PM_runtimePtr->program);\n"
+						+ "PM_task->addKernel(\"foreach123\");\n"
+						+ "PM_task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
 						+ "kernelHash[\"foreach123\"]\n"
-						+ "->setArg(0, variablePtr->outputBuffer)\n"
-						+ "->setArg(1, variablePtr->width)\n"
+						+ "->setArg(0, PM_dataPtr->outputBuffer)\n"
+						+ "->setArg(1, PM_dataPtr->width)\n"
 						+ "->setArg(2, <finalVar>)\n"
-						+ "->setWorkSize(variablePtr->width, variablePtr->height);\n"
+						+ "->setWorkSize(PM_dataPtr->width, PM_dataPtr->height);\n"
 						+ "});\n"
-						+ "runtimePtr->runtime->submitTask(std::move(task));\n"
-						+ "runtimePtr->runtime->finish();\n" + "}");
+						+ "PM_runtimePtr->runtime->submitTask(std::move(PM_task));\n"
+						+ "PM_runtimePtr->runtime->finish();\n" + "}");
 		st.add("finalVarType", finalVar.typeName);
 		st.add("finalVar", finalVar.name);
 		expectedTranslation = st.render();
@@ -288,26 +302,26 @@ public abstract class PMImageTranslatorTest extends ImageTranslatorTest {
 		translatedFunction = cTranslator.createSequentialOperation(operation,
 				this.className);
 		st = new ST(
-				"JNIEXPORT void JNICALL Java_SomeClass_foreach123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr, "
+				"JNIEXPORT void JNICALL Java_SomeClass_foreach123(JNIEnv *env, jobject self, jlong PM_runtime, jlong PM_data, "
 						+ "j<nonFinalVarType>Array PM_<nonFinalVar>, <finalVarType> <finalVar>) {\n"
-						+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
-						+ "auto variablePtr = (ImageData *) varPtr;\n"
-						+ "auto task = std::make_unique\\<Task>(runtimePtr->program, Task::Score(1.0f,2.0f));\n"
-						+ "auto <nonFinalVar>Buffer = std::make_shared\\<Buffer>(sizeof(<nonFinalVarType>));\n"
-						+ "<nonFinalVar>Buffer->setJArraySource(env, PM_<nonFinalVar>);\n"
-						+ "task->addKernel(\"foreach123\");\n"
-						+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "auto PM_runtimePtr = (ParallelMERuntimeData *) PM_runtime;\n"
+						+ "auto PM_dataPtr = (ImageData *) PM_data;\n"
+						+ "auto PM_task = std::make_unique\\<Task>(PM_runtimePtr->program, Task::Score(1.0f,2.0f));\n"
+						+ "auto PM_<nonFinalVar>Buffer = std::make_shared\\<Buffer>(sizeof(<nonFinalVarType>));\n"
+						+ "PM_<nonFinalVar>Buffer->setJArraySource(env, PM_<nonFinalVar>);\n"
+						+ "PM_task->addKernel(\"foreach123\");\n"
+						+ "PM_task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
 						+ "kernelHash[\"foreach123\"]\n"
-						+ "->setArg(0, variablePtr->outputBuffer)\n"
-						+ "->setArg(1, variablePtr->width)\n"
-						+ "->setArg(2, variablePtr->height)\n"
-						+ "->setArg(3, <nonFinalVar>Buffer)\n"
+						+ "->setArg(0, PM_dataPtr->outputBuffer)\n"
+						+ "->setArg(1, PM_dataPtr->width)\n"
+						+ "->setArg(2, PM_dataPtr->height)\n"
+						+ "->setArg(3, PM_<nonFinalVar>Buffer)\n"
 						+ "->setArg(4, <finalVar>)\n"
 						+ "->setWorkSize(1);\n"
 						+ "});\n"
-						+ "runtimePtr->runtime->submitTask(std::move(task));\n"
-						+ "runtimePtr->runtime->finish();\n"
-						+ "<nonFinalVar>Buffer->copyToJArray(env, PM_<nonFinalVar>);"
+						+ "PM_runtimePtr->runtime->submitTask(std::move(PM_task));\n"
+						+ "PM_runtimePtr->runtime->finish();\n"
+						+ "PM_<nonFinalVar>Buffer->copyToJArray(env, PM_<nonFinalVar>);"
 						+ "}");
 		st.add("finalVarType", finalVar.typeName);
 		st.add("finalVar", finalVar.name);
@@ -321,21 +335,21 @@ public abstract class PMImageTranslatorTest extends ImageTranslatorTest {
 		translatedFunction = cTranslator.createSequentialOperation(operation,
 				this.className);
 		st = new ST(
-				"JNIEXPORT void JNICALL Java_SomeClass_foreach123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr, <finalVarType> <finalVar>) {\n"
-						+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
-						+ "auto variablePtr = (ImageData *) varPtr;\n"
-						+ "auto task = std::make_unique\\<Task>(runtimePtr->program, Task::Score(1.0f,2.0f));\n"
-						+ "task->addKernel(\"foreach123\");\n"
-						+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+				"JNIEXPORT void JNICALL Java_SomeClass_foreach123(JNIEnv *env, jobject self, jlong PM_runtime, jlong PM_data, <finalVarType> <finalVar>) {\n"
+						+ "auto PM_runtimePtr = (ParallelMERuntimeData *) PM_runtime;\n"
+						+ "auto PM_dataPtr = (ImageData *) PM_data;\n"
+						+ "auto PM_task = std::make_unique\\<Task>(PM_runtimePtr->program, Task::Score(1.0f,2.0f));\n"
+						+ "PM_task->addKernel(\"foreach123\");\n"
+						+ "PM_task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
 						+ "kernelHash[\"foreach123\"]\n"
-						+ "->setArg(0, variablePtr->outputBuffer)\n"
-						+ "->setArg(1, variablePtr->width)\n"
-						+ "->setArg(2, variablePtr->height)\n"
+						+ "->setArg(0, PM_dataPtr->outputBuffer)\n"
+						+ "->setArg(1, PM_dataPtr->width)\n"
+						+ "->setArg(2, PM_dataPtr->height)\n"
 						+ "->setArg(3, <finalVar>)\n"
 						+ "->setWorkSize(1);\n"
 						+ "});\n"
-						+ "runtimePtr->runtime->submitTask(std::move(task));\n"
-						+ "runtimePtr->runtime->finish();\n" + "}");
+						+ "PM_runtimePtr->runtime->submitTask(std::move(PM_task));\n"
+						+ "PM_runtimePtr->runtime->finish();\n" + "}");
 		st.add("finalVarType", finalVar.typeName);
 		st.add("finalVar", finalVar.name);
 		expectedTranslation = st.render();
@@ -346,25 +360,25 @@ public abstract class PMImageTranslatorTest extends ImageTranslatorTest {
 		translatedFunction = cTranslator.createSequentialOperation(operation,
 				this.className);
 		st = new ST(
-				"JNIEXPORT void JNICALL Java_SomeClass_foreach123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr, "
+				"JNIEXPORT void JNICALL Java_SomeClass_foreach123(JNIEnv *env, jobject self, jlong PM_runtime, jlong PM_data, "
 						+ "j<nonFinalVarType>Array PM_<nonFinalVar>) {\n"
-						+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
-						+ "auto variablePtr = (ImageData *) varPtr;\n"
-						+ "auto task = std::make_unique\\<Task>(runtimePtr->program, Task::Score(1.0f,2.0f));\n"
-						+ "auto <nonFinalVar>Buffer = std::make_shared\\<Buffer>(sizeof(<nonFinalVarType>));\n"
-						+ "<nonFinalVar>Buffer->setJArraySource(env, PM_<nonFinalVar>);\n"
-						+ "task->addKernel(\"foreach123\");\n"
-						+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "auto PM_runtimePtr = (ParallelMERuntimeData *) PM_runtime;\n"
+						+ "auto PM_dataPtr = (ImageData *) PM_data;\n"
+						+ "auto PM_task = std::make_unique\\<Task>(PM_runtimePtr->program, Task::Score(1.0f,2.0f));\n"
+						+ "auto PM_<nonFinalVar>Buffer = std::make_shared\\<Buffer>(sizeof(<nonFinalVarType>));\n"
+						+ "PM_<nonFinalVar>Buffer->setJArraySource(env, PM_<nonFinalVar>);\n"
+						+ "PM_task->addKernel(\"foreach123\");\n"
+						+ "PM_task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
 						+ "kernelHash[\"foreach123\"]\n"
-						+ "->setArg(0, variablePtr->outputBuffer)\n"
-						+ "->setArg(1, variablePtr->width)\n"
-						+ "->setArg(2, variablePtr->height)\n"
-						+ "->setArg(3, <nonFinalVar>Buffer)\n"
+						+ "->setArg(0, PM_dataPtr->outputBuffer)\n"
+						+ "->setArg(1, PM_dataPtr->width)\n"
+						+ "->setArg(2, PM_dataPtr->height)\n"
+						+ "->setArg(3, PM_<nonFinalVar>Buffer)\n"
 						+ "->setWorkSize(1);\n"
 						+ "});\n"
-						+ "runtimePtr->runtime->submitTask(std::move(task));\n"
-						+ "runtimePtr->runtime->finish();\n"
-						+ "<nonFinalVar>Buffer->copyToJArray(env, PM_<nonFinalVar>);"
+						+ "PM_runtimePtr->runtime->submitTask(std::move(PM_task));\n"
+						+ "PM_runtimePtr->runtime->finish();\n"
+						+ "PM_<nonFinalVar>Buffer->copyToJArray(env, PM_<nonFinalVar>);"
 						+ "}");
 		st.add("nonFinalVarType", nonFinalVar.typeName);
 		st.add("nonFinalVar", nonFinalVar.name);
@@ -531,18 +545,32 @@ public abstract class PMImageTranslatorTest extends ImageTranslatorTest {
 				.getPointerName(operation.variable);
 		String tmpVar = this.commonDefinitions.getPrefix()
 				+ operation.destinationVariable.name;
-		String expectedTranslation = String
-				.format("float[] %s = new float[4];\n"
-						+ "reduce123(ParallelMERuntime.getInstance().runtimePointer, %s, %s);\n"
-						+ "return new Pixel(%s[0], %s[1], %s[2], %s[3], -1, -1);",
-						tmpVar, imageVarName, tmpVar, tmpVar, tmpVar, tmpVar,
-						tmpVar);
-		this.validateTranslation(expectedTranslation, translatedFunction);
+		ST st = new ST(
+				"float[] <tmpVar> = new float[4];\n"
+						+ "reduce123(ParallelMERuntime.getInstance().runtimePointer, <imageVarName>, <tmpVar>);\n"
+						+ "return new Pixel(<tmpVar>[0], <tmpVar>[1], <tmpVar>[2], <tmpVar>[3], -1, -1);");
+		st.add("imageVarName", imageVarName);
+		st.add("tmpVar", tmpVar);
+		this.validateTranslation(st.render(), translatedFunction);
+		// Parallel with final variable
+		Variable finalVar = createExternalVariable("final", "var1");
+		operation.addExternalVariable(finalVar);
+		translatedFunction = translator.translateOperationCall(
+				className, operation);
+		st = new ST(
+				"float[] <tmpVar> = new float[4];\n"
+						+ "reduce123(ParallelMERuntime.getInstance().runtimePointer, <imageVarName>, <tmpVar>, <finalVarName>);\n"
+						+ "return new Pixel(<tmpVar>[0], <tmpVar>[1], <tmpVar>[2], <tmpVar>[3], -1, -1);");
+		st.add("imageVarName", imageVarName);
+		st.add("tmpVar", tmpVar);
+		st.add("finalVarName", finalVar.name);
+		this.validateTranslation(st.render(), translatedFunction);
 		// Sequential
 		operation = this.createReduceOperation(ExecutionType.Sequential);
+		operation.addExternalVariable(finalVar);
 		translatedFunction = translator.translateOperationCall(className,
 				operation);
-		this.validateTranslation(expectedTranslation, translatedFunction);
+		this.validateTranslation(st.render(), translatedFunction);
 	}
 
 	/**
@@ -557,30 +585,30 @@ public abstract class PMImageTranslatorTest extends ImageTranslatorTest {
 		String translatedFunction = cTranslator.createParallelOperation(
 				operation, this.className);
 		ST st = new ST(
-				"JNIEXPORT void JNICALL Java_SomeClass_reduce123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr, jfloatArray <destName>) {\n"
-						+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
-						+ "auto variablePtr = (ImageData *) varPtr;\n"
-						+ "auto task = std::make_unique\\<Task>(runtimePtr->program);\n"
-						+ "int tileElemSize = sizeof(float) * env->GetArrayLength(<destName>);\n"
-						+ "auto tileBuffer = std::make_shared\\<Buffer>(tileElemSize * variablePtr->height);"
-						+ "auto <destName>Buffer = std::make_shared\\<Buffer>(tileElemSize);\n"
-						+ "task->addKernel(\"reduce123_tile\");\n"
-						+ "task->addKernel(\"reduce123\");\n"
-						+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+				"JNIEXPORT void JNICALL Java_SomeClass_reduce123(JNIEnv *env, jobject self, jlong PM_runtime, jlong PM_data, jfloatArray <destName>) {\n"
+						+ "auto PM_runtimePtr = (ParallelMERuntimeData *) PM_runtime;\n"
+						+ "auto PM_dataPtr = (ImageData *) PM_data;\n"
+						+ "auto PM_task = std::make_unique\\<Task>(PM_runtimePtr->program);\n"
+						+ "int PM_tileElemSize = sizeof(float) * env->GetArrayLength(<destName>);\n"
+						+ "auto PM_tileBuffer = std::make_shared\\<Buffer>(PM_tileElemSize * PM_dataPtr->height);"
+						+ "auto PM_<destName>Buffer = std::make_shared\\<Buffer>(PM_tileElemSize);\n"
+						+ "PM_task->addKernel(\"reduce123_tile\");\n"
+						+ "PM_task->addKernel(\"reduce123\");\n"
+						+ "PM_task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
 						+ "kernelHash[\"reduce123_tile\"]\n"
-						+ "->setArg(0, variablePtr->outputBuffer)\n"
-						+ "->setArg(1, tileBuffer)\n"
-						+ "->setArg(2, variablePtr->width)\n"
-						+ "->setWorkSize(variablePtr->height);\n"
+						+ "->setArg(0, PM_dataPtr->outputBuffer)\n"
+						+ "->setArg(1, PM_tileBuffer)\n"
+						+ "->setArg(2, PM_dataPtr->width)\n"
+						+ "->setWorkSize(PM_dataPtr->height);\n"
 						+ "kernelHash[\"reduce123\"]\n"
-						+ "->setArg(0, <destName>Buffer)\n"
-						+ "->setArg(1, tileBuffer)\n"
-						+ "->setArg(2, variablePtr->height)\n"
+						+ "->setArg(0, PM_<destName>Buffer)\n"
+						+ "->setArg(1, PM_tileBuffer)\n"
+						+ "->setArg(2, PM_dataPtr->height)\n"
 						+ "->setWorkSize(1);\n"
 						+ "});\n"
-						+ "runtimePtr->runtime->submitTask(std::move(task));\n"
-						+ "runtimePtr->runtime->finish();\n"
-						+ "<destName>Buffer->copyToJArray(env, <destName>);\n"
+						+ "PM_runtimePtr->runtime->submitTask(std::move(PM_task));\n"
+						+ "PM_runtimePtr->runtime->finish();\n"
+						+ "PM_<destName>Buffer->copyToJArray(env, <destName>);\n"
 						+ "}");
 		st.add("destName", operation.destinationVariable.name);
 		String expectedTranslation = st.render();
@@ -592,33 +620,33 @@ public abstract class PMImageTranslatorTest extends ImageTranslatorTest {
 		translatedFunction = cTranslator.createParallelOperation(operation,
 				this.className);
 		st = new ST(
-				"JNIEXPORT void JNICALL Java_SomeClass_reduce123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr, "
-						+ "<finalVarType> <finalVar>, jfloatArray <destName>) {\n"
-						+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
-						+ "auto variablePtr = (ImageData *) varPtr;\n"
-						+ "auto task = std::make_unique\\<Task>(runtimePtr->program);\n"
-						+ "int tileElemSize = sizeof(float) * env->GetArrayLength(<destName>);\n"
-						+ "auto tileBuffer = std::make_shared\\<Buffer>(tileElemSize * variablePtr->height);"
-						+ "auto <destName>Buffer = std::make_shared\\<Buffer>(tileElemSize);\n"
-						+ "task->addKernel(\"reduce123_tile\");\n"
-						+ "task->addKernel(\"reduce123\");\n"
-						+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+				"JNIEXPORT void JNICALL Java_SomeClass_reduce123(JNIEnv *env, jobject self, jlong PM_runtime, jlong PM_data, jfloatArray <destName>, "
+						+ "<finalVarType> <finalVar>) {\n"
+						+ "auto PM_runtimePtr = (ParallelMERuntimeData *) PM_runtime;\n"
+						+ "auto PM_dataPtr = (ImageData *) PM_data;\n"
+						+ "auto PM_task = std::make_unique\\<Task>(PM_runtimePtr->program);\n"
+						+ "int PM_tileElemSize = sizeof(float) * env->GetArrayLength(<destName>);\n"
+						+ "auto PM_tileBuffer = std::make_shared\\<Buffer>(PM_tileElemSize * PM_dataPtr->height);"
+						+ "auto PM_<destName>Buffer = std::make_shared\\<Buffer>(PM_tileElemSize);\n"
+						+ "PM_task->addKernel(\"reduce123_tile\");\n"
+						+ "PM_task->addKernel(\"reduce123\");\n"
+						+ "PM_task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
 						+ "kernelHash[\"reduce123_tile\"]\n"
-						+ "->setArg(0, variablePtr->outputBuffer)\n"
-						+ "->setArg(1, tileBuffer)\n"
-						+ "->setArg(2, variablePtr->width)\n"
+						+ "->setArg(0, PM_dataPtr->outputBuffer)\n"
+						+ "->setArg(1, PM_tileBuffer)\n"
+						+ "->setArg(2, PM_dataPtr->width)\n"
 						+ "->setArg(3, <finalVar>)\n"
-						+ "->setWorkSize(variablePtr->height);\n"
+						+ "->setWorkSize(PM_dataPtr->height);\n"
 						+ "kernelHash[\"reduce123\"]\n"
-						+ "->setArg(0, <destName>Buffer)\n"
-						+ "->setArg(1, tileBuffer)\n"
-						+ "->setArg(2, variablePtr->height)\n"
+						+ "->setArg(0, PM_<destName>Buffer)\n"
+						+ "->setArg(1, PM_tileBuffer)\n"
+						+ "->setArg(2, PM_dataPtr->height)\n"
 						+ "->setArg(3, <finalVar>)\n"
 						+ "->setWorkSize(1);\n"
 						+ "});\n"
-						+ "runtimePtr->runtime->submitTask(std::move(task));\n"
-						+ "runtimePtr->runtime->finish();\n"
-						+ "<destName>Buffer->copyToJArray(env, <destName>);\n"
+						+ "PM_runtimePtr->runtime->submitTask(std::move(PM_task));\n"
+						+ "PM_runtimePtr->runtime->finish();\n"
+						+ "PM_<destName>Buffer->copyToJArray(env, <destName>);\n"
 						+ "}");
 		st.add("destName", operation.destinationVariable.name);
 		st.add("finalVarType", finalVar.typeName);
@@ -630,23 +658,23 @@ public abstract class PMImageTranslatorTest extends ImageTranslatorTest {
 		translatedFunction = cTranslator.createSequentialOperation(operation,
 				this.className);
 		st = new ST(
-				"JNIEXPORT void JNICALL Java_SomeClass_reduce123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr, jfloatArray <destName>) {\n"
-						+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
-						+ "auto variablePtr = (ImageData *) varPtr;\n"
-						+ "auto task = std::make_unique\\<Task>(runtimePtr->program, Task::Score(1.0f,2.0f));\n"
-						+ "auto <destName>Buffer = std::make_shared\\<Buffer>(sizeof(float)*env->GetArrayLength(<destName>));\n"
-						+ "task->addKernel(\"reduce123\");\n"
-						+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+				"JNIEXPORT void JNICALL Java_SomeClass_reduce123(JNIEnv *env, jobject self, jlong PM_runtime, jlong PM_data, jfloatArray <destName>) {\n"
+						+ "auto PM_runtimePtr = (ParallelMERuntimeData *) PM_runtime;\n"
+						+ "auto PM_dataPtr = (ImageData *) PM_data;\n"
+						+ "auto PM_task = std::make_unique\\<Task>(PM_runtimePtr->program, Task::Score(1.0f,2.0f));\n"
+						+ "auto PM_<destName>Buffer = std::make_shared\\<Buffer>(sizeof(float)*env->GetArrayLength(<destName>));\n"
+						+ "PM_task->addKernel(\"reduce123\");\n"
+						+ "PM_task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
 						+ "kernelHash[\"reduce123\"]\n"
-						+ "->setArg(0, <destName>Buffer)\n"
-						+ "->setArg(1, variablePtr->outputBuffer)\n"
-						+ "->setArg(2, variablePtr->width)\n"
-						+ "->setArg(3, variablePtr->height)\n"
+						+ "->setArg(0, PM_<destName>Buffer)\n"
+						+ "->setArg(1, PM_dataPtr->outputBuffer)\n"
+						+ "->setArg(2, PM_dataPtr->width)\n"
+						+ "->setArg(3, PM_dataPtr->height)\n"
 						+ "->setWorkSize(1);\n"
 						+ "});\n"
-						+ "runtimePtr->runtime->submitTask(std::move(task));\n"
-						+ "runtimePtr->runtime->finish();\n"
-						+ "<destName>Buffer->copyToJArray(env, <destName>);\n"
+						+ "PM_runtimePtr->runtime->submitTask(std::move(PM_task));\n"
+						+ "PM_runtimePtr->runtime->finish();\n"
+						+ "PM_<destName>Buffer->copyToJArray(env, <destName>);\n"
 						+ "}");
 		st.add("destName", operation.destinationVariable.name);
 		expectedTranslation = st.render();
@@ -657,24 +685,24 @@ public abstract class PMImageTranslatorTest extends ImageTranslatorTest {
 		translatedFunction = cTranslator.createSequentialOperation(operation,
 				this.className);
 		st = new ST(
-				"JNIEXPORT void JNICALL Java_SomeClass_reduce123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr, <finalVarType> <finalVar>, jfloatArray <destName>) {\n"
-						+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
-						+ "auto variablePtr = (ImageData *) varPtr;\n"
-						+ "auto task = std::make_unique\\<Task>(runtimePtr->program, Task::Score(1.0f,2.0f));\n"
-						+ "auto <destName>Buffer = std::make_shared\\<Buffer>(sizeof(float)*env->GetArrayLength(<destName>));\n"
-						+ "task->addKernel(\"reduce123\");\n"
-						+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+				"JNIEXPORT void JNICALL Java_SomeClass_reduce123(JNIEnv *env, jobject self, jlong PM_runtime, jlong PM_data, jfloatArray <destName>, <finalVarType> <finalVar>) {\n"
+						+ "auto PM_runtimePtr = (ParallelMERuntimeData *) PM_runtime;\n"
+						+ "auto PM_dataPtr = (ImageData *) PM_data;\n"
+						+ "auto PM_task = std::make_unique\\<Task>(PM_runtimePtr->program, Task::Score(1.0f,2.0f));\n"
+						+ "auto PM_<destName>Buffer = std::make_shared\\<Buffer>(sizeof(float)*env->GetArrayLength(<destName>));\n"
+						+ "PM_task->addKernel(\"reduce123\");\n"
+						+ "PM_task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
 						+ "kernelHash[\"reduce123\"]\n"
-						+ "->setArg(0, <destName>Buffer)\n"
-						+ "->setArg(1, variablePtr->outputBuffer)\n"
-						+ "->setArg(2, variablePtr->width)\n"
-						+ "->setArg(3, variablePtr->height)\n"
+						+ "->setArg(0, PM_<destName>Buffer)\n"
+						+ "->setArg(1, PM_dataPtr->outputBuffer)\n"
+						+ "->setArg(2, PM_dataPtr->width)\n"
+						+ "->setArg(3, PM_dataPtr->height)\n"
 						+ "->setArg(4, <finalVar>)\n"
 						+ "->setWorkSize(1);\n"
 						+ "});\n"
-						+ "runtimePtr->runtime->submitTask(std::move(task));\n"
-						+ "runtimePtr->runtime->finish();\n"
-						+ "<destName>Buffer->copyToJArray(env, <destName>);\n"
+						+ "PM_runtimePtr->runtime->submitTask(std::move(PM_task));\n"
+						+ "PM_runtimePtr->runtime->finish();\n"
+						+ "PM_<destName>Buffer->copyToJArray(env, <destName>);\n"
 						+ "}");
 		st.add("destName", operation.destinationVariable.name);
 		st.add("finalVarType", finalVar.typeName);
@@ -688,28 +716,28 @@ public abstract class PMImageTranslatorTest extends ImageTranslatorTest {
 		translatedFunction = cTranslator.createSequentialOperation(operation,
 				this.className);
 		st = new ST(
-				"JNIEXPORT void JNICALL Java_SomeClass_reduce123(JNIEnv *env, jobject self, jlong rtmPtr, jlong varPtr, "
-						+ "j<nonFinalVarType>Array PM_<nonFinalVar>, jfloatArray <destName>) {\n"
-						+ "auto runtimePtr = (ParallelMERuntimeData *) rtmPtr;\n"
-						+ "auto variablePtr = (ImageData *) varPtr;\n"
-						+ "auto task = std::make_unique\\<Task>(runtimePtr->program, Task::Score(1.0f,2.0f));\n"
-						+ "auto <destName>Buffer = std::make_shared\\<Buffer>(sizeof(float)*env->GetArrayLength(<destName>));\n"
-						+ "auto <nonFinalVar>Buffer = std::make_shared\\<Buffer>(sizeof(<nonFinalVarType>));\n"
-						+ "<nonFinalVar>Buffer->setJArraySource(env, PM_<nonFinalVar>);\n"
-						+ "task->addKernel(\"reduce123\");\n"
-						+ "task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+				"JNIEXPORT void JNICALL Java_SomeClass_reduce123(JNIEnv *env, jobject self, jlong PM_runtime, jlong PM_data, "
+						+ "jfloatArray <destName>, j<nonFinalVarType>Array PM_<nonFinalVar>) {\n"
+						+ "auto PM_runtimePtr = (ParallelMERuntimeData *) PM_runtime;\n"
+						+ "auto PM_dataPtr = (ImageData *) PM_data;\n"
+						+ "auto PM_task = std::make_unique\\<Task>(PM_runtimePtr->program, Task::Score(1.0f,2.0f));\n"
+						+ "auto PM_<destName>Buffer = std::make_shared\\<Buffer>(sizeof(float)*env->GetArrayLength(<destName>));\n"
+						+ "auto PM_<nonFinalVar>Buffer = std::make_shared\\<Buffer>(sizeof(<nonFinalVarType>));\n"
+						+ "PM_<nonFinalVar>Buffer->setJArraySource(env, PM_<nonFinalVar>);\n"
+						+ "PM_task->addKernel(\"reduce123\");\n"
+						+ "PM_task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
 						+ "kernelHash[\"reduce123\"]\n"
-						+ "->setArg(0, <destName>Buffer)\n"
-						+ "->setArg(1, variablePtr->outputBuffer)\n"
-						+ "->setArg(2, variablePtr->width)\n"
-						+ "->setArg(3, variablePtr->height)\n"
-						+ "->setArg(4, <nonFinalVar>Buffer)\n"
+						+ "->setArg(0, PM_<destName>Buffer)\n"
+						+ "->setArg(1, PM_dataPtr->outputBuffer)\n"
+						+ "->setArg(2, PM_dataPtr->width)\n"
+						+ "->setArg(3, PM_dataPtr->height)\n"
+						+ "->setArg(4, PM_<nonFinalVar>Buffer)\n"
 						+ "->setWorkSize(1);\n"
 						+ "});\n"
-						+ "runtimePtr->runtime->submitTask(std::move(task));\n"
-						+ "runtimePtr->runtime->finish();\n"
-						+ "<nonFinalVar>Buffer->copyToJArray(env, PM_<nonFinalVar>);\n"
-						+ "<destName>Buffer->copyToJArray(env, <destName>);\n"
+						+ "PM_runtimePtr->runtime->submitTask(std::move(PM_task));\n"
+						+ "PM_runtimePtr->runtime->finish();\n"
+						+ "PM_<nonFinalVar>Buffer->copyToJArray(env, PM_<nonFinalVar>);\n"
+						+ "PM_<destName>Buffer->copyToJArray(env, <destName>);\n"
 						+ "}");
 		st.add("destName", operation.destinationVariable.name);
 		st.add("nonFinalVarType", nonFinalVar.typeName);
