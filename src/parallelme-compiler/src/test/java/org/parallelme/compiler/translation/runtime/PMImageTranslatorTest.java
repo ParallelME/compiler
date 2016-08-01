@@ -745,6 +745,345 @@ public abstract class PMImageTranslatorTest extends ImageTranslatorTest {
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 	}
+	
+
+	/**
+	 * Tests map operation translation.
+	 */
+	@Test
+	public void translateMapOperation() throws Exception {
+		// Parallel
+		Operation operation = this.createMapOperation(ExecutionType.Parallel);
+		BaseUserLibraryTranslator translator = this.getTranslator();
+		List<String> translatedFunction = translator
+				.translateOperation(operation);
+		ST st = new ST(
+				"static <mapType> map123_func(<type> param1, int x, int y) {\n"
+						+ "<mapType> ret;"
+						+ "ret = param1.s2 * 1.5f;"
+						+ "return ret; } \n"
+						+ "__kernel void map123(__global <mapType>* PM_destVar, __global <type>* PM_data, int PM_width) {"
+						+ "\tint PM_x = get_global_id(0);\n"
+						+ "\tint PM_y = get_global_id(1);\n"
+						+ "\tint PM_gid = PM_y * PM_width + PM_x;\n"
+						+ "\tPM_destVar[PM_gid] = map123_func(PM_data[PM_gid], PM_x, PM_y);"
+						+ "}");
+		st.add("type", getTranslatedParameterType());
+		st.add("mapType", getTranslatedMapType());
+		String expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Parallel with final external variable
+		operation = this.createMapOperation(ExecutionType.Parallel);
+		Variable finalVar = this.createExternalVariable("final", "var1");
+		operation.addExternalVariable(finalVar);
+		translatedFunction = translator.translateOperation(operation);
+		st = new ST(
+				"static <mapType> map123_func(<type> param1, int x, int y, <finalVarType> <finalVar>) {\n"
+						+ "<mapType> ret;"
+						+ "ret = param1.s2 * 1.5f;"
+						+ "return ret; } \n"
+						+ "__kernel void map123(__global <mapType>* PM_destVar, __global <type>* PM_data, int PM_width, <finalVarType> <finalVar>) {"
+						+ "\tint PM_x = get_global_id(0);\n"
+						+ "\tint PM_y = get_global_id(1);\n"
+						+ "\tint PM_gid = PM_y * PM_width + PM_x;\n"
+						+ "\tPM_destVar[PM_gid] = map123_func(PM_data[PM_gid], PM_x, PM_y, <finalVar>);"
+						+ "}");
+		st.add("finalVar", finalVar.name);
+		st.add("finalVarType", finalVar.typeName);
+		st.add("type", getTranslatedParameterType());
+		st.add("mapType", getTranslatedMapType());
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Parallel with non-final external variable (will be translated to
+		// sequential code)
+		operation = this.createMapOperation(ExecutionType.Parallel);
+		Variable nonFinalVar = this.createExternalVariable("", "var2");
+		operation.addExternalVariable(nonFinalVar);
+		translatedFunction = translator.translateOperation(operation);
+		st = new ST(
+				"static <mapType> map123_func(<type> param1, int x, int y, __global <nonFinalVarType>* PM_<nonFinalVar>) {\n"
+						+ "<mapType> ret;"
+						+ "ret = param1.s2 * 1.5f;"
+						+ "return ret; } \n"
+						+ "__kernel void map123(__global <mapType>* PM_destVar, __global <type>* PM_data, int PM_width, int PM_height, __global <nonFinalVarType>* PM_<nonFinalVar>) {"
+						+ "for(int PM_x=0; PM_x\\<PM_width; ++PM_x) {"
+						+ "for(int PM_y=0; PM_y\\<PM_height; ++PM_y) {"
+						+ "\tint PM_gid = PM_x + PM_y * PM_width;\n"
+						+ "\tPM_destVar[PM_gid] = map123_func(PM_data[PM_gid], PM_x, PM_y, PM_<nonFinalVar>);"
+						+ "}}}");
+		st.add("nonFinalVar", nonFinalVar.name);
+		st.add("nonFinalVarType", nonFinalVar.typeName);
+		st.add("type", getTranslatedParameterType());
+		st.add("mapType", getTranslatedMapType());
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Sequential with non-final and final variable
+		operation = this.createMapOperation(ExecutionType.Sequential);
+		operation.addExternalVariable(nonFinalVar);
+		operation.addExternalVariable(finalVar);
+		translatedFunction = translator.translateOperation(operation);
+		st = new ST(
+				"static <mapType> map123_func(<type> param1, int x, int y, __global <nonFinalVarType>* PM_<nonFinalVar>, <finalVarType> <finalVar>) {\n"
+						+ "<mapType> ret;"
+						+ "ret = param1.s2 * 1.5f;"
+						+ "return ret; } \n"
+						+ "__kernel void map123(__global <mapType>* PM_destVar, __global <type>* PM_data, int PM_width, int PM_height, "
+						+ "__global <nonFinalVarType>* PM_<nonFinalVar>, <finalVarType> <finalVar>) {"
+						+ "for(int PM_x=0; PM_x\\<PM_width; ++PM_x) {"
+						+ "for(int PM_y=0; PM_y\\<PM_height; ++PM_y) {"
+						+ "\tint PM_gid = PM_x + PM_y * PM_width;\n"
+						+ "\tPM_destVar[PM_gid] = map123_func(PM_data[PM_gid], PM_x, PM_y, PM_<nonFinalVar>, <finalVar>);"
+						+ "}}}");
+		st.add("nonFinalVar", nonFinalVar.name);
+		st.add("nonFinalVarType", nonFinalVar.typeName);
+		st.add("finalVar", finalVar.name);
+		st.add("finalVarType", finalVar.typeName);
+		st.add("type", getTranslatedParameterType());
+		st.add("mapType", getTranslatedMapType());
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Sequential with final variable
+		operation = this.createMapOperation(ExecutionType.Sequential);
+		operation.addExternalVariable(finalVar);
+		translatedFunction = translator.translateOperation(operation);
+		st = new ST(
+				"static <mapType> map123_func(<type> param1, int x, int y, <finalVarType> <finalVar>) {\n"
+						+ "<mapType> ret;"
+						+ "ret = param1.s2 * 1.5f;"
+						+ "return ret; } \n"
+						+ "__kernel void map123(__global <mapType>* PM_destVar, __global <type>* PM_data, int PM_width, int PM_height, "
+						+ "<finalVarType> <finalVar>) {"
+						+ "for(int PM_x=0; PM_x\\<PM_width; ++PM_x) {"
+						+ "for(int PM_y=0; PM_y\\<PM_height; ++PM_y) {"
+						+ "\tint PM_gid = PM_x + PM_y * PM_width;\n"
+						+ "\tPM_destVar[PM_gid] = map123_func(PM_data[PM_gid], PM_x, PM_y, <finalVar>);"
+						+ "}}}");
+		st.add("finalVar", finalVar.name);
+		st.add("finalVarType", finalVar.typeName);
+		st.add("type", getTranslatedParameterType());
+		st.add("mapType", getTranslatedMapType());
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Sequential with non-final variable
+		operation = this.createMapOperation(ExecutionType.Sequential);
+		operation.addExternalVariable(nonFinalVar);
+		translatedFunction = translator.translateOperation(operation);
+		st = new ST(
+				"static <mapType> map123_func(<type> param1, int x, int y, __global <nonFinalVarType>* PM_<nonFinalVar>) {\n"
+						+ "<mapType> ret;"
+						+ "ret = param1.s2 * 1.5f;"
+						+ "return ret; } \n"
+						+ "__kernel void map123(__global <mapType>* PM_destVar, __global <type>* PM_data, int PM_width, int PM_height, "
+						+ "__global <nonFinalVarType>* PM_<nonFinalVar>) {"
+						+ "for(int PM_x=0; PM_x\\<PM_width; ++PM_x) {"
+						+ "for(int PM_y=0; PM_y\\<PM_height; ++PM_y) {"
+						+ "\tint PM_gid = PM_x + PM_y * PM_width;\n"
+						+ "\tPM_destVar[PM_gid] = map123_func(PM_data[PM_gid], PM_x, PM_y, PM_<nonFinalVar>);"
+						+ "}}}");
+		st.add("nonFinalVar", nonFinalVar.name);
+		st.add("nonFinalVarType", nonFinalVar.typeName);
+		st.add("type", getTranslatedParameterType());
+		st.add("mapType", getTranslatedMapType());
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+	}
+
+	/**
+	 * Tests map operation call.
+	 */
+	@Test
+	public void translateMapOperationCall() throws Exception {
+		// Parallel
+		Operation operation = createMapOperation(ExecutionType.Parallel);
+		BaseUserLibraryTranslator translator = getTranslator();
+		String translatedFunction = translator.translateOperationCall(
+				className, operation);
+		ST st = new ST(
+				"<destPointer> = ParallelMERuntime.getInstance().createArray(<mapClassType>.class, ParallelMERuntime.getInstance().getWidth(<pointerVar>) *"
+				+ "ParallelMERuntime.getInstance().getHeight(<pointerVar>));\n"
+						+ "map123(ParallelMERuntime.getInstance().runtimePointer, <pointerVar>, <destPointer>);\n"
+						+ "<varFromImage> = true;");
+		st.add("pointerVar",
+				commonDefinitions.getPointerName(operation.variable));
+		st.add("destPointer",
+				commonDefinitions.getPointerName(operation.destinationVariable));
+		st.add("mapClassType", getTranslatedMapType());
+		st.add("userLibraryType", getParameterType());
+		st.add("varFromImage", commonDefinitions
+				.getFromImageBooleanName(operation.destinationVariable));
+		String expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Sequential
+		operation = this.createMapOperation(ExecutionType.Sequential);
+		translatedFunction = translator.translateOperationCall(className,
+				operation);
+		this.validateTranslation(expectedTranslation, translatedFunction);
+	}
+
+	/**
+	 * Tests map operation JNI interface.
+	 */
+	@Test
+	public void translateMapOperationJNI() throws Exception {
+		// Parallel
+		Operation operation = this.createMapOperation(ExecutionType.Parallel);
+		ParallelMERuntimeCTranslation cTranslator = new ParallelMERuntimeCTranslation();
+		String translatedFunction = cTranslator.createParallelOperation(
+				operation, this.className);
+		ST st = new ST(
+				"JNIEXPORT void JNICALL Java_SomeClass_map123(JNIEnv *env, jobject self, jlong PM_runtime, jlong PM_data, jlong PM_dataRet) {\n"
+						+ "auto PM_runtimePtr = (ParallelMERuntimeData *) PM_runtime;\n"
+						+ "auto PM_dataPtr = (ImageData *) PM_data;\n"
+						+ "auto PM_dataRetPtr = (ArrayData *) PM_dataRet;\n"
+						+ "auto PM_task = std::make_unique\\<Task>(PM_runtimePtr->program);\n"
+						+ "PM_task->addKernel(\"map123\");\n"
+						+ "PM_task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"map123\"]\n"
+						+ "->setArg(0, PM_dataRetPtr->buffer)\n"
+						+ "->setArg(1, PM_dataPtr->outputBuffer)\n"
+						+ "->setArg(2, PM_dataPtr->width)\n"
+						+ "->setWorkSize(PM_dataPtr->width, PM_dataPtr->height);\n"
+						+ "});\n"
+						+ "PM_runtimePtr->runtime->submitTask(std::move(PM_task));\n"
+						+ "PM_runtimePtr->runtime->finish();\n" + "}");
+		st.add("destName", operation.destinationVariable.name);
+		st.add("type", getTranslatedMapType());
+		String expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Parallel with final external variable
+		operation = this.createMapOperation(ExecutionType.Parallel);
+		Variable finalVar = this.createExternalVariable("final", "var1");
+		operation.addExternalVariable(finalVar);
+		translatedFunction = cTranslator.createParallelOperation(operation,
+				this.className);
+		st = new ST(
+				"JNIEXPORT void JNICALL Java_SomeClass_map123(JNIEnv *env, jobject self, jlong PM_runtime, jlong PM_data, jlong PM_dataRet,"
+						+ "<finalVarType> <finalVar>) {\n"
+						+ "auto PM_runtimePtr = (ParallelMERuntimeData *) PM_runtime;\n"
+						+ "auto PM_dataPtr = (ImageData *) PM_data;\n"
+						+ "auto PM_dataRetPtr = (ArrayData *) PM_dataRet;\n"
+						+ "auto PM_task = std::make_unique\\<Task>(PM_runtimePtr->program);\n"
+						+ "PM_task->addKernel(\"map123\");\n"
+						+ "PM_task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"map123\"]\n"
+						+ "->setArg(0, PM_dataRetPtr->buffer)\n"
+						+ "->setArg(1, PM_dataPtr->outputBuffer)\n"
+						+ "->setArg(2, PM_dataPtr->width)\n"
+						+ "->setArg(3, <finalVar>)\n"
+						+ "->setWorkSize(PM_dataPtr->width, PM_dataPtr->height);\n"
+						+ "});\n"
+						+ "PM_runtimePtr->runtime->submitTask(std::move(PM_task));\n"
+						+ "PM_runtimePtr->runtime->finish();\n" + "}");
+		st.add("destName", operation.destinationVariable.name);
+		st.add("type", getTranslatedMapType());
+		st.add("finalVarType", finalVar.typeName);
+		st.add("finalVar", finalVar.name);
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Sequential with non-final and final variable
+		operation = this.createMapOperation(ExecutionType.Sequential);
+		Variable nonFinalVar = this.createExternalVariable("", "var2");
+		operation.addExternalVariable(nonFinalVar);
+		operation.addExternalVariable(finalVar);
+		translatedFunction = cTranslator.createSequentialOperation(operation,
+				this.className);
+		st = new ST(
+				"JNIEXPORT void JNICALL Java_SomeClass_map123(JNIEnv *env, jobject self, jlong PM_runtime, jlong PM_data, jlong PM_dataRet, "
+						+ "j<nonFinalVarType>Array PM_<nonFinalVar>, <finalVarType> <finalVar>) {\n"
+						+ "auto PM_runtimePtr = (ParallelMERuntimeData *) PM_runtime;\n"
+						+ "auto PM_dataPtr = (ImageData *) PM_data;\n"
+						+ "auto PM_dataRetPtr = (ArrayData *) PM_dataRet;\n"
+						+ "auto PM_task = std::make_unique\\<Task>(PM_runtimePtr->program, Task::Score(1.0f,2.0f));\n"
+						+ "auto PM_<nonFinalVar>Buffer = std::make_shared\\<Buffer>(sizeof(<nonFinalVarType>));\n"
+						+ "PM_<nonFinalVar>Buffer->setJArraySource(env, PM_<nonFinalVar>);\n"
+						+ "PM_task->addKernel(\"map123\");\n"
+						+ "PM_task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"map123\"]\n"
+						+ "->setArg(0, PM_dataRetPtr->buffer)\n"
+						+ "->setArg(1, PM_dataPtr->outputBuffer)\n"
+						+ "->setArg(2, PM_dataPtr->width)\n"
+						+ "->setArg(3, PM_dataPtr->height)\n"
+						+ "->setArg(4, PM_<nonFinalVar>Buffer)\n"
+						+ "->setArg(5, <finalVar>)\n"
+						+ "->setWorkSize(1);\n"
+						+ "});\n"
+						+ "PM_runtimePtr->runtime->submitTask(std::move(PM_task));\n"
+						+ "PM_runtimePtr->runtime->finish();\n"
+						+ "PM_<nonFinalVar>Buffer->copyToJArray(env, PM_<nonFinalVar>);"
+						+ "}");
+		st.add("destName", operation.destinationVariable.name);
+		st.add("type", getTranslatedMapType());
+		st.add("finalVarType", finalVar.typeName);
+		st.add("finalVar", finalVar.name);
+		st.add("nonFinalVarType", nonFinalVar.typeName);
+		st.add("nonFinalVar", nonFinalVar.name);
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Sequential with final variable
+		operation = this.createMapOperation(ExecutionType.Sequential);
+		operation.addExternalVariable(finalVar);
+		translatedFunction = cTranslator.createSequentialOperation(operation,
+				this.className);
+		st = new ST(
+				"JNIEXPORT void JNICALL Java_SomeClass_map123(JNIEnv *env, jobject self, jlong PM_runtime, jlong PM_data, jlong PM_dataRet, "
+						+ "<finalVarType> <finalVar>) {\n"
+						+ "auto PM_runtimePtr = (ParallelMERuntimeData *) PM_runtime;\n"
+						+ "auto PM_dataPtr = (ImageData *) PM_data;\n"
+						+ "auto PM_dataRetPtr = (ArrayData *) PM_dataRet;\n"
+						+ "auto PM_task = std::make_unique\\<Task>(PM_runtimePtr->program, Task::Score(1.0f,2.0f));\n"
+						+ "PM_task->addKernel(\"map123\");\n"
+						+ "PM_task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"map123\"]\n"
+						+ "->setArg(0, PM_dataRetPtr->buffer)\n"
+						+ "->setArg(1, PM_dataPtr->outputBuffer)\n"
+						+ "->setArg(2, PM_dataPtr->width)\n"
+						+ "->setArg(3, PM_dataPtr->height)\n"
+						+ "->setArg(4, <finalVar>)\n"
+						+ "->setWorkSize(1);\n"
+						+ "});\n"
+						+ "PM_runtimePtr->runtime->submitTask(std::move(PM_task));\n"
+						+ "PM_runtimePtr->runtime->finish();\n" + "}");
+		st.add("destName", operation.destinationVariable.name);
+		st.add("type", getTranslatedMapType());
+		st.add("finalVarType", finalVar.typeName);
+		st.add("finalVar", finalVar.name);
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Sequential with non-final variable
+		operation = this.createMapOperation(ExecutionType.Sequential);
+		operation.addExternalVariable(nonFinalVar);
+		translatedFunction = cTranslator.createSequentialOperation(operation,
+				this.className);
+		st = new ST(
+				"JNIEXPORT void JNICALL Java_SomeClass_map123(JNIEnv *env, jobject self, jlong PM_runtime, jlong PM_data, jlong PM_dataRet, "
+						+ "j<nonFinalVarType>Array PM_<nonFinalVar>) {\n"
+						+ "auto PM_runtimePtr = (ParallelMERuntimeData *) PM_runtime;\n"
+						+ "auto PM_dataPtr = (ImageData *) PM_data;\n"
+						+ "auto PM_dataRetPtr = (ArrayData *) PM_dataRet;\n"
+						+ "auto PM_task = std::make_unique\\<Task>(PM_runtimePtr->program, Task::Score(1.0f,2.0f));\n"
+						+ "auto PM_<nonFinalVar>Buffer = std::make_shared\\<Buffer>(sizeof(<nonFinalVarType>));\n"
+						+ "PM_<nonFinalVar>Buffer->setJArraySource(env, PM_<nonFinalVar>);\n"
+						+ "PM_task->addKernel(\"map123\");\n"
+						+ "PM_task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"map123\"]\n"
+						+ "->setArg(0, PM_dataRetPtr->buffer)\n"
+						+ "->setArg(1, PM_dataPtr->outputBuffer)\n"
+						+ "->setArg(2, PM_dataPtr->width)\n"
+						+ "->setArg(3, PM_dataPtr->height)\n"
+						+ "->setArg(4, PM_<nonFinalVar>Buffer)\n"
+						+ "->setWorkSize(1);\n"
+						+ "});\n"
+						+ "PM_runtimePtr->runtime->submitTask(std::move(PM_task));\n"
+						+ "PM_runtimePtr->runtime->finish();\n"
+						+ "PM_<nonFinalVar>Buffer->copyToJArray(env, PM_<nonFinalVar>);"
+						+ "}");
+		st.add("destName", operation.destinationVariable.name);
+		st.add("type", getTranslatedMapType());
+		st.add("nonFinalVarType", nonFinalVar.typeName);
+		st.add("nonFinalVar", nonFinalVar.name);
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+	}
 
 	/**
 	 * Tests method call translation.

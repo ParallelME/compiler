@@ -54,7 +54,7 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 			+ "<destVarName>[<isArray:{var|<xVar>}><isImage:{var|<varGID>}>] = "
 			+ "<userFunction>(<varName>[<isArray:{var|<xVar>}><isImage:{var|<varGID>}>]<isImage:{var|, <xVar>, <yVar>}><params:{var|, <var.name>}>);";
 	private static final String templateOperationCall = "<destinationVariable:{var|<var.nativeReturnType>[] <var.name> = new <var.nativeReturnType>[<var.size>];\n}>"
-			+ "<initPointer:{var|<var.destName> = ParallelMERuntime.getInstance().createArray(<var.mapClassType>.class, ParallelMERuntime.getInstance().getLength(<var.sourceName>));\n}>"
+			+ "<initPointer:{var|<var.destName> = ParallelMERuntime.getInstance().createArray(<var.mapClassType>.class, \n\t<var.sizeExpression>);\n}>"
 			+ "<operationName>(<params:{var|<var.name>}; separator=\", \">);"
 			+ "<fromImage:{var|\n\n<var.name> = <var.value>;}>"
 			+ "<destinationVariable:{var|\n\nreturn new <var.methodReturnType>(<var.expression>);}>";
@@ -140,15 +140,28 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 	protected void fillMapOperationCall(ST st, Operation operation) {
 		st.addAggr("params.{name}",
 				commonDefinitions.getPointerName(operation.destinationVariable));
+
+		boolean isImage = commonDefinitions.isImage(operation.variable);
+		String pointerName = commonDefinitions
+				.getPointerName(operation.variable);
+		String sizeExpression;
+		if (isImage) {
+			sizeExpression = String
+					.format("ParallelMERuntime.getInstance().getWidth(%s) * ParallelMERuntime.getInstance().getHeight(%s)",
+							pointerName, pointerName);
+		} else {
+			sizeExpression = String.format(
+					"ParallelMERuntime.getInstance().getLength(%s)",
+					pointerName);
+		}
 		st.addAggr(
-				"initPointer.{destName, mapClassType, sourceName}",
+				"initPointer.{destName, mapClassType, sizeExpression}",
 				commonDefinitions.getPointerName(operation.destinationVariable),
-				commonDefinitions.getJavaReturnType(operation),
-				commonDefinitions.getPointerName(operation.variable));
+				commonDefinitions.getJavaReturnType(operation), sizeExpression);
 		String fromImageVar = commonDefinitions
 				.getFromImageBooleanName(operation.destinationVariable);
-		st.addAggr("fromImage.{name, value}", fromImageVar, commonDefinitions
-				.isImage(operation.variable) ? "true" : "false");
+		st.addAggr("fromImage.{name, value}", fromImageVar, isImage ? "true"
+				: "false");
 	}
 
 	/**
@@ -231,7 +244,7 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 			String prefix = commonDefinitions.getPrefix();
 			st.add("xVar", prefix + "x");
 			st.add("yVar", prefix + "y");
-			st.add("xSizeVar", this.getWidthVariableName());
+			st.add("xSizeVar", getWidthVariableName());
 		} else {
 			st.add("isImage", null);
 			st.add("isArray", "");
@@ -278,11 +291,11 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 		if (commonDefinitions.isImage(operation.variable)) {
 			st.add("isImage", "");
 			st.add("yVar", prefix + "y");
-			st.add("xSizeVar", this.getWidthVariableName());
-			st.add("ySizeVar", this.getHeightVariableName());
+			st.add("xSizeVar", getWidthVariableName());
+			st.add("ySizeVar", getHeightVariableName());
 		} else {
 			st.add("isImage", null);
-			st.add("xSizeVar", this.getLengthVariableName());
+			st.add("xSizeVar", getLengthVariableName());
 		}
 	}
 
@@ -461,7 +474,7 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 			if (!isSequential) {
 				if (isImage) {
 					st.addAggr("params.{type, name}", "int",
-							this.getHeightVariableName());
+							getHeightVariableName());
 				} else {
 					st.addAggr("params.{type, name}",
 							String.format("__global %s*", reduceType),
@@ -486,8 +499,7 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 					String.format("__global %s*", reduceType),
 					this.getTileVariableName());
 			if (isImage) {
-				st.addAggr("params.{type, name}", "int",
-						this.getWidthVariableName());
+				st.addAggr("params.{type, name}", "int", getWidthVariableName());
 			} else {
 				st.addAggr("params.{type, name}", "int",
 						this.getTileSizeVariableName());
@@ -607,13 +619,12 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 			}
 		} else {
 			if (commonDefinitions.isImage(operation.variable)) {
+				st.addAggr("params.{type, name}", "int", getWidthVariableName());
 				st.addAggr("params.{type, name}", "int",
-						this.getWidthVariableName());
-				st.addAggr("params.{type, name}", "int",
-						this.getHeightVariableName());
+						getHeightVariableName());
 			} else {
 				st.addAggr("params.{type, name}", "int",
-						this.getLengthVariableName());
+						getLengthVariableName());
 			}
 		}
 	}
