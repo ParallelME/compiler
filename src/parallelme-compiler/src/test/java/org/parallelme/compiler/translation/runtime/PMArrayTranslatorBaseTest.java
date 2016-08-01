@@ -453,7 +453,7 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "}"
 						+ "PM_tile[PM_gid]=param1;"
 						+ "}"
-						+ "__kernel void reduce123(__global <type>* PM_destVar, __global <type>* PM_data, __global <type>* PM_tile, int PM_length, int PM_tileSize) {"
+						+ "__kernel void reduce123(__global <type>* PM_dataRet, __global <type>* PM_data, __global <type>* PM_tile, int PM_length, int PM_tileSize) {"
 						+ "<type> param1 = PM_tile[0];"
 						+ "<type> param2;"
 						+ "for (int PM_x=1; PM_x\\<PM_tileSize; ++PM_x) {"
@@ -463,7 +463,7 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "for (int PM_x = (int) pow(floor(sqrt((float)PM_length)), 2); PM_x \\< PM_length; ++PM_x) {"
 						+ "param2 = PM_data[PM_x];"
 						+ "param1 = reduce123_func(param1, param2);" + "}"
-						+ "*PM_destVar = param1; }");
+						+ "*PM_dataRet = param1; }");
 		st.add("type", getTranslatedParameterType());
 		String expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
@@ -487,7 +487,7 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "}"
 						+ "PM_tile[PM_gid]=param1;"
 						+ "}"
-						+ "__kernel void reduce123(__global <type>* PM_destVar, __global <type>* PM_data, __global <type>* PM_tile, int PM_length, int PM_tileSize, <finalVarType> <finalVar>) {"
+						+ "__kernel void reduce123(__global <type>* PM_dataRet, __global <type>* PM_data, __global <type>* PM_tile, int PM_length, int PM_tileSize, <finalVarType> <finalVar>) {"
 						+ "<type> param1 = PM_tile[0];"
 						+ "<type> param2;"
 						+ "for (int PM_x=1; PM_x\\<PM_tileSize; ++PM_x) {"
@@ -497,7 +497,7 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "for (int PM_x = (int) pow(floor(sqrt((float)PM_length)), 2); PM_x \\< PM_length; ++PM_x) {"
 						+ "param2 = PM_data[PM_x];"
 						+ "param1 = reduce123_func(param1, param2, <finalVar>);"
-						+ "}" + "*PM_destVar = param1; }");
+						+ "}" + "*PM_dataRet = param1; }");
 		st.add("finalVar", finalVar.name);
 		st.add("finalVarType", finalVar.typeName);
 		st.add("type", getTranslatedParameterType());
@@ -513,13 +513,13 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 				"static <type> reduce123_func(<type> param1, <type> param2, __global <nonFinalVarType>* PM_<nonFinalVar>) {\n"
 						+ "param2 += param1;"
 						+ "return param2;} \n"
-						+ "__kernel void reduce123(__global <type>* PM_destVar, __global <type>* PM_data, int PM_length, __global <nonFinalVarType>* PM_<nonFinalVar>) {"
+						+ "__kernel void reduce123(__global <type>* PM_dataRet, __global <type>* PM_data, int PM_length, __global <nonFinalVarType>* PM_<nonFinalVar>) {"
 						+ "<type> param1 = PM_data[0];"
 						+ "<type> param2;"
 						+ "for (int PM_x=1; PM_x\\<PM_length; ++PM_x) {"
 						+ "param2 = PM_data[PM_x];"
 						+ "param1 = reduce123_func(param1, param2, PM_<nonFinalVar>);"
-						+ "}" + "*PM_destVar = param1; }");
+						+ "}" + "*PM_dataRet = param1; }");
 		st.add("nonFinalVar", nonFinalVar.name);
 		st.add("nonFinalVarType", nonFinalVar.typeName);
 		st.add("type", getTranslatedParameterType());
@@ -532,12 +532,12 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 				"static <type> reduce123_func(<type> param1, <type> param2) {\n"
 						+ "param2 += param1;"
 						+ "return param2;} \n"
-						+ "__kernel void reduce123(__global <type>* PM_destVar, __global <type>* PM_data, int PM_length) {"
+						+ "__kernel void reduce123(__global <type>* PM_dataRet, __global <type>* PM_data, int PM_length) {"
 						+ "<type> param1 = PM_data[0];" + "<type> param2;"
 						+ "for (int PM_x=1; PM_x\\<PM_length; ++PM_x) {"
 						+ "param2 = PM_data[PM_x];"
 						+ "param1 = reduce123_func(param1, param2);" + "}"
-						+ "*PM_destVar = param1; }");
+						+ "*PM_dataRet = param1; }");
 		st.add("type", getTranslatedParameterType());
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
@@ -549,13 +549,13 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 				"static <type> reduce123_func(<type> param1, <type> param2, <finalVarType> <finalVar>) {\n"
 						+ "param2 += param1;"
 						+ "return param2;} \n"
-						+ "__kernel void reduce123(__global <type>* PM_destVar, __global <type>* PM_data, int PM_length, <finalVarType> <finalVar>) {"
+						+ "__kernel void reduce123(__global <type>* PM_dataRet, __global <type>* PM_data, int PM_length, <finalVarType> <finalVar>) {"
 						+ "<type> param1 = PM_data[0];"
 						+ "<type> param2;"
 						+ "for (int PM_x=1; PM_x\\<PM_length; ++PM_x) {"
 						+ "param2 = PM_data[PM_x];"
 						+ "param1 = reduce123_func(param1, param2, <finalVar>);"
-						+ "}" + "*PM_destVar = param1; }");
+						+ "}" + "*PM_dataRet = param1; }");
 		st.add("finalVar", finalVar.name);
 		st.add("finalVarType", finalVar.typeName);
 		st.add("type", getTranslatedParameterType());
@@ -569,13 +569,13 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 				"static <type> reduce123_func(<type> param1, <type> param2, __global <nonFinalVarType>* PM_<nonFinalVar>) {\n"
 						+ "param2 += param1;"
 						+ "return param2;} \n"
-						+ "__kernel void reduce123(__global <type>* PM_destVar, __global <type>* PM_data, int PM_length, __global <nonFinalVarType>* PM_<nonFinalVar>) {"
+						+ "__kernel void reduce123(__global <type>* PM_dataRet, __global <type>* PM_data, int PM_length, __global <nonFinalVarType>* PM_<nonFinalVar>) {"
 						+ "<type> param1 = PM_data[0];"
 						+ "<type> param2;"
 						+ "for (int PM_x=1; PM_x\\<PM_length; ++PM_x) {"
 						+ "param2 = PM_data[PM_x];"
 						+ "param1 = reduce123_func(param1, param2, PM_<nonFinalVar>);"
-						+ "}" + "*PM_destVar = param1; }");
+						+ "}" + "*PM_dataRet = param1; }");
 		st.add("nonFinalVar", nonFinalVar.name);
 		st.add("nonFinalVarType", nonFinalVar.typeName);
 		st.add("type", getTranslatedParameterType());
@@ -838,9 +838,9 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "<mapType> ret;"
 						+ "ret = param1 * 1.5f;"
 						+ "return ret; } \n"
-						+ "__kernel void map123(__global <mapType>* PM_destVar, __global <type>* PM_data) {"
+						+ "__kernel void map123(__global <mapType>* PM_dataRet, __global <type>* PM_data) {"
 						+ "\tint PM_gid = get_global_id(0);\n"
-						+ "\tPM_destVar[PM_gid] = map123_func(PM_data[PM_gid]);"
+						+ "\tPM_dataRet[PM_gid] = map123_func(PM_data[PM_gid]);"
 						+ "}");
 		st.add("type", getTranslatedParameterType());
 		st.add("mapType", getTranslatedMapType());
@@ -856,9 +856,9 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "<mapType> ret;"
 						+ "ret = param1 * 1.5f;"
 						+ "return ret; } \n"
-						+ "__kernel void map123(__global <mapType>* PM_destVar, __global <type>* PM_data, <finalVarType> <finalVar>) {"
+						+ "__kernel void map123(__global <mapType>* PM_dataRet, __global <type>* PM_data, <finalVarType> <finalVar>) {"
 						+ "\tint PM_gid = get_global_id(0);\n"
-						+ "\tPM_destVar[PM_gid] = map123_func(PM_data[PM_gid], <finalVar>);"
+						+ "\tPM_dataRet[PM_gid] = map123_func(PM_data[PM_gid], <finalVar>);"
 						+ "}");
 		st.add("finalVar", finalVar.name);
 		st.add("finalVarType", finalVar.typeName);
@@ -877,9 +877,9 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "<mapType> ret;"
 						+ "ret = param1 * 1.5f;"
 						+ "return ret; } \n"
-						+ "__kernel void map123(__global <mapType>* PM_destVar, __global <type>* PM_data, int PM_length, __global <nonFinalVarType>* PM_<nonFinalVar>) {"
+						+ "__kernel void map123(__global <mapType>* PM_dataRet, __global <type>* PM_data, int PM_length, __global <nonFinalVarType>* PM_<nonFinalVar>) {"
 						+ "for(int PM_x=0; PM_x\\<PM_length; ++PM_x) {"
-						+ "\tPM_destVar[PM_x] = map123_func(PM_data[PM_x], PM_<nonFinalVar>);"
+						+ "\tPM_dataRet[PM_x] = map123_func(PM_data[PM_x], PM_<nonFinalVar>);"
 						+ "}}");
 		st.add("nonFinalVar", nonFinalVar.name);
 		st.add("nonFinalVarType", nonFinalVar.typeName);
@@ -897,10 +897,10 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "<mapType> ret;"
 						+ "ret = param1 * 1.5f;"
 						+ "return ret; } \n"
-						+ "__kernel void map123(__global <mapType>* PM_destVar, __global <type>* PM_data, int PM_length, "
+						+ "__kernel void map123(__global <mapType>* PM_dataRet, __global <type>* PM_data, int PM_length, "
 						+ "__global <nonFinalVarType>* PM_<nonFinalVar>, <finalVarType> <finalVar>) {"
 						+ "for(int PM_x=0; PM_x\\<PM_length; ++PM_x) {"
-						+ "\tPM_destVar[PM_x] = map123_func(PM_data[PM_x], PM_<nonFinalVar>, <finalVar>);"
+						+ "\tPM_dataRet[PM_x] = map123_func(PM_data[PM_x], PM_<nonFinalVar>, <finalVar>);"
 						+ "}}");
 		st.add("nonFinalVar", nonFinalVar.name);
 		st.add("nonFinalVarType", nonFinalVar.typeName);
@@ -919,10 +919,10 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "<mapType> ret;"
 						+ "ret = param1 * 1.5f;"
 						+ "return ret; } \n"
-						+ "__kernel void map123(__global <mapType>* PM_destVar, __global <type>* PM_data, int PM_length, "
+						+ "__kernel void map123(__global <mapType>* PM_dataRet, __global <type>* PM_data, int PM_length, "
 						+ "<finalVarType> <finalVar>) {"
 						+ "for(int PM_x=0; PM_x\\<PM_length; ++PM_x) {"
-						+ "\tPM_destVar[PM_x] = map123_func(PM_data[PM_x], <finalVar>);"
+						+ "\tPM_dataRet[PM_x] = map123_func(PM_data[PM_x], <finalVar>);"
 						+ "}}");
 		st.add("finalVar", finalVar.name);
 		st.add("finalVarType", finalVar.typeName);
@@ -939,9 +939,9 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "<mapType> ret;"
 						+ "ret = param1 * 1.5f;"
 						+ "return ret; } \n"
-						+ "__kernel void map123(__global <mapType>* PM_destVar, __global <type>* PM_data, int PM_length, __global <nonFinalVarType>* PM_<nonFinalVar>) {"
+						+ "__kernel void map123(__global <mapType>* PM_dataRet, __global <type>* PM_data, int PM_length, __global <nonFinalVarType>* PM_<nonFinalVar>) {"
 						+ "for(int PM_x=0; PM_x\\<PM_length; ++PM_x) {"
-						+ "\tPM_destVar[PM_x] = map123_func(PM_data[PM_x], PM_<nonFinalVar>);"
+						+ "\tPM_dataRet[PM_x] = map123_func(PM_data[PM_x], PM_<nonFinalVar>);"
 						+ "}}");
 		st.add("nonFinalVar", nonFinalVar.name);
 		st.add("nonFinalVarType", nonFinalVar.typeName);

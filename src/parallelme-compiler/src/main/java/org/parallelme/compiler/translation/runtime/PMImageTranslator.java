@@ -102,14 +102,13 @@ public abstract class PMImageTranslator extends PMTranslator implements
 		stForBody.add("inputVar2", inputVar2.name);
 		stForBody.add("userFunctionName",
 				this.commonDefinitions.getOperationUserFunctionName(operation));
-		st.add("destinationVar", this.commonDefinitions.getPrefix()
-				+ operation.destinationVariable.name);
+		st.add("destinationVar", commonDefinitions.getDataReturnVarName());
 		// Takes the first var, since they must be the same for reduce
 		// operations
 		String varType = this.commonDefinitions
 				.translateToCType(inputVar1.typeName);
 		boolean isSequential = operation.getExecutionType() == ExecutionType.Sequential;
-		String dataVar = isSequential ? getDataVariableName()
+		String dataVar = isSequential ? commonDefinitions.getDataVarName()
 				: getTileVariableName();
 		stForBody.add("dataVar", dataVar);
 		st.addAggr("decl.{expression}",

@@ -130,10 +130,9 @@ public class PMArrayTranslator extends PMTranslator implements ArrayTranslator {
 		String varType = this.commonDefinitions
 				.translateToCType(inputVar1.typeName);
 		boolean isSequential = operation.getExecutionType() == ExecutionType.Sequential;
-		String dataVar = isSequential ? getDataVariableName()
+		String dataVar = isSequential ? commonDefinitions.getDataVarName()
 				: getTileVariableName();
-		st.add("destinationVar", this.commonDefinitions.getPrefix()
-				+ operation.destinationVariable.name);
+		st.add("destinationVar", commonDefinitions.getDataReturnVarName());
 		stForBody.add("dataVar", dataVar);
 		st.addAggr("decl.{expression}",
 				getExpression(varType, inputVar1.name, dataVar + "[0]"));
@@ -146,7 +145,7 @@ public class PMArrayTranslator extends PMTranslator implements ArrayTranslator {
 		stForLoop.add("body", stForBody.render());
 		st.addAggr("forLoop.{loop}", stForLoop.render());
 		stForBody.remove("dataVar");
-		stForBody.add("dataVar", getDataVariableName());
+		stForBody.add("dataVar", commonDefinitions.getDataVarName());
 		if (!isSequential) {
 			ST stForLoop2 = new ST(templateForLoop);
 			stForLoop2.add("initValue", String.format(

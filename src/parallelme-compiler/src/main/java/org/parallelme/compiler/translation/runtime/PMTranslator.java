@@ -231,12 +231,11 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 		st.add("userFunction",
 				commonDefinitions.getOperationUserFunctionName(operation));
 		st.add("varGID", getGIDVariableName());
-		st.add("varName", getDataVariableName());
+		st.add("varName", commonDefinitions.getDataVarName());
 		if (operation.operationType == OperationType.Map) {
-			st.add("destVarName", commonDefinitions.getPrefix()
-					+ operation.destinationVariable.name);
+			st.add("destVarName", commonDefinitions.getDataReturnVarName());
 		} else {
-			st.add("destVarName", getDataVariableName());
+			st.add("destVarName", commonDefinitions.getDataVarName());
 		}
 		if (commonDefinitions.isImage(operation.variable)) {
 			st.add("isImage", "");
@@ -266,12 +265,11 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 		stBody.add("userFunction",
 				commonDefinitions.getOperationUserFunctionName(operation));
 		stBody.add("varGID", getGIDVariableName());
-		stBody.add("varName", getDataVariableName());
+		stBody.add("varName", commonDefinitions.getDataVarName());
 		if (operation.operationType == OperationType.Map) {
-			stBody.add("destVarName", commonDefinitions.getPrefix()
-					+ operation.destinationVariable.name);
+			stBody.add("destVarName", commonDefinitions.getDataReturnVarName());
 		} else {
-			stBody.add("destVarName", getDataVariableName());
+			stBody.add("destVarName", commonDefinitions.getDataVarName());
 		}
 		if (commonDefinitions.isImage(operation.variable)) {
 			stBody.add("idxVar", commonDefinitions.getPrefix() + "idx");
@@ -329,7 +327,7 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 		st.add("varType", commonDefinitions.getCReturnType(operation));
 		st.add("userFunctionName",
 				commonDefinitions.getOperationUserFunctionName(operation));
-		st.add("dataVar", getDataVariableName());
+		st.add("dataVar", commonDefinitions.getDataVarName());
 		st.add("baseVar", getBaseVariableName());
 		if (commonDefinitions.isImage(operation.variable)) {
 			st.add("sizeVar", getWidthVariableName());
@@ -440,7 +438,7 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 				"params.{type, name}",
 				String.format("__global %s*",
 						commonDefinitions.getCReturnType(operation)),
-				this.getDataVariableName());
+				commonDefinitions.getDataVarName());
 		addSizeParams(operation, st);
 		setExternalVariables(st, operation, true);
 		return st.render();
@@ -463,12 +461,12 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 			st.add("isKernel", "");
 			st.add("functionName",
 					commonDefinitions.getOperationName(operation));
-			String destVar = commonDefinitions.getPrefix()
-					+ operation.destinationVariable.name;
+			String destVar = commonDefinitions.getDataReturnVarName();
 			st.addAggr("params.{type, name}",
 					String.format("__global %s*", reduceType), destVar);
 			String dataVar = operation.getExecutionType() != ExecutionType.Sequential
-					&& isImage ? getTileVariableName() : getDataVariableName();
+					&& isImage ? getTileVariableName() : commonDefinitions
+					.getDataVarName();
 			st.addAggr("params.{type, name}",
 					String.format("__global %s*", reduceType), dataVar);
 			if (!isSequential) {
@@ -494,7 +492,7 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 					commonDefinitions.getOperationTileFunctionName(operation));
 			st.addAggr("params.{type, name}",
 					String.format("__global %s*", reduceType),
-					this.getDataVariableName());
+					commonDefinitions.getDataVarName());
 			st.addAggr("params.{type, name}",
 					String.format("__global %s*", reduceType),
 					this.getTileVariableName());
@@ -542,17 +540,18 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 				"params.{type, name}",
 				String.format("__global %s*",
 						commonDefinitions.getCReturnType(operation)),
-				commonDefinitions.getPrefix()
-						+ operation.destinationVariable.name);
+				commonDefinitions.getDataReturnVarName());
 		if (commonDefinitions.isImage(operation.variable)) {
 			st.addAggr("params.{type, name}", String.format("__global %s*",
 					commonDefinitions.translateToCType(Pixel.getInstance()
-							.getClassName())), this.getDataVariableName());
+							.getClassName())), commonDefinitions
+					.getDataVarName());
 		} else {
 			st.addAggr("params.{type, name}", String.format("__global %s*",
 					commonDefinitions
 							.translateToCType(operation.variable.typeParameters
-									.get(0))), this.getDataVariableName());
+									.get(0))), commonDefinitions
+					.getDataVarName());
 		}
 		addSizeParams(operation, st);
 		setExternalVariables(st, operation, true);
@@ -627,14 +626,6 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 						getLengthVariableName());
 			}
 		}
-	}
-
-	/**
-	 * Name for data variable that is used to write user array or image data in
-	 * C kernel code.
-	 */
-	protected String getDataVariableName() {
-		return commonDefinitions.getPrefix() + "data";
 	}
 
 	/**
