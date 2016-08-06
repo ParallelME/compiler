@@ -287,12 +287,19 @@ public class RuntimeCommonDefinitions {
 	}
 
 	/**
+	 * Return the base name for data variables.
+	 */
+	public String getDataTileVarName() {
+		return this.getPrefix() + "dataTile";
+	}
+
+	/**
 	 * Return the base name for data return variables.
 	 */
 	public String getDataReturnVarName() {
 		return this.getPrefix() + "dataRet";
 	}
-	
+
 	/**
 	 * Creates a method's signature that can be used in Java code.
 	 * 

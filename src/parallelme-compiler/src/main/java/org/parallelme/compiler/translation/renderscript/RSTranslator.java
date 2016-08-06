@@ -60,17 +60,6 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 			+ "\t\t<inputVar2> = rsGetElementAt_<varType>(<dataVar>, <x:{var|x, }><declBaseVar:{var|<baseVar> + }><xVar>);\n"
 			+ "\t\t<inputVar1> = <userFunctionName>(<inputVar1>, <inputVar2>);\n"
 			+ "\t}\n" + "\treturn <inputVar1>;\n";
-	private static final String templateFilter = "\tint <varCount> = 0;\n"
-			+ "\tfor (int <xVar>=0; <xVar>\\<rsAllocationGetDimX(<tileAllocation>); ++<xVar>) {\n"
-			+ "<isImage:{var|\tfor (int <yVar>=0; <yVar>\\<rsAllocationGetDimY(<tileAllocation>); ++<yVar>) {\n}>"
-			+ "\t\tint PM_value = rsGetElementAt_int(<tileAllocation>, <xVar><isImage:{var|, <yVar>}>);\n"
-			+ "\t\tif (PM_value > 0) {\n"
-			+ "\t\t\trsSetElementAt_<type>(<outputAllocation>, rsGetElementAt_<type>(<inputAllocation>, PM_value), <varCount>++);\n"
-			+ "\t\t}\n" + "<isImage:{var|\t\\}\n}>" + "\t}\n";
-	private static final String templateParallelFilterTile = "\tif (<userFunctionName>(<varName><isImage:{var|, <xVar>, <yVar>}>)) {\n"
-			+ "\t\trsAtomicInc(&<varCounterName>);\n"
-			+ "\t\treturn x;\n"
-			+ "\t} else {\n" + "\t\treturn -1;\n" + "\t}\n";
 	private static final String templateFunctionDecl = "<modifier:{var|<var.value> }><returnType><isKernel:{var|  __attribute__((kernel))}> <functionName>("
 			+ "<params:{var|<var.type> <var.name>}; separator=\", \">)";
 	private static final String templateAllocation = "Type <allocationName>Type = new Type.Builder(<rsVarName>, Element.<rsType>(<rsVarName>))\n"
@@ -79,14 +68,27 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 			+ "<declareAllocation:{var|Allocation }><allocationName> = Allocation.createTyped(<rsVarName>, <allocationName>Type);";
 	private static String templateParallelForeachMapFunction = "\treturn <userFunction>("
 			+ "<varName><isImage:{var|, x, y}>);\n";
-	private static String templateSequentialFunction = "\tfor (int <xVar>=0; <xVar>\\<rsAllocationGetDimX(<readAllocation>); ++<xVar>) {\n"
-			+ "<isImage:{var|\tfor (int <yVar>=0; <yVar>\\<rsAllocationGetDimY(<readAllocation>); ++<yVar>) {\n}>"
-			+ "\t\t\t<body>\n"
-			+ "<isImage:{var|\t\\}\n}>"
+	private static String templateSequentialFunction = "<countVar:{var|int <var.name> = 0;\n}>"
+			+ "\tfor (int <xVar>=0; <xVar>\\<rsAllocationGetDimX(<readAllocation>); ++<xVar>) {\n"
+			+ "<isImage:{var|\t\tfor (int <yVar>=0; <yVar>\\<rsAllocationGetDimY(<readAllocation>); ++<yVar>) {\n}>"
+			+ "\t\t<body>\n"
+			+ "<isImage:{var|\t\t\\}\n}>"
 			+ "\t}\n"
 			+ "<setExternalVariables:{var|\t\trsSetElementAt_<var.type>(<var.allocationName>, <var.varName>, 0);\n}>";
 	private static String templateSetValues = "rsSetElementAt_<typeSet>(<writeAllocation>, <userFunction>(rsGetElementAt_<typeGet>("
-			+ "<readAllocation>, <xVar><isImage:{var|, <yVar>}>)), <xVar><isImage:{var|, <yVar>}>);";
+			+ "<readAllocation>, <xVar><isImage:{var|, <yVar>}>)<isImage:{var|, <xVar>, <yVar>}>), <notImageMap:{var|<xVar><isImage:{var|, <yVar>}>}>"
+			+ "<imageMap:{var|<countVar>++}>);";
+	private static final String templateFilter = "\tint <varCount> = 0;\n"
+			+ "\tfor (int <xVar>=0; <xVar>\\<rsAllocationGetDimX(<tileAllocation>); ++<xVar>) {\n"
+			+ "<isImage:{var|\tfor (int <yVar>=0; <yVar>\\<rsAllocationGetDimY(<tileAllocation>); ++<yVar>) {\n}>"
+			+ "\t\tint PM_value = rsGetElementAt_int(<tileAllocation>, <xVar><isImage:{var|, <yVar>}>);\n"
+			+ "\t\tif (PM_value >= 0) {\n"
+			+ "\t\t\trsSetElementAt_<type>(<outputAllocation>, rsGetElementAt_<type>(<inputAllocation>, PM_value), <varCount>++);\n"
+			+ "\t\t}\n" + "<isImage:{var|\t\\}\n}>" + "\t}\n";
+	private static final String templateParallelFilterTile = "\tif (<userFunctionName>(<varName><isImage:{var|, <xVar>, <yVar>}>)) {\n"
+			+ "\t\trsAtomicInc(&<varCounterName>);\n"
+			+ "\t\treturn x;\n"
+			+ "\t} else {\n" + "\t\treturn -1;\n" + "\t}\n";
 	private static String templateFilterOperationCall = "int <sizeVarName>[] = new int[1];\n"
 			+ "<kernelName>.get_<gSizeVariableName>().copyTo(<sizeVarName>);\n"
 			+ "if (<sizeVarName>[0] > 0) {\n"
@@ -95,7 +97,7 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 			+ "\t<variables:{var|\n\n\t<kernelName>.set_<var.gVariableName>(<var.variableName>);}>"
 			+ "<kernels:{var|\n\n\t<kernelName>.<var.rsOperationName>_<var.functionName>(<var.allocations>);}>"
 			+ "\n}";
-	private static String templateSequentialFilterTile = "if (<userFunction>(rsGetElementAt_<type>(<inputAllocation>, <xVar><isImage:{var|, <yVar>}>))) {\n"
+	private static String templateSequentialFilterTile = "if (<userFunction>(rsGetElementAt_<type>(<inputAllocation>, <xVar><isImage:{var|, <yVar>}>)<isImage:{var|, <xVar>, <yVar>}>)) {\n"
 			+ "\trsSetElementAt_int(<tileAllocation>, <xTileVar>, <xTileVar>);\n"
 			+ "\t<sizeVarName>++;\n"
 			+ "} else {\n"
@@ -294,11 +296,6 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 					commonDefinitions.getOperationName(operation),
 					variableAllocation + ", " + variableAllocation, "forEach");
 		}
-		boolean isImage = commonDefinitions.isImage(operation.variable);
-		String fromImageVar = commonDefinitions
-				.getFromImageBooleanName(operation.variable);
-		st.addAggr("fromImage.{name, value}", fromImageVar, isImage ? "true"
-				: "false");
 	}
 
 	/**
@@ -474,6 +471,13 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 			st.add("body", getSetValuesInAllocations(operation, cType, typeGet));
 
 		}
+		if (commonDefinitions.isImage(operation.variable)
+				&& operation.operationType == OperationType.Map) {
+			st.addAggr("countVar.{name}", commonDefinitions.getPrefix()
+					+ "count");
+		} else {
+			st.add("countVar", null);
+		}
 		return createKernelFunction(operation, st.render(),
 				FunctionType.BaseOperation);
 	}
@@ -485,6 +489,15 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 				commonDefinitions.getOperationUserFunctionName(operation));
 		st.add("typeSet", typeSet);
 		st.add("typeGet", typeGet);
+		boolean isImage = commonDefinitions.isImage(operation.variable);
+		if (operation.operationType == OperationType.Map) {
+			st.add("notImageMap", !isImage ? "" : null);
+			st.add("imageMap", isImage ? "" : null);
+			st.add("countVar", commonDefinitions.getPrefix() + "count");
+		} else {
+			st.add("notImageMap", "");
+			st.add("imageMap", null);
+		}
 		setCommonParameters(operation, st);
 		return st.render();
 	}
@@ -572,13 +585,16 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 				commonDefinitions.getOperationUserFunctionName(operation));
 		st.add("dataVar", getInputDataVariableName(operation));
 		st.add("dataVarTile", getTileVariableName(operation));
-		st.add("sizeVar",
-				getAllocationDimCall("X", getTileVariableName(operation)));
 		if (commonDefinitions.isImage(operation.variable)) {
+			st.add("sizeVar",
+					getAllocationDimCall("Y",
+							getInputDataVariableName(operation)));
 			st.add("declBaseVar", null);
 			st.add("baseVar", "x, 0");
 			st.add("x", "");
 		} else {
+			st.add("sizeVar",
+					getAllocationDimCall("X", getTileVariableName(operation)));
 			st.add("x", null);
 			st.add("declBaseVar", "");
 			st.add("baseVar", getBaseVariableName());
@@ -668,6 +684,7 @@ public abstract class RSTranslator extends BaseUserLibraryTranslator {
 
 	private String translateSequentialFilterTile(Operation operation) {
 		ST st = new ST(templateSequentialFunction);
+		st.add("countVar", null);
 		setCommonParameters(operation, st);
 		setExternalVariables(operation, st);
 		ST stBody = new ST(templateSequentialFilterTile);

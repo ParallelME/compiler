@@ -147,7 +147,7 @@ public abstract class RSImageTranslator extends RSTranslator implements
 		if (operation.getExecutionType() == ExecutionType.Parallel) {
 			st.addAggr("tileSize.{name, expression}",
 					getTileSizeVariableName(operation), String.format(
-							"%s.getType().getY()", commonDefinitions
+							"%s.getType().getX()", commonDefinitions
 									.getVariableOutName(operation.variable)));
 		}
 	}

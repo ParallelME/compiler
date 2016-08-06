@@ -112,7 +112,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "void foreach123() {\n"
 						+ "for (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gInputForeach123); ++PM_x) {\n"
 						+ "for (int PM_y=0; PM_y\\<rsAllocationGetDimY(PM_gInputForeach123); ++PM_y) {\n"
-						+ "\trsSetElementAt_float4(PM_gInputForeach123, foreach123_func(rsGetElementAt_float4(PM_gInputForeach123,PM_x,PM_y)),PM_x,PM_y);\n"
+						+ "\trsSetElementAt_float4(PM_gInputForeach123, foreach123_func(rsGetElementAt_float4(PM_gInputForeach123,PM_x,PM_y),PM_x,PM_y),PM_x,PM_y);\n"
 						+ "}\n"
 						+ "}\n"
 						+ "rsSetElementAt_int(PM_gOutput<nonFinalVarName>Foreach123, PM_g<nonFinalVarName>Foreach123, 0);\n"
@@ -133,7 +133,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "void foreach123() {\n"
 						+ "for (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gInputForeach123); ++PM_x) {\n"
 						+ "for (int PM_y=0; PM_y\\<rsAllocationGetDimY(PM_gInputForeach123); ++PM_y) {\n"
-						+ "\trsSetElementAt_float4(PM_gInputForeach123, foreach123_func(rsGetElementAt_float4(PM_gInputForeach123,PM_x,PM_y)),PM_x,PM_y);\n"
+						+ "\trsSetElementAt_float4(PM_gInputForeach123, foreach123_func(rsGetElementAt_float4(PM_gInputForeach123,PM_x,PM_y),PM_x,PM_y),PM_x,PM_y);\n"
 						+ "}\n" + "}\n" + "}");
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
@@ -154,7 +154,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "void foreach123() {\n"
 						+ "for (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gInputForeach123); ++PM_x) {\n"
 						+ "for (int PM_y=0; PM_y\\<rsAllocationGetDimY(PM_gInputForeach123); ++PM_y) {\n"
-						+ "\trsSetElementAt_float4(PM_gInputForeach123, foreach123_func(rsGetElementAt_float4(PM_gInputForeach123,PM_x,PM_y)),PM_x,PM_y);\n"
+						+ "\trsSetElementAt_float4(PM_gInputForeach123, foreach123_func(rsGetElementAt_float4(PM_gInputForeach123,PM_x,PM_y),PM_x,PM_y),PM_x,PM_y);\n"
 						+ "}\n"
 						+ "}\n"
 						+ "rsSetElementAt_int(PM_gOutput<nonFinalVarName>Foreach123, PM_g<nonFinalVarName>Foreach123, 0);\n"
@@ -180,7 +180,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "void foreach123() {\n"
 						+ "for (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gInputForeach123); ++PM_x) {\n"
 						+ "for (int PM_y=0; PM_y\\<rsAllocationGetDimY(PM_gInputForeach123); ++PM_y) {\n"
-						+ "\trsSetElementAt_float4(PM_gInputForeach123, foreach123_func(rsGetElementAt_float4(PM_gInputForeach123,PM_x,PM_y)),PM_x,PM_y);\n"
+						+ "\trsSetElementAt_float4(PM_gInputForeach123, foreach123_func(rsGetElementAt_float4(PM_gInputForeach123,PM_x,PM_y),PM_x,PM_y),PM_x,PM_y);\n"
 						+ "}\n"
 						+ "}\n"
 						+ "rsSetElementAt_int(PM_gOutput<nonFinalVarName>Foreach123, PM_g<nonFinalVarName>Foreach123, 0);\n"
@@ -202,14 +202,11 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 		BaseUserLibraryTranslator translator = this.getTranslator();
 		String translatedFunction = translator.translateOperationCall(
 				className, operation);
-		ST st = new ST("<kernel>.forEach_foreach123(<varOut>, <varOut>);\n"
-				+ "<varFromImage> = true;");
+		ST st = new ST("<kernel>.forEach_foreach123(<varOut>, <varOut>);\n");
 		st.add("varName", commonDefinitions.getPointerName(operation.variable));
 		st.add("varOut",
 				commonDefinitions.getVariableOutName(operation.variable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
-		st.add("varFromImage",
-				commonDefinitions.getFromImageBooleanName(operation.variable));
 		String expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Parallel with final external variable
@@ -220,15 +217,12 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 				operation);
 		st = new ST(
 				"<kernel>.set_PM_g<UCFinalVarName>Foreach123(<finalVarName>);\n"
-						+ "<kernel>.forEach_foreach123(<varOut>, <varOut>);\n"
-						+ "<varFromImage> = true;");
+						+ "<kernel>.forEach_foreach123(<varOut>, <varOut>);\n");
 		st.add("varOut",
 				commonDefinitions.getVariableOutName(operation.variable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
 		st.add("UCFinalVarName", upperCaseFirstLetter(finalVar.name));
 		st.add("finalVarName", finalVar.name);
-		st.add("varFromImage",
-				commonDefinitions.getFromImageBooleanName(operation.variable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential
@@ -236,12 +230,10 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 		translatedFunction = translator.translateOperationCall(className,
 				operation);
 		st = new ST("<kernel>.set_PM_gInputForeach123(<varOut>);\n"
-				+ "<kernel>.invoke_foreach123();\n" + "<varFromImage> = true;");
+				+ "<kernel>.invoke_foreach123();\n");
 		st.add("varOut",
 				commonDefinitions.getVariableOutName(operation.variable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
-		st.add("varFromImage",
-				commonDefinitions.getFromImageBooleanName(operation.variable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential non-final and final variable
@@ -258,8 +250,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "<kernel>.set_PM_gInputForeach123(<varOut>);\n"
 						+ "<kernel>.set_PM_g<UCFinalVarName>Foreach123(<finalVarName>);\n"
 						+ "<kernel>.invoke_foreach123();\n"
-						+ "PM_gOutput<UCNonFinalVarName>Foreach123.copyTo(<nonFinalVarName>);\n"
-						+ "<varFromImage> = true;");
+						+ "PM_gOutput<UCNonFinalVarName>Foreach123.copyTo(<nonFinalVarName>);\n");
 		st.add("varOut",
 				commonDefinitions.getVariableOutName(operation.variable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
@@ -267,8 +258,6 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 		st.add("nonFinalVarName", nonFinalVar.name);
 		st.add("UCFinalVarName", upperCaseFirstLetter(finalVar.name));
 		st.add("finalVarName", finalVar.name);
-		st.add("varFromImage",
-				commonDefinitions.getFromImageBooleanName(operation.variable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential non-final
@@ -282,15 +271,12 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "<kernel>.set_PM_gOutput<UCNonFinalVarName>Foreach123(PM_gOutput<UCNonFinalVarName>Foreach123);"
 						+ "<kernel>.set_PM_gInputForeach123(<varOut>);\n"
 						+ "<kernel>.invoke_foreach123();\n"
-						+ "PM_gOutput<UCNonFinalVarName>Foreach123.copyTo(<nonFinalVarName>);\n"
-						+ "<varFromImage> = true;");
+						+ "PM_gOutput<UCNonFinalVarName>Foreach123.copyTo(<nonFinalVarName>);\n");
 		st.add("varOut",
 				commonDefinitions.getVariableOutName(operation.variable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
 		st.add("UCNonFinalVarName", upperCaseFirstLetter(nonFinalVar.name));
 		st.add("nonFinalVarName", nonFinalVar.name);
-		st.add("varFromImage",
-				commonDefinitions.getFromImageBooleanName(operation.variable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 	}
@@ -317,7 +303,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 				+ "float4 __attribute__((kernel)) reduce123_tile(uint32_t x) {\n"
 				+ "float4 param1 = rsGetElementAt_float4(PM_gInputReduce123, x, 0);\n"
 				+ "float4 param2;\n"
-				+ "for (int PM_x=1; PM_x<rsAllocationGetDimX(PM_gTileReduce123); ++PM_x) {\n"
+				+ "for (int PM_x=1; PM_x<rsAllocationGetDimY(PM_gInputReduce123); ++PM_x) {\n"
 				+ "param2 = rsGetElementAt_float4(PM_gInputReduce123, x, PM_x);\n"
 				+ "param1 = reduce123_func(param1, param2);\n"
 				+ "}\n"
@@ -351,7 +337,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "float4 __attribute__((kernel)) reduce123_tile(uint32_t x) {\n"
 						+ "float4 param1 = rsGetElementAt_float4(PM_gInputReduce123, x, 0);\n"
 						+ "float4 param2;\n"
-						+ "for (int PM_x=1; PM_x\\<rsAllocationGetDimX(PM_gTileReduce123); ++PM_x) {\n"
+						+ "for (int PM_x=1; PM_x\\<rsAllocationGetDimY(PM_gInputReduce123); ++PM_x) {\n"
 						+ "param2 = rsGetElementAt_float4(PM_gInputReduce123, x, PM_x);\n"
 						+ "param1 = reduce123_func(param1, param2);\n"
 						+ "}\n"
@@ -502,7 +488,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 		String translatedFunction = translator.translateOperationCall(
 				className, operation);
 		ST st = new ST(
-				"int PM_gTileSizeReduce123 = PM_imageVar1Out.getType().getY();\n"
+				"int PM_gTileSizeReduce123 = PM_imageVar1Out.getType().getX();\n"
 						+ "Type PM_gOutputDestVarReduce123Type = newType.Builder(PM_mRS, Element.<rsType>(PM_mRS)).setX(1).create();\n"
 						+ "Allocation PM_gOutputDestVarReduce123 = Allocation.createTyped(PM_mRS, PM_gOutputDestVarReduce123Type);\n"
 						+ "Type PM_gTileReduce123Type = new Type.Builder(PM_mRS,Element.<rsType>(PM_mRS)).setX(PM_gTileSizeReduce123).create();\n"
@@ -526,7 +512,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 		translatedFunction = translator.translateOperationCall(className,
 				operation);
 		st = new ST(
-				"int PM_gTileSizeReduce123 = PM_imageVar1Out.getType().getY();\n"
+				"int PM_gTileSizeReduce123 = PM_imageVar1Out.getType().getX();\n"
 						+ "Type PM_gOutputDestVarReduce123Type = new Type.Builder(PM_mRS, Element.<rsType>(PM_mRS)).setX(1).create();\n"
 						+ "Allocation PM_gOutputDestVarReduce123 = Allocation.createTyped(PM_mRS, PM_gOutputDestVarReduce123Type);\n"
 						+ "Type PM_gTileReduce123Type = new Type.Builder(PM_mRS, Element.<rsType>(PM_mRS)).setX(PM_gTileSizeReduce123).create();\n"
@@ -687,9 +673,10 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "\treturn ret;\n"
 						+ "}\n"
 						+ "void map123() {\n"
+						+ "\tint PM_count = 0;\n"
 						+ "\tfor (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gInputMap123); ++PM_x) {\n"
 						+ "\tfor (int PM_y=0; PM_y\\<rsAllocationGetDimY(PM_gInputMap123); ++PM_y) {\n"
-						+ "\t\trsSetElementAt_<mapType>(PM_gOutputMap123, map123_func(rsGetElementAt_<type>(PM_gInputMap123, PM_x, PM_y)), PM_x, PM_y);\n"
+						+ "\t\trsSetElementAt_<mapType>(PM_gOutputMap123, map123_func(rsGetElementAt_<type>(PM_gInputMap123, PM_x, PM_y),PM_x,PM_y), PM_count++);\n"
 						+ "\t}\n"
 						+ "\t}\n"
 						+ "rsSetElementAt_<nonFinalVarType>(PM_gOutput<nonFinalVarName>Map123, PM_g<nonFinalVarName>Map123, 0);\n"
@@ -712,9 +699,10 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "\treturn ret;\n"
 						+ "}\n"
 						+ "void map123() {\n"
+						+ "\tint PM_count = 0;\n"
 						+ "\tfor (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gInputMap123); ++PM_x) {\n"
 						+ "\tfor (int PM_y=0; PM_y\\<rsAllocationGetDimY(PM_gInputMap123); ++PM_y) {\n"
-						+ "\t\trsSetElementAt_<mapType>(PM_gOutputMap123, map123_func(rsGetElementAt_<type>(PM_gInputMap123, PM_x, PM_y)), PM_x, PM_y);\n"
+						+ "\t\trsSetElementAt_<mapType>(PM_gOutputMap123, map123_func(rsGetElementAt_<type>(PM_gInputMap123, PM_x, PM_y),PM_x,PM_y), PM_count++);\n"
 						+ "\t}\n" + "\t}\n" + "}\n");
 		st.add("type", getTranslatedParameterType());
 		st.add("mapType", getTranslatedMapType());
@@ -737,9 +725,10 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "\treturn ret;\n"
 						+ "}\n"
 						+ "void map123() {\n"
+						+ "\tint PM_count = 0;\n"
 						+ "\tfor (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gInputMap123); ++PM_x) {\n"
 						+ "\tfor (int PM_y=0; PM_y\\<rsAllocationGetDimY(PM_gInputMap123); ++PM_y) {\n"
-						+ "\t\trsSetElementAt_<mapType>(PM_gOutputMap123, map123_func(rsGetElementAt_<type>(PM_gInputMap123, PM_x, PM_y)), PM_x, PM_y);\n"
+						+ "\t\trsSetElementAt_<mapType>(PM_gOutputMap123, map123_func(rsGetElementAt_<type>(PM_gInputMap123, PM_x, PM_y),PM_x,PM_y), PM_count++);\n"
 						+ "\t}\n"
 						+ "\t}\n"
 						+ "rsSetElementAt_<nonFinalVarType>(PM_gOutput<nonFinalVarName>Map123, PM_g<nonFinalVarName>Map123, 0);\n"
@@ -767,9 +756,10 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "\treturn ret;\n"
 						+ "}\n"
 						+ "void map123() {\n"
+						+ "\tint PM_count = 0;\n"
 						+ "\tfor (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gInputMap123); ++PM_x) {\n"
 						+ "\tfor (int PM_y=0; PM_y\\<rsAllocationGetDimY(PM_gInputMap123); ++PM_y) {\n"
-						+ "\t\trsSetElementAt_<mapType>(PM_gOutputMap123, map123_func(rsGetElementAt_<type>(PM_gInputMap123, PM_x, PM_y)), PM_x, PM_y);\n"
+						+ "\t\trsSetElementAt_<mapType>(PM_gOutputMap123, map123_func(rsGetElementAt_<type>(PM_gInputMap123, PM_x, PM_y),PM_x,PM_y), PM_count++);\n"
 						+ "\t}\n"
 						+ "\t}\n"
 						+ "rsSetElementAt_<nonFinalVarType>(PM_gOutput<nonFinalVarName>Map123, PM_g<nonFinalVarName>Map123, 0);\n"
@@ -961,7 +951,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "\tfor (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gOutputTileFilter123); ++PM_x) {\n"
 						+ "\tfor (int PM_y=0; PM_y\\<rsAllocationGetDimY(PM_gOutputTileFilter123); ++PM_y) {\n"
 						+ "\t\tint PM_value = rsGetElementAt_int(PM_gOutputTileFilter123, PM_x, PM_y);\n"
-						+ "\t\tif (PM_value > 0) {\n"
+						+ "\t\tif (PM_value >= 0) {\n"
 						+ "\t\t\trsSetElementAt_<type>(PM_gOutputFilter123, rsGetElementAt_<type>(PM_gInputFilter123, PM_value), PM_count++);\n"
 						+ "\t\t}\n" + "\t}\n" + "\t}\n" + "}");
 		st.add("type", getTranslatedParameterType());
@@ -998,7 +988,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "\tfor (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gOutputTileFilter123); ++PM_x) {\n"
 						+ "\tfor (int PM_y=0; PM_y\\<rsAllocationGetDimY(PM_gOutputTileFilter123); ++PM_y) {\n"
 						+ "\t\tint PM_value = rsGetElementAt_int(PM_gOutputTileFilter123, PM_x, PM_y);\n"
-						+ "\t\tif (PM_value > 0) {\n"
+						+ "\t\tif (PM_value >= 0) {\n"
 						+ "\t\t\trsSetElementAt_<type>(PM_gOutputFilter123, rsGetElementAt_<type>(PM_gInputFilter123, PM_value), PM_count++);\n"
 						+ "\t\t}\n" + "\t}\n" + "\t}\n" + "}");
 		st.add("type", getTranslatedParameterType());
@@ -1027,7 +1017,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "\tint PM_tileX = 0;"
 						+ "\tfor (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gInputFilter123); ++PM_x) {\n"
 						+ "\tfor (int PM_y=0; PM_y\\<rsAllocationGetDimY(PM_gInputFilter123); ++PM_y) {\n"
-						+ "\t\t\tif (filter123_func(rsGetElementAt_<type>(PM_gInputFilter123, PM_x, PM_y))) {\n"
+						+ "\t\t\tif (filter123_func(rsGetElementAt_<type>(PM_gInputFilter123, PM_x, PM_y), PM_x, PM_y)) {\n"
 						+ "\t\t\t\trsSetElementAt_int(PM_gOutputTileFilter123, PM_tileX, PM_tileX);\n"
 						+ "\t\t\t\tPM_gOutputXSizeFilter123++;\n"
 						+ "\t\t\t} else {\n"
@@ -1046,7 +1036,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "\tfor (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gOutputTileFilter123); ++PM_x) {\n"
 						+ "\tfor (int PM_y=0; PM_y\\<rsAllocationGetDimY(PM_gOutputTileFilter123); ++PM_y) {\n"
 						+ "\t\tint PM_value = rsGetElementAt_int(PM_gOutputTileFilter123, PM_x, PM_y);\n"
-						+ "\t\tif (PM_value > 0) {\n"
+						+ "\t\tif (PM_value >= 0) {\n"
 						+ "\t\t\trsSetElementAt_<type>(PM_gOutputFilter123, rsGetElementAt_<type>(PM_gInputFilter123, PM_value), PM_count++);\n"
 						+ "\t\t}\n" + "\t}\n" + "\t}\n" + "}");
 		st.add("UCNonFinalVarName", upperCaseFirstLetter(nonFinalVar.name));
@@ -1069,7 +1059,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "\tint PM_tileX = 0;"
 						+ "\tfor (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gInputFilter123); ++PM_x) {\n"
 						+ "\tfor (int PM_y=0; PM_y\\<rsAllocationGetDimY(PM_gInputFilter123); ++PM_y) {\n"
-						+ "\t\t\tif (filter123_func(rsGetElementAt_<type>(PM_gInputFilter123, PM_x, PM_y))) {\n"
+						+ "\t\t\tif (filter123_func(rsGetElementAt_<type>(PM_gInputFilter123, PM_x, PM_y), PM_x, PM_y)) {\n"
 						+ "\t\t\t\trsSetElementAt_int(PM_gOutputTileFilter123, PM_tileX, PM_tileX);\n"
 						+ "\t\t\t\tPM_gOutputXSizeFilter123++;\n"
 						+ "\t\t\t} else {\n"
@@ -1087,7 +1077,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "\tfor (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gOutputTileFilter123); ++PM_x) {\n"
 						+ "\tfor (int PM_y=0; PM_y\\<rsAllocationGetDimY(PM_gOutputTileFilter123); ++PM_y) {\n"
 						+ "\t\tint PM_value = rsGetElementAt_int(PM_gOutputTileFilter123, PM_x, PM_y);\n"
-						+ "\t\tif (PM_value > 0) {\n"
+						+ "\t\tif (PM_value >= 0) {\n"
 						+ "\t\t\trsSetElementAt_<type>(PM_gOutputFilter123, rsGetElementAt_<type>(PM_gInputFilter123, PM_value), PM_count++);\n"
 						+ "\t\t}\n" + "\t}\n" + "\t}\n" + "}");
 		st.add("type", getTranslatedParameterType());
@@ -1114,7 +1104,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "\tint PM_tileX = 0;"
 						+ "\tfor (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gInputFilter123); ++PM_x) {\n"
 						+ "\tfor (int PM_y=0; PM_y\\<rsAllocationGetDimY(PM_gInputFilter123); ++PM_y) {\n"
-						+ "\t\t\tif (filter123_func(rsGetElementAt_<type>(PM_gInputFilter123, PM_x, PM_y))) {\n"
+						+ "\t\t\tif (filter123_func(rsGetElementAt_<type>(PM_gInputFilter123, PM_x, PM_y), PM_x, PM_y)) {\n"
 						+ "\t\t\t\trsSetElementAt_int(PM_gOutputTileFilter123, PM_tileX, PM_tileX);\n"
 						+ "\t\t\t\tPM_gOutputXSizeFilter123++;\n"
 						+ "\t\t\t} else {\n"
@@ -1133,7 +1123,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "\tfor (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gOutputTileFilter123); ++PM_x) {\n"
 						+ "\tfor (int PM_y=0; PM_y\\<rsAllocationGetDimY(PM_gOutputTileFilter123); ++PM_y) {\n"
 						+ "\t\tint PM_value = rsGetElementAt_int(PM_gOutputTileFilter123, PM_x, PM_y);\n"
-						+ "\t\tif (PM_value > 0) {\n"
+						+ "\t\tif (PM_value >= 0) {\n"
 						+ "\t\t\trsSetElementAt_<type>(PM_gOutputFilter123, rsGetElementAt_<type>(PM_gInputFilter123, PM_value), PM_count++);\n"
 						+ "\t\t}\n" + "\t}\n" + "\t}\n" + "}");
 		st.add("UCNonFinalVarName", upperCaseFirstLetter(nonFinalVar.name));
@@ -1161,7 +1151,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "\tint PM_tileX = 0;"
 						+ "\tfor (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gInputFilter123); ++PM_x) {\n"
 						+ "\tfor (int PM_y=0; PM_y\\<rsAllocationGetDimY(PM_gInputFilter123); ++PM_y) {\n"
-						+ "\t\t\tif (filter123_func(rsGetElementAt_<type>(PM_gInputFilter123, PM_x, PM_y))) {\n"
+						+ "\t\t\tif (filter123_func(rsGetElementAt_<type>(PM_gInputFilter123, PM_x, PM_y), PM_x, PM_y)) {\n"
 						+ "\t\t\t\trsSetElementAt_int(PM_gOutputTileFilter123, PM_tileX, PM_tileX);\n"
 						+ "\t\t\t\tPM_gOutputXSizeFilter123++;\n"
 						+ "\t\t\t} else {\n"
@@ -1180,7 +1170,7 @@ public abstract class RSImageTranslatorTest extends ImageTranslatorTest {
 						+ "\tfor (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gOutputTileFilter123); ++PM_x) {\n"
 						+ "\tfor (int PM_y=0; PM_y\\<rsAllocationGetDimY(PM_gOutputTileFilter123); ++PM_y) {\n"
 						+ "\t\tint PM_value = rsGetElementAt_int(PM_gOutputTileFilter123, PM_x, PM_y);\n"
-						+ "\t\tif (PM_value > 0) {\n"
+						+ "\t\tif (PM_value >= 0) {\n"
 						+ "\t\t\trsSetElementAt_<type>(PM_gOutputFilter123, rsGetElementAt_<type>(PM_gInputFilter123, PM_value), PM_count++);\n"
 						+ "\t\t}\n" + "\t}\n" + "\t}\n" + "}");
 		st.add("UCNonFinalVarName", upperCaseFirstLetter(nonFinalVar.name));

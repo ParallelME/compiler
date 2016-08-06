@@ -98,10 +98,13 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 			List<Parameter> parameters = new ArrayList<>();
 			parameters.add(runtimePtr);
 			parameters.add(dataPointer);
+			String returnType = "void";
 			if (operation.operationType == OperationType.Map)
 				parameters.add(dataRetPointer);
 			else if (operation.operationType == OperationType.Reduce)
 				parameters.add(createDestinationVariableParameter(operation));
+			else if (operation.operationType == OperationType.Filter)
+				returnType = "long";
 			// Sequential operations must create an array for each variable.
 			// This array will be used to store the output value.
 			List<Variable> externalVariables = operation.getExternalVariables();
@@ -116,7 +119,7 @@ public class ParallelMERuntimeDefinition extends RuntimeDefinitionImpl {
 			}
 			String name = commonDefinitions.getOperationName(operation);
 			ret.add(commonDefinitions.createJavaMethodSignature(
-					"private native", "void", name, parameters, false) + ";");
+					"private native", returnType, name, parameters, false) + ";");
 		}
 		return ret;
 	}

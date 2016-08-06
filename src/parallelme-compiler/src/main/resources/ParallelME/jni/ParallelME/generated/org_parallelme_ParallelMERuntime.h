@@ -50,7 +50,9 @@ JNIEXPORT jint JNICALL Java_org_parallelme_ParallelMERuntime_nativeGetWidth
 
 JNIEXPORT jint JNICALL Java_org_parallelme_ParallelMERuntime_nativeGetLength
 	(JNIEnv *, jobject, jlong);
-  
+
+int getFilterArrayLength(JNIEnv *, jintArray);
+
 #ifdef __cplusplus
 }
 #endif

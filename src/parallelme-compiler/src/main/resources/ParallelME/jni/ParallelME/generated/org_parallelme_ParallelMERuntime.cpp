@@ -17,8 +17,7 @@
 
 using namespace parallelme;
 
-JNIEXPORT jlong JNICALL Java_org_parallelme_ParallelMERuntime_nativeInit
-  (JNIEnv *env, jobject self) {
+JNIEXPORT jlong JNICALL Java_org_parallelme_ParallelMERuntime_nativeInit(JNIEnv *env, jobject self) {
 	jlong ret = 0;
 	try {
 		JavaVM *jvm;
@@ -171,4 +170,20 @@ JNIEXPORT jint JNICALL Java_org_parallelme_ParallelMERuntime_nativeGetWidth(JNIE
 JNIEXPORT jint JNICALL Java_org_parallelme_ParallelMERuntime_nativeGetLength(JNIEnv *env, jobject self, jlong arrPtr) {
 	auto arrayPtr = (ArrayData *) arrPtr;
 	return arrayPtr->length;
+}
+
+/**
+ * Return the filter array length. This function checks which elements
+ * of the tile array must be copied to the final array.
+ */
+int getFilterArrayLength(JNIEnv *env, jintArray tileArray) {
+	int elementCount = 0;
+	int length = env->GetArrayLength(tileArray);
+	jint *body = env->GetIntArrayElements(tileArray, 0);
+	for (int i=0; i<length; i++) {
+		if (body[i] >= 0) {
+			elementCount++;
+		}
+	}
+	return elementCount;
 }

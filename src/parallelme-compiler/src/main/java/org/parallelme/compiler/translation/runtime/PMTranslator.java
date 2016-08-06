@@ -55,9 +55,28 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 			+ "<userFunction>(<varName>[<isArray:{var|<xVar>}><isImage:{var|<varGID>}>]<isImage:{var|, <xVar>, <yVar>}><params:{var|, <var.name>}>);";
 	private static final String templateOperationCall = "<destinationVariable:{var|<var.nativeReturnType>[] <var.name> = new <var.nativeReturnType>[<var.size>];\n}>"
 			+ "<initPointer:{var|<var.destName> = ParallelMERuntime.getInstance().createArray(<var.mapClassType>.class, \n\t<var.sizeExpression>);\n}>"
-			+ "<operationName>(<params:{var|<var.name>}; separator=\", \">);"
+			+ "<result:{var|<var.name> = }><operationName>(<params:{var|<var.name>}; separator=\", \">);"
 			+ "<fromImage:{var|\n\n<var.name> = <var.value>;}>"
 			+ "<destinationVariable:{var|\n\nreturn new <var.methodReturnType>(<var.expression>);}>";
+	private static final String templateFilter = "\tint <varCount> = 0;\n"
+			+ "\tfor (int <xVar>=0; <xVar>\\<<xSize><isImage:{var| * <ySize>}>; ++<xVar>) {\n"
+			+ "\t\tint PM_value = <dataTileVar>[<xVar>];\n"
+			+ "\t\tif (PM_value >= 0) {\n"
+			+ "\t\t\t<dataRetVar>[<varCount>++] = <dataVar>[PM_value];\n"
+			+ "\t\t}\n" + "\t}\n";
+	private static final String templateFilterTile = "<isParallelImage:{var|\tint <xVar> = get_global_id(0);\n"
+			+ "\tint <yVar> = get_global_id(1);\n"
+			+ "\tint <varGID> = <yVar> * <xSizeVar> + <xVar>;\n}>"
+			+ "<isParallelArray:{var|\tint <varGID> = get_global_id(0);\n}>"
+			+ "<forX:{var|\tfor (int <xVar>=0; <xVar>\\<<xSizeVar>; ++<xVar>) {\n}>"
+			+ "<forY:{var|\tfor (int <yVar>=0; <yVar>\\<<ySizeVar>; ++<yVar>) {\n}>"
+			+ "<forX:{var|int <varGID> = <xVar><forY:{var| + <xSizeVar> * <yVar>}>;}>"
+			+ "\tif (<userFunction>(<dataVar>[PM_gid]<isImage:{var|, <xVar>, <yVar>}><params:{var|<var.type>, <var.name>}>)) {\n"
+			+ "\t\t<dataTileVar>[PM_gid] = PM_gid;\n"
+			+ "\t} else {\n"
+			+ "\t\t<dataTileVar>[PM_gid] = -1;\n"
+			+ "\t}\n"
+			+ "<forX:{var|\t\\}\n}>" + "<forY:{var|\t\\}\n}>";
 
 	protected CTranslator cCodeTranslator;
 
@@ -73,6 +92,7 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 		st.add("fromImage", null);
 		st.add("initPointer", null);
 		st.add("destinationVariable", null);
+		st.add("result", null);
 		st.add("operationName", commonDefinitions.getOperationName(operation));
 		st.addAggr("params.{name}",
 				"ParallelMERuntime.getInstance().runtimePointer");
@@ -140,7 +160,6 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 	protected void fillMapOperationCall(ST st, Operation operation) {
 		st.addAggr("params.{name}",
 				commonDefinitions.getPointerName(operation.destinationVariable));
-
 		boolean isImage = commonDefinitions.isImage(operation.variable);
 		String pointerName = commonDefinitions
 				.getPointerName(operation.variable);
@@ -169,6 +188,8 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 	 * valid filter operation call.
 	 */
 	protected void fillFilterOperationCall(ST st, Operation operation) {
+		st.addAggr("result.{name}",
+				commonDefinitions.getPointerName(operation.destinationVariable));
 		String fromImageVar = commonDefinitions
 				.getFromImageBooleanName(operation.destinationVariable);
 		st.addAggr("fromImage.{name, value}", fromImageVar, commonDefinitions
@@ -359,7 +380,24 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 	 */
 	@Override
 	protected String translateFilter(Operation operation) {
-		return "";
+		ST st = new ST(templateFilter);
+		String prefix = this.commonDefinitions.getPrefix();
+		st.add("varCount", prefix + "count");
+		st.add("xVar", prefix + "x");
+		st.add("dataVar", commonDefinitions.getDataVarName());
+		st.add("dataTileVar", commonDefinitions.getDataTileVarName());
+		st.add("dataRetVar", commonDefinitions.getDataReturnVarName());
+		if (commonDefinitions.isImage(operation.variable)) {
+			st.add("xSize", getWidthVariableName());
+			st.add("ySize", getHeightVariableName());
+			st.add("yVar", prefix + "y");
+			st.add("isImage", "");
+		} else {
+			st.add("xSize", getLengthVariableName());
+			st.add("isImage", null);
+		}
+		return createKernelFunction(operation, st.render(),
+				FunctionType.BaseOperation);
 	}
 
 	/**
@@ -367,7 +405,38 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 	 */
 	@Override
 	protected String translateFilterTile(Operation operation) {
-		return "";
+		ST st = new ST(templateFilterTile);
+		st.add("varGID", getGIDVariableName());
+		boolean isSequential = operation.getExecutionType() == ExecutionType.Sequential;
+		boolean isImage = commonDefinitions.isImage(operation.variable);
+		String prefix = this.commonDefinitions.getPrefix();
+		st.add("xVar", prefix + "x");
+		st.add("yVar", prefix + "y");
+		st.add("xSizeVar", isImage ? getWidthVariableName()
+				: getLengthVariableName());
+		st.add("ySizeVar", getHeightVariableName());
+		st.add("isImage", isImage ? "" : null);
+		if (isSequential) {
+			st.add("isParallelImage", null);
+			st.add("isParallelArray", null);
+			st.add("forX", "");
+			if (isImage) {
+				st.add("forY", "");
+			} else {
+				st.add("forY", null);
+			}
+		} else {
+			st.add("isParallelImage", isImage ? "" : null);
+			st.add("isParallelArray", !isImage ? "" : null);
+			st.add("forX", null);
+			st.add("forY", null);
+		}
+		st.add("dataVar", commonDefinitions.getDataVarName());
+		st.add("dataTileVar", commonDefinitions.getDataTileVarName());
+		st.add("userFunction",
+				commonDefinitions.getOperationUserFunctionName(operation));
+		setExternalVariables(st, operation, false);
+		return createKernelFunction(operation, st.render(), FunctionType.Tile);
 	}
 
 	/**
@@ -454,8 +523,7 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 		st.add("modifier", null);
 		boolean isSequential = operation.getExecutionType() == ExecutionType.Sequential;
 		boolean isImage = commonDefinitions.isImage(operation.variable);
-		String reduceType = commonDefinitions.translateToCType(operation
-				.getUserFunctionData().arguments.get(0).typeName);
+		String reduceType = commonDefinitions.getCReturnType(operation);
 		if (functionType == FunctionType.BaseOperation) {
 			st.add("returnType", "void");
 			st.add("isKernel", "");
@@ -505,8 +573,7 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 		} else {
 			// Considering there are only 3 function types, the third type
 			// is considered here
-			st.add("returnType", commonDefinitions
-					.translateToCType(operation.destinationVariable.typeName));
+			st.add("returnType", reduceType);
 			st.add("isKernel", null);
 			st.add("functionName",
 					commonDefinitions.getOperationUserFunctionName(operation));
@@ -565,12 +632,67 @@ public abstract class PMTranslator extends BaseUserLibraryTranslator {
 	protected String initializeFilterSignature(Operation operation,
 			FunctionType functionType) {
 		ST st = new ST(templateFunctionDecl);
-		st.add("modifier", null);
-		st.add("returnType", null);
-		st.add("isKernel", null);
-		st.add("functionName", null);
-		st.add("params", null);
-		setExternalVariables(st, operation, true);
+		boolean isImage = commonDefinitions.isImage(operation.variable);
+		String filterType = commonDefinitions.translateToCType(operation
+				.getUserFunctionData().arguments.get(0).typeName);
+		if (functionType == FunctionType.BaseOperation) {
+			st.add("isKernel", "");
+			st.add("modifier", null);
+			st.add("returnType", "void");
+			st.add("functionName",
+					commonDefinitions.getOperationName(operation));
+			st.addAggr("params.{type, name}",
+					String.format("__global %s*", filterType),
+					commonDefinitions.getDataReturnVarName());
+			st.addAggr("params.{type, name}",
+					String.format("__global %s*", filterType),
+					commonDefinitions.getDataVarName());
+			st.addAggr("params.{type, name}",
+					String.format("__global %s*", "int"),
+					commonDefinitions.getDataTileVarName());
+			if (isImage) {
+				st.addAggr("params.{type, name}", "int", getWidthVariableName());
+				st.addAggr("params.{type, name}", "int",
+						getHeightVariableName());
+			} else {
+				st.addAggr("params.{type, name}", "int",
+						getLengthVariableName());
+			}
+		} else if (functionType == FunctionType.Tile) {
+			st.add("isKernel", "");
+			st.add("modifier", null);
+			st.add("returnType", "void");
+			st.add("functionName",
+					commonDefinitions.getOperationTileFunctionName(operation));
+			st.addAggr("params.{type, name}",
+					String.format("__global %s*", filterType),
+					commonDefinitions.getDataVarName());
+			st.addAggr("params.{type, name}",
+					String.format("__global %s*", "int"),
+					commonDefinitions.getDataTileVarName());
+			if (isImage) {
+				st.addAggr("params.{type, name}", "int", getWidthVariableName());
+				if (operation.getExecutionType() == ExecutionType.Sequential) {
+					st.addAggr("params.{type, name}", "int",
+							getHeightVariableName());
+				}
+			} else {
+				if (operation.getExecutionType() == ExecutionType.Sequential) {
+					st.addAggr("params.{type, name}", "int",
+							getLengthVariableName());
+				}
+			}
+			setExternalVariables(st, operation, true);
+		} else {
+			st.add("isKernel", null);
+			st.add("modifier", "static");
+			st.add("functionName",
+					commonDefinitions.getOperationUserFunctionName(operation));
+			st.addAggr("params.{type, name}",
+					String.format("__global %s*", filterType),
+					operation.getUserFunctionData().arguments.get(0));
+			setExternalVariables(st, operation, true);
+		}
 		return st.render();
 	}
 

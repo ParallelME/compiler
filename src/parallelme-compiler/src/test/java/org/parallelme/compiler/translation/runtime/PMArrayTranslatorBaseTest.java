@@ -1143,6 +1143,454 @@ public abstract class PMArrayTranslatorBaseTest extends ArrayTranslatorTest {
 	}
 
 	/**
+	 * Tests filter operation translation.
+	 */
+	@Test
+	public void translateFilterOperation() throws Exception {
+		// Parallel
+		Operation operation = this
+				.createFilterOperation(ExecutionType.Parallel);
+		BaseUserLibraryTranslator translator = this.getTranslator();
+		List<String> translatedFunction = translator
+				.translateOperation(operation);
+		ST st = new ST(
+				"static bool filter123_func(<type> param1) {\n"
+						+ "\treturn param1 > 2;\n"
+						+ "}\n"
+						+ "__kernel void filter123_tile(__global <type>* PM_data, __global int* PM_dataTile) {\n"
+						+ "	int PM_gid = get_global_id(0);\n"
+						+ "	if (filter123_func(PM_data[PM_gid])) {\n"
+						+ "		PM_dataTile[PM_gid] = PM_gid;\n"
+						+ "	} else {\n"
+						+ "		PM_dataTile[PM_gid] = -1;\n"
+						+ "	}\n"
+						+ "}\n"
+						+ "__kernel void filter123(__global <type>* PM_dataRet, __global <type>* PM_data, __global int* PM_dataTile, int PM_length) {\n"
+						+ "	int PM_count = 0;\n"
+						+ "	for (int PM_x=0; PM_x\\<PM_length; ++PM_x) {\n"
+						+ "		int PM_value = PM_dataTile[PM_x];\n"
+						+ "		if (PM_value >= 0) {\n"
+						+ "			PM_dataRet[PM_count++] = PM_data[PM_value];\n"
+						+ "		}\n" + "	}\n" + "}\n");
+		st.add("type", getTranslatedParameterType());
+		String expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Parallel with final external variable
+		operation = this.createFilterOperation(ExecutionType.Parallel);
+		Variable finalVar = this.createExternalVariable("final", "var1");
+		operation.addExternalVariable(finalVar);
+		translatedFunction = translator.translateOperation(operation);
+		st = new ST(
+				"static bool filter123_func(<type> param1, <finalVarType> <finalVar>) {\n"
+						+ "\treturn param1 > 2;\n"
+						+ "}\n"
+						+ "__kernel void filter123_tile(__global <type>* PM_data, __global int* PM_dataTile, <finalVarType> <finalVar>) {\n"
+						+ "	int PM_gid = get_global_id(0);\n"
+						+ "	if (filter123_func(PM_data[PM_gid], <finalVar>)) {\n"
+						+ "		PM_dataTile[PM_gid] = PM_gid;\n"
+						+ "	} else {\n"
+						+ "		PM_dataTile[PM_gid] = -1;\n"
+						+ "	}\n"
+						+ "}\n"
+						+ "__kernel void filter123(__global <type>* PM_dataRet, __global <type>* PM_data, __global int* PM_dataTile, int PM_length) {\n"
+						+ "	int PM_count = 0;\n"
+						+ "	for (int PM_x=0; PM_x\\<PM_length; ++PM_x) {\n"
+						+ "		int PM_value = PM_dataTile[PM_x];\n"
+						+ "		if (PM_value >= 0) {\n"
+						+ "			PM_dataRet[PM_count++] = PM_data[PM_value];\n"
+						+ "		}\n" + "	}\n" + "}\n");
+		st.add("type", getTranslatedParameterType());
+		st.add("finalVar", finalVar.name);
+		st.add("finalVarType", finalVar.typeName);
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Parallel with non-final external variable (will be translated to
+		// sequential code)
+		operation = this.createFilterOperation(ExecutionType.Parallel);
+		Variable nonFinalVar = this.createExternalVariable("", "var2");
+		operation.addExternalVariable(nonFinalVar);
+		translatedFunction = translator.translateOperation(operation);
+		st = new ST(
+				"static bool filter123_func(<type> param1, __global <nonFinalVarType>* PM_<nonFinalVar>) {\n"
+						+ "\treturn param1 > 2;\n"
+						+ "}\n"
+						+ "__kernel void filter123_tile(__global <type>* PM_data, __global int* PM_dataTile, int PM_length, __global <nonFinalVarType>* PM_<nonFinalVar>) {\n"
+						+ "	for (int PM_x=0; PM_x\\<PM_length; ++PM_x) {\n"
+						+ "	int PM_gid = PM_x;\n"
+						+ "	if (filter123_func(PM_data[PM_gid], PM_<nonFinalVar>)) {\n"
+						+ "		PM_dataTile[PM_gid] = PM_gid;\n"
+						+ "	} else {\n"
+						+ "		PM_dataTile[PM_gid] = -1;\n"
+						+ "	}\n"
+						+ "}\n"
+						+ "}\n"
+						+ "__kernel void filter123(__global <type>* PM_dataRet, __global <type>* PM_data, __global int* PM_dataTile, int PM_length) {\n"
+						+ "	int PM_count = 0;\n"
+						+ "	for (int PM_x=0; PM_x\\<PM_length; ++PM_x) {\n"
+						+ "		int PM_value = PM_dataTile[PM_x];\n"
+						+ "		if (PM_value >= 0) {\n"
+						+ "			PM_dataRet[PM_count++] = PM_data[PM_value];\n"
+						+ "		}\n" + "	}\n" + "}\n");
+		st.add("type", getTranslatedParameterType());
+		st.add("nonFinalVar", nonFinalVar.name);
+		st.add("nonFinalVarType", nonFinalVar.typeName);
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Sequential with non-final and final variable
+		operation = this.createFilterOperation(ExecutionType.Sequential);
+		operation.addExternalVariable(nonFinalVar);
+		operation.addExternalVariable(finalVar);
+		translatedFunction = translator.translateOperation(operation);
+		st = new ST(
+				"static bool filter123_func(<type> param1, __global <nonFinalVarType>* PM_<nonFinalVar>, <finalVarType> <finalVar>) {\n"
+						+ "\treturn param1 > 2;\n"
+						+ "}\n"
+						+ "__kernel void filter123_tile(__global <type>* PM_data, __global int* PM_dataTile, int PM_length, __global <nonFinalVarType>* PM_<nonFinalVar>, <finalVarType> <finalVar>) {\n"
+						+ "	for (int PM_x=0; PM_x\\<PM_length; ++PM_x) {\n"
+						+ "	int PM_gid = PM_x;\n"
+						+ "	if (filter123_func(PM_data[PM_gid], PM_<nonFinalVar>, <finalVar>)) {\n"
+						+ "		PM_dataTile[PM_gid] = PM_gid;\n"
+						+ "	} else {\n"
+						+ "		PM_dataTile[PM_gid] = -1;\n"
+						+ "	}\n"
+						+ "}\n"
+						+ "}\n"
+						+ "__kernel void filter123(__global <type>* PM_dataRet, __global <type>* PM_data, __global int* PM_dataTile, int PM_length) {\n"
+						+ "	int PM_count = 0;\n"
+						+ "	for (int PM_x=0; PM_x\\<PM_length; ++PM_x) {\n"
+						+ "		int PM_value = PM_dataTile[PM_x];\n"
+						+ "		if (PM_value >= 0) {\n"
+						+ "			PM_dataRet[PM_count++] = PM_data[PM_value];\n"
+						+ "		}\n" + "	}\n" + "}\n");
+		st.add("type", getTranslatedParameterType());
+		st.add("nonFinalVar", nonFinalVar.name);
+		st.add("nonFinalVarType", nonFinalVar.typeName);
+		st.add("finalVar", finalVar.name);
+		st.add("finalVarType", finalVar.typeName);
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Sequential with final variable
+		operation = this.createFilterOperation(ExecutionType.Sequential);
+		operation.addExternalVariable(finalVar);
+		translatedFunction = translator.translateOperation(operation);
+		st = new ST(
+				"static bool filter123_func(<type> param1, <finalVarType> <finalVar>) {\n"
+						+ "\treturn param1 > 2;\n"
+						+ "}\n"
+						+ "__kernel void filter123_tile(__global <type>* PM_data, __global int* PM_dataTile, int PM_length, <finalVarType> <finalVar>) {\n"
+						+ "	for (int PM_x=0; PM_x\\<PM_length; ++PM_x) {\n"
+						+ "	int PM_gid = PM_x;\n"
+						+ "	if (filter123_func(PM_data[PM_gid], <finalVar>)) {\n"
+						+ "		PM_dataTile[PM_gid] = PM_gid;\n"
+						+ "	} else {\n"
+						+ "		PM_dataTile[PM_gid] = -1;\n"
+						+ "	}\n"
+						+ "}\n"
+						+ "}\n"
+						+ "__kernel void filter123(__global <type>* PM_dataRet, __global <type>* PM_data, __global int* PM_dataTile, int PM_length) {\n"
+						+ "	int PM_count = 0;\n"
+						+ "	for (int PM_x=0; PM_x\\<PM_length; ++PM_x) {\n"
+						+ "		int PM_value = PM_dataTile[PM_x];\n"
+						+ "		if (PM_value >= 0) {\n"
+						+ "			PM_dataRet[PM_count++] = PM_data[PM_value];\n"
+						+ "		}\n" + "	}\n" + "}\n");
+		st.add("type", getTranslatedParameterType());
+		st.add("finalVar", finalVar.name);
+		st.add("finalVarType", finalVar.typeName);
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Sequential with non-final variable
+		operation = this.createFilterOperation(ExecutionType.Sequential);
+		operation.addExternalVariable(nonFinalVar);
+		translatedFunction = translator.translateOperation(operation);
+		st = new ST(
+				"static bool filter123_func(<type> param1, __global <nonFinalVarType>* PM_<nonFinalVar>) {\n"
+						+ "\treturn param1 > 2;\n"
+						+ "}\n"
+						+ "__kernel void filter123_tile(__global <type>* PM_data, __global int* PM_dataTile, int PM_length, __global <nonFinalVarType>* PM_<nonFinalVar>) {\n"
+						+ "	for (int PM_x=0; PM_x\\<PM_length; ++PM_x) {\n"
+						+ "	int PM_gid = PM_x;\n"
+						+ "	if (filter123_func(PM_data[PM_gid], PM_<nonFinalVar>)) {\n"
+						+ "		PM_dataTile[PM_gid] = PM_gid;\n"
+						+ "	} else {\n"
+						+ "		PM_dataTile[PM_gid] = -1;\n"
+						+ "	}\n"
+						+ "}\n"
+						+ "}\n"
+						+ "__kernel void filter123(__global <type>* PM_dataRet, __global <type>* PM_data, __global int* PM_dataTile, int PM_length) {\n"
+						+ "	int PM_count = 0;\n"
+						+ "	for (int PM_x=0; PM_x\\<PM_length; ++PM_x) {\n"
+						+ "		int PM_value = PM_dataTile[PM_x];\n"
+						+ "		if (PM_value >= 0) {\n"
+						+ "			PM_dataRet[PM_count++] = PM_data[PM_value];\n"
+						+ "		}\n" + "	}\n" + "}\n");
+		st.add("type", getTranslatedParameterType());
+		st.add("nonFinalVar", nonFinalVar.name);
+		st.add("nonFinalVarType", nonFinalVar.typeName);
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+	}
+
+	/**
+	 * Tests filter operation call.
+	 */
+	@Test
+	public void translateFilterOperationCall() throws Exception {
+		// Parallel
+		Operation operation = createFilterOperation(ExecutionType.Parallel);
+		BaseUserLibraryTranslator translator = getTranslator();
+		String translatedFunction = translator.translateOperationCall(
+				className, operation);
+		ST st = new ST(
+				" <destPointer> = filter123(ParallelMERuntime.getInstance().runtimePointer, <pointerVar>);\n"
+						+ "<varFromImage> = false;");
+		st.add("pointerVar",
+				commonDefinitions.getPointerName(operation.variable));
+		st.add("destPointer",
+				commonDefinitions.getPointerName(operation.destinationVariable));
+		st.add("varFromImage", commonDefinitions
+				.getFromImageBooleanName(operation.destinationVariable));
+		String expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Sequential
+		operation = this.createFilterOperation(ExecutionType.Sequential);
+		translatedFunction = translator.translateOperationCall(className,
+				operation);
+		this.validateTranslation(expectedTranslation, translatedFunction);
+	}
+
+	/**
+	 * Tests filter operation JNI interface.
+	 */
+	@Test
+	public void translateFilterOperationJNI() throws Exception {
+		// Parallel
+		Operation operation = this
+				.createFilterOperation(ExecutionType.Parallel);
+		ParallelMERuntimeCTranslation cTranslator = new ParallelMERuntimeCTranslation();
+		String translatedFunction = cTranslator.createParallelOperation(
+				operation, this.className);
+		ST st = new ST(
+				"JNIEXPORT jlong JNICALL Java_SomeClass_filter123(JNIEnv *env, jobject self, jlong PM_runtime, jlong PM_data) {\n"
+						+ "auto PM_runtimePtr = (ParallelMERuntimeData *) PM_runtime;\n"
+						+ "auto PM_dataPtr = (ArrayData *) PM_data;\n"
+						+ "auto PM_task = std::make_unique\\<Task>(PM_runtimePtr->program);\n"
+						+ "auto PM_tileBuffer = std::make_shared\\<Buffer>(sizeof(int) * PM_dataPtr->length);\n"
+						+ "PM_task->addKernel(\"filter123_tile\");\n"
+						+ "PM_task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"filter123_tile\"]\n"
+						+ "->setArg(0, PM_dataPtr->buffer)\n"
+						+ "->setArg(1, PM_tileBuffer)\n"
+						+ "->setWorkSize(PM_dataPtr->length);\n"
+						+ "});\n"
+						+ "PM_runtimePtr->runtime->submitTask(std::move(PM_task));\n"
+						+ "PM_runtimePtr->runtime->finish();\n"
+						+ "jintArray PM_tileArray = env->NewIntArray(PM_dataPtr->length);\n"
+						+ "PM_tileBuffer->copyToJArray(env, PM_tileArray);\n"
+						+ "auto PM_task2 = std::make_unique\\<Task>(PM_runtimePtr->program);\n"
+						+ "int PM_length = getFilterArrayLength(env, PM_tileArray);\n"
+						+ "auto PM_dataRetPtr = (ArrayData *)Java_org_parallelme_ParallelMERuntime_nativeCreateArray__II(env, self, PM_length, 2);\n"
+						+ "PM_task2->addKernel(\"filter123\");\n"
+						+ "PM_task2->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"filter123\"]\n"
+						+ "->setArg(0, PM_dataRetPtr->buffer)\n"
+						+ "->setArg(1, PM_dataPtr->buffer)\n"
+						+ "->setArg(2, PM_tileBuffer)\n"
+						+ "->setArg(3, PM_dataPtr->length)\n"
+						+ "->setWorkSize(1);\n"
+						+ "});\n"
+						+ "PM_runtimePtr->runtime->submitTask(std::move(PM_task2));\n"
+						+ "PM_runtimePtr->runtime->finish();\n"
+						+ "return (jlong)PM_dataRetPtr;\n" + "}");
+		String expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Parallel with final external variable
+		operation = this.createFilterOperation(ExecutionType.Parallel);
+		Variable finalVar = this.createExternalVariable("final", "var1");
+		operation.addExternalVariable(finalVar);
+		translatedFunction = cTranslator.createParallelOperation(operation,
+				this.className);
+		st = new ST(
+				"JNIEXPORT jlong JNICALL Java_SomeClass_filter123(JNIEnv *env, jobject self, jlong PM_runtime, jlong PM_data, <finalVarType> <finalVar>) {\n"
+						+ "auto PM_runtimePtr = (ParallelMERuntimeData *) PM_runtime;\n"
+						+ "auto PM_dataPtr = (ArrayData *) PM_data;\n"
+						+ "auto PM_task = std::make_unique\\<Task>(PM_runtimePtr->program);\n"
+						+ "auto PM_tileBuffer = std::make_shared\\<Buffer>(sizeof(int) * PM_dataPtr->length);\n"
+						+ "PM_task->addKernel(\"filter123_tile\");\n"
+						+ "PM_task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"filter123_tile\"]\n"
+						+ "->setArg(0, PM_dataPtr->buffer)\n"
+						+ "->setArg(1, PM_tileBuffer)\n"
+						+ "->setArg(2, <finalVar>)\n"
+						+ "->setWorkSize(PM_dataPtr->length);\n"
+						+ "});\n"
+						+ "PM_runtimePtr->runtime->submitTask(std::move(PM_task));\n"
+						+ "PM_runtimePtr->runtime->finish();\n"
+						+ "jintArray PM_tileArray = env->NewIntArray(PM_dataPtr->length);\n"
+						+ "PM_tileBuffer->copyToJArray(env, PM_tileArray);\n"
+						+ "auto PM_task2 = std::make_unique\\<Task>(PM_runtimePtr->program);\n"
+						+ "int PM_length = getFilterArrayLength(env, PM_tileArray);\n"
+						+ "auto PM_dataRetPtr = (ArrayData *)Java_org_parallelme_ParallelMERuntime_nativeCreateArray__II(env, self, PM_length, 2);\n"
+						+ "PM_task2->addKernel(\"filter123\");\n"
+						+ "PM_task2->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"filter123\"]\n"
+						+ "->setArg(0, PM_dataRetPtr->buffer)\n"
+						+ "->setArg(1, PM_dataPtr->buffer)\n"
+						+ "->setArg(2, PM_tileBuffer)\n"
+						+ "->setArg(3, PM_dataPtr->length)\n"
+						+ "->setWorkSize(1);\n"
+						+ "});\n"
+						+ "PM_runtimePtr->runtime->submitTask(std::move(PM_task2));\n"
+						+ "PM_runtimePtr->runtime->finish();\n"
+						+ "return (jlong)PM_dataRetPtr;\n" + "}");
+		st.add("finalVarType", finalVar.typeName);
+		st.add("finalVar", finalVar.name);
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Sequential with non-final and final variable
+		operation = this.createFilterOperation(ExecutionType.Sequential);
+		Variable nonFinalVar = this.createExternalVariable("", "var2");
+		operation.addExternalVariable(nonFinalVar);
+		operation.addExternalVariable(finalVar);
+		translatedFunction = cTranslator.createSequentialOperation(operation,
+				this.className);
+		st = new ST(
+				"JNIEXPORT jlong JNICALL Java_SomeClass_filter123(JNIEnv *env, jobject self, jlong PM_runtime, jlong PM_data, j<nonFinalVarType>Array PM_<nonFinalVar>, "
+						+ "<finalVarType> <finalVar>) {\n"
+						+ "auto PM_runtimePtr = (ParallelMERuntimeData *) PM_runtime;\n"
+						+ "auto PM_dataPtr = (ArrayData *) PM_data;\n"
+						+ "auto PM_task = std::make_unique\\<Task>(PM_runtimePtr->program, Task::Score(1.0f,2.0f));\n"
+						+ "auto PM_<nonFinalVar>Buffer = std::make_shared\\<Buffer>(sizeof(<nonFinalVarType>));\n"
+						+ "PM_<nonFinalVar>Buffer->setJArraySource(env, PM_<nonFinalVar>);\n"
+						+ "auto PM_tileBuffer = std::make_shared\\<Buffer>(sizeof(int) * PM_dataPtr->length);\n"
+						+ "PM_task->addKernel(\"filter123_tile\");\n"
+						+ "PM_task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"filter123_tile\"]\n"
+						+ "->setArg(0, PM_dataPtr->buffer)\n"
+						+ "->setArg(1, PM_tileBuffer)\n"
+						+ "->setArg(2, PM_dataPtr->length)\n"
+						+ "->setArg(3, PM_<nonFinalVar>Buffer)\n"
+						+ "->setArg(4, <finalVar>)\n"
+						+ "->setWorkSize(1);\n"
+						+ "});\n"
+						+ "PM_runtimePtr->runtime->submitTask(std::move(PM_task));\n"
+						+ "PM_runtimePtr->runtime->finish();\n"
+						+ "PM_<nonFinalVar>Buffer->copyToJArray(env, PM_<nonFinalVar>);\n"
+						+ "jintArray PM_tileArray = env->NewIntArray(PM_dataPtr->length);\n"
+						+ "PM_tileBuffer->copyToJArray(env, PM_tileArray);\n"
+						+ "auto PM_task2 = std::make_unique\\<Task>(PM_runtimePtr->program, Task::Score(1.0f,2.0f));\n"
+						+ "int PM_length = getFilterArrayLength(env, PM_tileArray);\n"
+						+ "auto PM_dataRetPtr = (ArrayData *)Java_org_parallelme_ParallelMERuntime_nativeCreateArray__II(env, self, PM_length, 2);\n"
+						+ "PM_task2->addKernel(\"filter123\");\n"
+						+ "PM_task2->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"filter123\"]\n"
+						+ "->setArg(0, PM_dataRetPtr->buffer)\n"
+						+ "->setArg(1, PM_dataPtr->buffer)\n"
+						+ "->setArg(2, PM_tileBuffer)\n"
+						+ "->setArg(3, PM_dataPtr->length)\n"
+						+ "->setWorkSize(1);\n"
+						+ "});\n"
+						+ "PM_runtimePtr->runtime->submitTask(std::move(PM_task2));\n"
+						+ "PM_runtimePtr->runtime->finish();\n"
+						+ "return (jlong)PM_dataRetPtr;\n" + "}");
+		st.add("nonFinalVarType", nonFinalVar.typeName);
+		st.add("nonFinalVar", nonFinalVar.name);
+		st.add("finalVarType", finalVar.typeName);
+		st.add("finalVar", finalVar.name);
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Sequential with final variable
+		operation = this.createFilterOperation(ExecutionType.Sequential);
+		operation.addExternalVariable(finalVar);
+		translatedFunction = cTranslator.createSequentialOperation(operation,
+				this.className);
+		st = new ST(
+				"JNIEXPORT jlong JNICALL Java_SomeClass_filter123(JNIEnv *env, jobject self, jlong PM_runtime, jlong PM_data, <finalVarType> <finalVar>) {\n"
+						+ "auto PM_runtimePtr = (ParallelMERuntimeData *) PM_runtime;\n"
+						+ "auto PM_dataPtr = (ArrayData *) PM_data;\n"
+						+ "auto PM_task = std::make_unique\\<Task>(PM_runtimePtr->program, Task::Score(1.0f,2.0f));\n"
+						+ "auto PM_tileBuffer = std::make_shared\\<Buffer>(sizeof(int) * PM_dataPtr->length);\n"
+						+ "PM_task->addKernel(\"filter123_tile\");\n"
+						+ "PM_task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"filter123_tile\"]\n"
+						+ "->setArg(0, PM_dataPtr->buffer)\n"
+						+ "->setArg(1, PM_tileBuffer)\n"
+						+ "->setArg(2, PM_dataPtr->length)\n"
+						+ "->setArg(3, <finalVar>)\n"
+						+ "->setWorkSize(1);\n"
+						+ "});\n"
+						+ "PM_runtimePtr->runtime->submitTask(std::move(PM_task));\n"
+						+ "PM_runtimePtr->runtime->finish();\n"
+						+ "jintArray PM_tileArray = env->NewIntArray(PM_dataPtr->length);\n"
+						+ "PM_tileBuffer->copyToJArray(env, PM_tileArray);\n"
+						+ "auto PM_task2 = std::make_unique\\<Task>(PM_runtimePtr->program, Task::Score(1.0f,2.0f));\n"
+						+ "int PM_length = getFilterArrayLength(env, PM_tileArray);\n"
+						+ "auto PM_dataRetPtr = (ArrayData *)Java_org_parallelme_ParallelMERuntime_nativeCreateArray__II(env, self, PM_length, 2);\n"
+						+ "PM_task2->addKernel(\"filter123\");\n"
+						+ "PM_task2->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"filter123\"]\n"
+						+ "->setArg(0, PM_dataRetPtr->buffer)\n"
+						+ "->setArg(1, PM_dataPtr->buffer)\n"
+						+ "->setArg(2, PM_tileBuffer)\n"
+						+ "->setArg(3, PM_dataPtr->length)\n"
+						+ "->setWorkSize(1);\n"
+						+ "});\n"
+						+ "PM_runtimePtr->runtime->submitTask(std::move(PM_task2));\n"
+						+ "PM_runtimePtr->runtime->finish();\n"
+						+ "return (jlong)PM_dataRetPtr;\n" + "}");
+		st.add("finalVarType", finalVar.typeName);
+		st.add("finalVar", finalVar.name);
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+		// Sequential with non-final variable
+		operation = this.createFilterOperation(ExecutionType.Sequential);
+		operation.addExternalVariable(nonFinalVar);
+		translatedFunction = cTranslator.createSequentialOperation(operation,
+				this.className);
+		st = new ST(
+				"JNIEXPORT jlong JNICALL Java_SomeClass_filter123(JNIEnv *env, jobject self, jlong PM_runtime, jlong PM_data, j<nonFinalVarType>Array PM_<nonFinalVar>) {\n"
+						+ "auto PM_runtimePtr = (ParallelMERuntimeData *) PM_runtime;\n"
+						+ "auto PM_dataPtr = (ArrayData *) PM_data;\n"
+						+ "auto PM_task = std::make_unique\\<Task>(PM_runtimePtr->program, Task::Score(1.0f,2.0f));\n"
+						+ "auto PM_<nonFinalVar>Buffer = std::make_shared\\<Buffer>(sizeof(<nonFinalVarType>));\n"
+						+ "PM_<nonFinalVar>Buffer->setJArraySource(env, PM_<nonFinalVar>);\n"
+						+ "auto PM_tileBuffer = std::make_shared\\<Buffer>(sizeof(int) * PM_dataPtr->length);\n"
+						+ "PM_task->addKernel(\"filter123_tile\");\n"
+						+ "PM_task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"filter123_tile\"]\n"
+						+ "->setArg(0, PM_dataPtr->buffer)\n"
+						+ "->setArg(1, PM_tileBuffer)\n"
+						+ "->setArg(2, PM_dataPtr->length)\n"
+						+ "->setArg(3, PM_<nonFinalVar>Buffer)\n"
+						+ "->setWorkSize(1);\n"
+						+ "});\n"
+						+ "PM_runtimePtr->runtime->submitTask(std::move(PM_task));\n"
+						+ "PM_runtimePtr->runtime->finish();\n"
+						+ "PM_<nonFinalVar>Buffer->copyToJArray(env, PM_<nonFinalVar>);\n"
+						+ "jintArray PM_tileArray = env->NewIntArray(PM_dataPtr->length);\n"
+						+ "PM_tileBuffer->copyToJArray(env, PM_tileArray);\n"
+						+ "auto PM_task2 = std::make_unique\\<Task>(PM_runtimePtr->program, Task::Score(1.0f,2.0f));\n"
+						+ "int PM_length = getFilterArrayLength(env, PM_tileArray);\n"
+						+ "auto PM_dataRetPtr = (ArrayData *)Java_org_parallelme_ParallelMERuntime_nativeCreateArray__II(env, self, PM_length, 2);\n"
+						+ "PM_task2->addKernel(\"filter123\");\n"
+						+ "PM_task2->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+						+ "kernelHash[\"filter123\"]\n"
+						+ "->setArg(0, PM_dataRetPtr->buffer)\n"
+						+ "->setArg(1, PM_dataPtr->buffer)\n"
+						+ "->setArg(2, PM_tileBuffer)\n"
+						+ "->setArg(3, PM_dataPtr->length)\n"
+						+ "->setWorkSize(1);\n"
+						+ "});\n"
+						+ "PM_runtimePtr->runtime->submitTask(std::move(PM_task2));\n"
+						+ "PM_runtimePtr->runtime->finish();\n"
+						+ "return (jlong)PM_dataRetPtr;\n" + "}");
+		st.add("nonFinalVarType", nonFinalVar.typeName);
+		st.add("nonFinalVar", nonFinalVar.name);
+		expectedTranslation = st.render();
+		this.validateTranslation(expectedTranslation, translatedFunction);
+	}
+
+	/**
 	 * Tests method call translation.
 	 */
 	@Test

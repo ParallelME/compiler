@@ -36,7 +36,8 @@ public class ParallelMERuntimeCTranslation {
 			+ "#include \\<stdexcept>\n" + "#include \\<android/log.h>\n"
 			+ "#include \\<parallelme/ParallelME.hpp>\n"
 			+ "#include \\<parallelme/SchedulerHEFT.hpp>\n"
-			+ "#include \"ParallelMEData.hpp\"\n\n"
+			+ "#include \"ParallelMEData.hpp\"\n"
+			+ "#include \"org_parallelme_ParallelMERuntime.h\"\n\n"
 			+ "using namespace parallelme;\n\n"
 			+ "<operation:{var|<var.body>}; separator=\"\n\n\">";
 	private static final String templateHFile = "<introductoryMsg>\n\n"
@@ -45,49 +46,57 @@ public class ParallelMERuntimeCTranslation {
 			+ "extern \"C\" {\n" + "#endif\n\n"
 			+ "<operation:{var|<var.decl>;}; separator=\"\n\n\">"
 			+ "\n\n#ifdef __cplusplus\n" + "}\n" + "#endif\n" + "#endif\n";
-	private static final String templateOperationFunctionDecl = "JNIEXPORT void JNICALL Java_<cClassName>_<operationName>\n"
+	private static final String templateOperationFunctionDecl = "JNIEXPORT <returnType> JNICALL Java_<cClassName>_<operationName>\n"
 			+ "\t\t(JNIEnv *<varName:{var|env}>, jobject <varName:{var|self}>, jlong <varName:{var|PM_runtime}>, jlong <varName:{var|PM_data}><params:{var|, <var.decl>}>)";
 	private static final String templateKernelHash = "kernelHash[\"<operationName>\"]\n"
 			+ "<setArgs:{var|\t\t->setArg(<var.index>, <var.name>)\n}>"
 			+ "\t->setWorkSize(<workSize>);";
-	private static final String templateParallelOperation = "<functionDecl> {\n"
-			+ "\tauto PM_runtimePtr = (ParallelMERuntimeData *) PM_runtime;\n"
+	private static final String templateParallelOperationBody = "\tauto PM_runtimePtr = (ParallelMERuntimeData *) PM_runtime;\n"
 			+ "\tauto PM_dataPtr = (<objectType> *) PM_data;\n"
 			+ "<returnPointer:{var|\t\tauto PM_dataRetPtr = (<var.objectType> *) <var.name>;\n}>"
-			+ "\tauto PM_task = std::make_unique\\<Task>(PM_runtimePtr->program);\n"
-			+ "<tileData:{var|\t\tint <var.name> = <var.expression>;\n"
-			+ "\tauto <var.bufferName> = std::make_shared\\<Buffer>(<var.expression2>);\n}>"
+			+ "\tauto <taskName> = std::make_unique\\<Task>(PM_runtimePtr->program);\n"
+			+ "<tileData:{var|\t\tint <var.name> = <var.expression>;\n}>"
+			+ "<buffers:{var|\t\tauto <var.bufferName> = std::make_shared\\<Buffer>(<var.expression>);\n}>"
 			+ "<destinationVariable:{var|\t\tauto <var.bufferName> = std::make_shared\\<Buffer>(<var.expression>);\n}>"
-			+ "<task:{var|\t\tPM_task->addKernel(\"<var.operationName>\");\n}>"
-			+ "\tPM_task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+			+ "<task:{var|\t\t<taskName>->addKernel(\"<var.operationName>\");\n}>"
+			+ "\t<taskName>->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
 			+ "\t\t<kernelHash:{var|<var.body>}; separator=\"\n\">"
 			+ "\n\t\\});\n"
-			+ "\tPM_runtimePtr->runtime->submitTask(std::move(PM_task));\n"
+			+ "\tPM_runtimePtr->runtime->submitTask(std::move(<taskName>));\n"
 			+ "\tPM_runtimePtr->runtime->finish();\n"
-			+ "<destinationVariable:{var|\t\t<var.bufferName>->copyToJArray(env, <var.name>);\n}>"
-			+ "\\}";
-	private static final String templateSequentialOperation = "<functionDecl> {\n"
-			+ "\tauto PM_runtimePtr = (ParallelMERuntimeData *) PM_runtime;\n"
+			+ "<destinationVariable:{var|\t\t<var.bufferName>->copyToJArray(env, <var.name>);\n}>";
+	private static final String templateSequentialOperationBody = "\tauto PM_runtimePtr = (ParallelMERuntimeData *) PM_runtime;\n"
 			+ "\tauto PM_dataPtr = (<objectType> *) PM_data;\n"
 			+ "<returnPointer:{var|\t\tauto PM_dataRetPtr = (<var.objectType> *) <var.name>;\n}>"
-			+ "\tauto PM_task = std::make_unique\\<Task>(PM_runtimePtr->program, Task::Score(1.0f, 2.0f));\n"
-			+ "<destinationVariable:{var|\t\tauto <var.bufferName> = std::make_shared\\<Buffer>(sizeof(<var.type>) * env->GetArrayLength(<var.name>));\n}>"
-			+ "<buffers:{var|\t\tauto <var.bufferName> = std::make_shared\\<Buffer>(sizeof(<var.type>));\n"
-			+ "\t<var.bufferName>->setJArraySource(env, <var.arrName>);\n}>"
-			+ "<task:{var|\t\tPM_task->addKernel(\"<var.operationName>\");\n}>"
-			+ "\tPM_task->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+			+ "\tauto <taskName> = std::make_unique\\<Task>(PM_runtimePtr->program, Task::Score(1.0f, 2.0f));\n"
+			+ "<destinationVariable:{var|\t\tauto <var.bufferName> = std::make_shared\\<Buffer>(<var.expression>);\n}>"
+			+ "<buffers:{var|\t\tauto <var.bufferName> = std::make_shared\\<Buffer>(<var.expression>);\n"
+			+ "<var.setArrayBuffer:{var2|\t\t<var.bufferName>->setJArraySource(env, <var.arrName>);\n}>}>"
+			+ "<task:{var|\t\t<taskName>->addKernel(\"<var.operationName>\");\n}>"
+			+ "\t<taskName>->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
 			+ "\t\t<kernelHash:{var|<var.body>}; separator=\"\n\">"
 			+ "\n\t\\});\n"
-			+ "\tPM_runtimePtr->runtime->submitTask(std::move(PM_task));\n"
+			+ "\tPM_runtimePtr->runtime->submitTask(std::move(<taskName>));\n"
 			+ "\tPM_runtimePtr->runtime->finish();\n"
-			+ "<buffers:{var|\t\t<var.bufferName>->copyToJArray(env, <var.arrName>);\n}>"
-			+ "<destinationVariable:{var|\t\t<var.bufferName>->copyToJArray(env, <var.name>);\n}>"
-			+ "\\}";
+			+ "<buffers:{var|<var.setArrayBuffer:{var2|\t\t<var.bufferName>->copyToJArray(env, <var.arrName>);\n}>}>"
+			+ "<destinationVariable:{var|\t\t<var.bufferName>->copyToJArray(env, <var.name>);\n}>";
 	private final static String templateKernelFile = "<introductoryMsg>\n\n"
 			+ "#ifndef USERKERNELS_HPP\n" + "#define USERKERNELS_HPP\n\n"
 			+ "const char userKernels[] =\n"
 			+ "\t<kernels:{var|\"<var.line>\"}; separator=\"\n\">;\n"
 			+ "#endif\n";
+	private final static String templateFilter = "\tjintArray PM_tileArray = env->NewIntArray(<tileSize>);\n"
+			+ "\t<bufferName>->copyToJArray(env, PM_tileArray);\n"
+			+ "\tauto <taskName> = std::make_unique\\<Task>(PM_runtimePtr->program<isSequential:{var|, Task::Score(1.0f,2.0f)}>);\n"
+			+ "\tint PM_length = getFilterArrayLength(env, PM_tileArray);\n"
+			+ "\tauto <retVar> = (ArrayData *)Java_org_parallelme_ParallelMERuntime_nativeCreateArray__II(env, self, PM_length, 2);\n"
+			+ "<task:{var|\t\t<taskName>->addKernel(\"<var.operationName>\");\n}>"
+			+ "\t<taskName>->setConfigFunction([=](DevicePtr &device, KernelHash &kernelHash) {\n"
+			+ "\t\t<kernelHash:{var|<var.body>}; separator=\"\n\">"
+			+ "\n\t\\});\n"
+			+ "\tPM_runtimePtr->runtime->submitTask(std::move(<taskName>));\n"
+			+ "\tPM_runtimePtr->runtime->finish();\n"
+			+ "\treturn (jlong)<retVar>;\n";
 
 	private RuntimeCommonDefinitions commonDefinitions = RuntimeCommonDefinitions
 			.getInstance();
@@ -110,7 +119,7 @@ public class ParallelMERuntimeCTranslation {
 				inputBindTypes.add(inputBind.variable.typeName);
 				String kernel = translators.get(inputBind.variable.typeName)
 						.translateInputBind(className, inputBind);
-				this.addKernelByLine(kernel, st);
+				addKernelByLine(kernel, st);
 			}
 		}
 		// 3. Translate operations
@@ -118,7 +127,7 @@ public class ParallelMERuntimeCTranslation {
 			List<String> kernels = translators.get(operation.variable.typeName)
 					.translateOperation(operation);
 			for (String kernel : kernels)
-				this.addKernelByLine(kernel, st);
+				addKernelByLine(kernel, st);
 		}
 		// 4. Translate outputbinds
 		Set<String> outputBindTypes = new HashSet<String>();
@@ -127,7 +136,7 @@ public class ParallelMERuntimeCTranslation {
 				outputBindTypes.add(outputBind.variable.typeName);
 				String kernel = translators.get(outputBind.variable.typeName)
 						.translateOutputBind(className, outputBind);
-				this.addKernelByLine(kernel, st);
+				addKernelByLine(kernel, st);
 			}
 		}
 		FileWriter.writeFile("userKernels.hpp", commonDefinitions
@@ -198,30 +207,25 @@ public class ParallelMERuntimeCTranslation {
 	 */
 	protected String createParallelOperation(Operation operation,
 			String cClassName) {
-		ST st = new ST(templateParallelOperation);
-		st.add("returnPointer", null);
-		st.add("functionDecl",
-				this.createOperationSignature(operation, cClassName, true));
-		String operationName = commonDefinitions.getOperationName(operation);
-		st.add("objectType", this.getObjectType(operation));
-		st.add("tileData", null);
-		st.add("destinationVariable", null);
+		String function;
 		if (operation.operationType == OperationType.Foreach) {
-			fillParallelForeach(st, operation);
+			function = createParallelForeach(operation);
 		} else if (operation.operationType == OperationType.Map) {
-			fillParallelMap(st, operation);
+			function = createParallelMap(operation);
 		} else if (operation.operationType == OperationType.Reduce) {
-			fillParallelReduce(st, operation);
+			function = createParallelReduce(operation);
 		} else if (operation.operationType == OperationType.Filter) {
+			function = createFilter(operation);
 		} else {
 			throw new RuntimeException("Operation not supported: "
 					+ operation.operationType);
 		}
-		st.addAggr("task.{operationName}", operationName);
-		return st.render();
+		return createOperationSignature(operation, cClassName, true) + " {\n"
+				+ function + "}";
 	}
 
-	private void fillParallelForeach(ST st, Operation operation) {
+	private String createParallelForeach(Operation operation) {
+		ST st = initializeParallelOperationBody(operation);
 		int argIndex = 0;
 		ST stKernelHash = new ST(templateKernelHash);
 		stKernelHash.add("setArgs", null);
@@ -229,20 +233,25 @@ public class ParallelMERuntimeCTranslation {
 				commonDefinitions.getOperationName(operation));
 		stKernelHash.add("tileData", null);
 		stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
-				"PM_dataPtr->" + getOperationBufferName(operation.variable));
+				commonDefinitions.getDataVarName() + "Ptr->"
+						+ getOperationBufferName(operation.variable));
 		if (commonDefinitions.isImage(operation.variable)) {
 			stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
-					getPointerWidth());
-			stKernelHash.add("workSize", getPointerWidth() + ", "
-					+ getPointerHeight());
+					getDataPointerWidth());
+			stKernelHash.add("workSize", getDataPointerWidth() + ", "
+					+ getDataPointerHeight());
 		} else {
-			stKernelHash.add("workSize", getPointerLength());
+			stKernelHash.add("workSize", getDataPointerLength());
 		}
 		setExternalVariables(stKernelHash, operation, argIndex);
 		st.addAggr("kernelHash.{body}", stKernelHash.render());
+		st.addAggr("task.{operationName}",
+				commonDefinitions.getOperationName(operation));
+		return st.render();
 	}
 
-	private void fillParallelMap(ST st, Operation operation) {
+	private String createParallelMap(Operation operation) {
+		ST st = initializeParallelOperationBody(operation);
 		int argIndex = 0;
 		ST stKernelHash = new ST(templateKernelHash);
 		stKernelHash.add("setArgs", null);
@@ -261,27 +270,31 @@ public class ParallelMERuntimeCTranslation {
 						+ getOperationBufferName(operation.variable));
 		if (commonDefinitions.isImage(operation.variable)) {
 			stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
-					getPointerWidth());
-			stKernelHash.add("workSize", getPointerWidth() + ", "
-					+ getPointerHeight());
+					getDataPointerWidth());
+			stKernelHash.add("workSize", getDataPointerWidth() + ", "
+					+ getDataPointerHeight());
 		} else {
-			stKernelHash.add("workSize", getPointerLength());
+			stKernelHash.add("workSize", getDataPointerLength());
 		}
 		st.addAggr("returnPointer.{objectType, name}", "ArrayData",
 				commonDefinitions.getDataReturnVarName());
 		setExternalVariables(stKernelHash, operation, argIndex);
 		st.addAggr("kernelHash.{body}", stKernelHash.render());
+		st.addAggr("task.{operationName}",
+				commonDefinitions.getOperationName(operation));
+		return st.render();
 	}
 
-	private void fillParallelReduce(ST st, Operation operation) {
+	private String createParallelReduce(Operation operation) {
+		ST st = initializeParallelOperationBody(operation);
 		boolean isImage = commonDefinitions.isImage(operation.variable);
 		String operationTileName = commonDefinitions
 				.getOperationTileFunctionName(operation);
 		// Kernel hash for tile function
 		ST stKernelHashTile = new ST(templateKernelHash);
 		int argIndex = 0;
-		String tileVarBuffer = commonDefinitions.getPrefix() + "tileBuffer";
-		String pointerVarBuffer = "PM_dataPtr->"
+		String tileVarBuffer = getTileBufferName();
+		String pointerVarBuffer = commonDefinitions.getDataVarName() + "Ptr->"
 				+ getOperationBufferName(operation.variable);
 		stKernelHashTile.add("operationName", operationTileName);
 		stKernelHashTile.addAggr("setArgs.{index, name}", argIndex++,
@@ -292,8 +305,8 @@ public class ParallelMERuntimeCTranslation {
 				+ "tileElemSize" : commonDefinitions.getPrefix() + "tileSize";
 		if (isImage) {
 			stKernelHashTile.addAggr("setArgs.{index, name}", argIndex++,
-					getPointerWidth());
-			stKernelHashTile.add("workSize", getPointerHeight());
+					getDataPointerWidth());
+			stKernelHashTile.add("workSize", getDataPointerHeight());
 		} else {
 			stKernelHashTile.addAggr("setArgs.{index, name}", argIndex++,
 					tileSizeVar);
@@ -315,14 +328,14 @@ public class ParallelMERuntimeCTranslation {
 			stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
 					tileVarBuffer);
 			stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
-					getPointerHeight());
+					getDataPointerHeight());
 		} else {
 			stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
 					pointerVarBuffer);
 			stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
 					tileVarBuffer);
 			stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
-					getPointerLength());
+					getDataPointerLength());
 			stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
 					tileSizeVar);
 		}
@@ -335,21 +348,141 @@ public class ParallelMERuntimeCTranslation {
 		if (isImage) {
 			expression = String.format(
 					"sizeof(float) * env->GetArrayLength(%s)", destVarName);
-			expression2 = String.format("%s * PM_dataPtr->height", tileSizeVar);
+			expression2 = String.format("%s * %sPtr->height", tileSizeVar,
+					commonDefinitions.getDataVarName());
 			expression3 = tileSizeVar;
 		} else {
 			expression = String.format("floor(sqrt((float)%s))",
-					getPointerLength());
+					getDataPointerLength());
 			expression2 = String.format("sizeof(%s) * %s", returnType,
 					tileSizeVar);
 			expression3 = String.format("sizeof(%s)", returnType);
 		}
-		st.addAggr(
-				"tileData.{bufferName, type, name, expression, expression2}",
-				tileVarBuffer, returnType, tileSizeVar, expression, expression2);
+		st.addAggr("tileData.{type, name, expression}", returnType,
+				tileSizeVar, expression);
+		st.addAggr("buffers.{bufferName, expression}", tileVarBuffer,
+				expression2);
 		st.addAggr("destinationVariable.{bufferName, name, type, expression}",
 				destVarBuffer, destVarName, returnType, expression3);
 		st.addAggr("kernelHash.{body}", stKernelHash.render());
+		st.addAggr("task.{operationName}",
+				commonDefinitions.getOperationName(operation));
+		return st.render();
+	}
+
+	protected String createFilter(Operation operation) {
+		ST st = new ST(templateFilter);
+		st.add("bufferName", getTileBufferName());
+		st.add("taskName", getTaskName() + "2");
+		st.add("retVar", commonDefinitions.getDataReturnVarName() + "Ptr");
+		boolean isSequential = operation.getExecutionType() == ExecutionType.Sequential;
+		st.add("isSequential", isSequential ? "" : null);
+		ST stKernelHash = new ST(templateKernelHash);
+		int argIndex = 0;
+		String pointerRetVarBuffer = commonDefinitions.getDataReturnVarName()
+				+ "Ptr->buffer";
+		String pointerVarBuffer = commonDefinitions.getDataVarName() + "Ptr->"
+				+ getOperationBufferName(operation.variable);
+		String operationName = commonDefinitions.getOperationName(operation);
+		stKernelHash.add("operationName", operationName);
+		stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
+				pointerRetVarBuffer);
+		stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
+				pointerVarBuffer);
+		stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
+				getTileBufferName());
+		if (commonDefinitions.isImage(operation.variable)) {
+			st.add("tileSize", String.format("%s * %s", getDataPointerWidth(),
+					getDataPointerHeight()));
+			stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
+					getDataPointerWidth());
+			stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
+					getDataPointerHeight());
+		} else {
+			st.add("tileSize", getDataPointerLength());
+			stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
+					getDataPointerLength());
+		}
+		stKernelHash.add("workSize", "1");
+		st.addAggr("task.{operationName}", operationName);
+		st.addAggr("kernelHash.{body}", stKernelHash.render());
+		setExternalVariables(st, operation, argIndex);
+		String tileSection = createFilterTile(operation);
+		return tileSection + st.render();
+	}
+
+	private String createFilterTile(Operation operation) {
+		boolean isSequential = operation.getExecutionType() == ExecutionType.Sequential;
+		ST st = isSequential ? initializeSequentialOperationBody(operation)
+				: initializeParallelOperationBody(operation);
+		ST stKernelHash = new ST(templateKernelHash);
+		int argIndex = 0;
+		String tileVarBuffer = getTileBufferName();
+		String pointerVarBuffer = commonDefinitions.getDataVarName() + "Ptr->"
+				+ getOperationBufferName(operation.variable);
+		String operationTileName = commonDefinitions
+				.getOperationTileFunctionName(operation);
+		stKernelHash.add("operationName", operationTileName);
+		stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
+				pointerVarBuffer);
+		stKernelHash
+				.addAggr("setArgs.{index, name}", argIndex++, tileVarBuffer);
+		String bufferExpression;
+		if (commonDefinitions.isImage(operation.variable)) {
+			stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
+					getDataPointerWidth());
+			bufferExpression = String.format("sizeof(int) * %s * %s",
+					getDataPointerWidth(), getDataPointerHeight());
+			if (isSequential) {
+				stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
+						getDataPointerHeight());
+				stKernelHash.add("workSize", "1");
+			} else {
+				stKernelHash.add("workSize", getDataPointerWidth() + ", "
+						+ getDataPointerHeight());
+			}
+		} else {
+			bufferExpression = String.format("sizeof(int) * %s",
+					getDataPointerLength());
+			if (isSequential) {
+				stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
+						getDataPointerLength());
+				stKernelHash.add("workSize", "1");
+			} else {
+				stKernelHash.add("workSize", getDataPointerLength());
+			}
+		}
+		setExternalVariables(stKernelHash, operation, argIndex);
+		if (isSequential) {
+			setBuffers(st, operation);
+		}
+		st.addAggr("buffers.{bufferName, expression, setArrayBuffer}",
+				tileVarBuffer, bufferExpression, null);
+		st.addAggr("task.{operationName}", operationTileName);
+		st.addAggr("kernelHash.{body}", stKernelHash.render());
+		return st.render();
+	}
+
+	private ST initializeParallelOperationBody(Operation operation) {
+		ST st = new ST(templateParallelOperationBody);
+		st.add("returnPointer", null);
+		st.add("objectType", getObjectType(operation));
+		st.add("tileData", null);
+		st.add("destinationVariable", null);
+		st.add("buffers", null);
+		st.add("taskName", getTaskName());
+		return st;
+	}
+
+	private ST initializeSequentialOperationBody(Operation operation) {
+		ST st = new ST(templateSequentialOperationBody);
+		st.add("returnPointer", null);
+		st.add("objectType", getObjectType(operation));
+		st.add("tileData", null);
+		st.add("destinationVariable", null);
+		st.add("buffers", null);
+		st.add("taskName", getTaskName());
+		return st;
 	}
 
 	private void setExternalVariables(ST st, Operation operation, int argIndex) {
@@ -379,15 +512,19 @@ public class ParallelMERuntimeCTranslation {
 	 */
 	protected String createSequentialOperation(Operation operation,
 			String cClassName) {
-		ST st = new ST(templateSequentialOperation);
-		st.add("destinationVariable", null);
-		st.add("returnPointer", null);
-		st.add("functionDecl",
-				this.createOperationSignature(operation, cClassName, true));
-		st.add("cClassName", cClassName);
+		String function;
+		if (operation.operationType == OperationType.Filter) {
+			function = createFilter(operation);
+		} else {
+			function = createSequentialForeachReduceMap(operation);
+		}
+		return createOperationSignature(operation, cClassName, true) + " {\n"
+				+ function + "}";
+	}
+
+	private String createSequentialForeachReduceMap(Operation operation) {
+		ST st = initializeSequentialOperationBody(operation);
 		String operationName = commonDefinitions.getOperationName(operation);
-		st.add("operationName", operationName);
-		st.add("objectType", this.getObjectType(operation));
 		st.addAggr("task.{operationName}", operationName);
 		ST stKernelHash = new ST(templateKernelHash);
 		stKernelHash.add("workSize", "1");
@@ -397,11 +534,13 @@ public class ParallelMERuntimeCTranslation {
 		int argIndex = 0;
 		if (operation.operationType == OperationType.Reduce) {
 			String destVarName = operation.destinationVariable.name;
-			String type = this.getJNIType(operation);
+			String type = getJNIType(operation);
 			String bufferName = commonDefinitions.getPrefix() + destVarName
 					+ "Buffer";
-			st.addAggr("destinationVariable.{bufferName, name, type}",
-					bufferName, destVarName, type);
+			String expression = String.format(
+					"sizeof(%s) * env->GetArrayLength(%s)", type, destVarName);
+			st.addAggr("destinationVariable.{bufferName, name, expression}",
+					bufferName, destVarName, expression);
 			stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
 					bufferName);
 		} else if (operation.operationType == OperationType.Map) {
@@ -415,19 +554,17 @@ public class ParallelMERuntimeCTranslation {
 									+ "Ptr->"
 									+ getOperationBufferName(operation.destinationVariable));
 		}
-		stKernelHash.addAggr(
-				"setArgs.{index, name}",
-				argIndex++,
+		stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
 				commonDefinitions.getDataVarName() + "Ptr->"
-						+ this.getOperationBufferName(operation.variable));
+						+ getOperationBufferName(operation.variable));
 		if (commonDefinitions.isImage(operation.variable)) {
 			stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
-					getPointerWidth());
+					getDataPointerWidth());
 			stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
-					getPointerHeight());
+					getDataPointerHeight());
 		} else {
 			stKernelHash.addAggr("setArgs.{index, name}", argIndex++,
-					getPointerLength());
+					getDataPointerLength());
 		}
 		setExternalVariables(stKernelHash, operation, argIndex);
 		setBuffers(st, operation);
@@ -441,9 +578,12 @@ public class ParallelMERuntimeCTranslation {
 				String prefixedVarName = commonDefinitions.getPrefix()
 						+ variable.name;
 				String bufferName = prefixedVarName + "Buffer";
-				st.addAggr("buffers.{bufferName, type, arrName}", bufferName,
-						commonDefinitions.translateToCType(variable.typeName),
-						prefixedVarName);
+				st.addAggr(
+						"buffers.{bufferName, expression, arrName, setArrayBuffer}",
+						bufferName, String.format("sizeof(%s)",
+								commonDefinitions
+										.translateToCType(variable.typeName)),
+						prefixedVarName, "");
 			}
 		}
 	}
@@ -470,7 +610,7 @@ public class ParallelMERuntimeCTranslation {
 		st.add("operation", null);
 		for (Operation operation : operations) {
 			st.addAggr("operation.{decl}",
-					this.createOperationSignature(operation, cClassName, false));
+					createOperationSignature(operation, cClassName, false));
 		}
 		FileWriter.writeFile(cClassName + ".h", commonDefinitions
 				.getJNIDestinationFolder(outputDestinationFolder), st.render());
@@ -489,11 +629,17 @@ public class ParallelMERuntimeCTranslation {
 			if (declareVarNames)
 				decl += " " + operation.destinationVariable.name;
 			st.addAggr("params.{decl}", decl);
+			st.add("returnType", "void");
 		} else if (operation.operationType == OperationType.Map) {
 			String decl = "jlong";
 			if (declareVarNames)
 				decl += " " + commonDefinitions.getDataReturnVarName();
 			st.addAggr("params.{decl}", decl);
+			st.add("returnType", "void");
+		} else if (operation.operationType == OperationType.Filter) {
+			st.add("returnType", "jlong");
+		} else {
+			st.add("returnType", "void");
 		}
 		for (Variable variable : operation.getExternalVariables()) {
 			if (variable.isFinal()) {
@@ -552,15 +698,23 @@ public class ParallelMERuntimeCTranslation {
 		return bufferName;
 	}
 
-	private String getPointerWidth() {
-		return "PM_dataPtr->width";
+	private String getDataPointerWidth() {
+		return commonDefinitions.getDataVarName() + "Ptr->width";
 	}
 
-	private String getPointerHeight() {
-		return "PM_dataPtr->height";
+	private String getDataPointerHeight() {
+		return commonDefinitions.getDataVarName() + "Ptr->height";
 	}
 
-	private String getPointerLength() {
-		return "PM_dataPtr->length";
+	private String getDataPointerLength() {
+		return commonDefinitions.getDataVarName() + "Ptr->length";
+	}
+
+	private String getTaskName() {
+		return commonDefinitions.getPrefix() + "task";
+	}
+
+	private String getTileBufferName() {
+		return commonDefinitions.getPrefix() + "tileBuffer";
 	}
 }

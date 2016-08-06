@@ -80,7 +80,7 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 		ST st1 = new ST(templateKernels);
 		ST st2 = new ST(templateConstructor);
 		String javaClassName = RuntimeCommonDefinitions.getInstance()
-				.getJavaWrapperClassName(className, this.getTargetRuntime());
+				.getJavaWrapperClassName(className, getTargetRuntime());
 		st1.add("originalClassName", className);
 		st1.add("kernelName", RuntimeCommonDefinitions.getInstance()
 				.getKernelName(className));
@@ -125,15 +125,14 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 			if (!inputBindTypes.contains(inputBind.variable.typeName)) {
 				inputBindTypes.add(inputBind.variable.typeName);
 				st.add("functions",
-						this.translators.get(inputBind.variable.typeName)
+						translators.get(inputBind.variable.typeName)
 								.translateInputBind(className, inputBind));
 			}
 		}
 		// 3. Translate operations
 		for (Operation operation : operationsAndBinds.operations) {
-			st.add("functions",
-					this.translators.get(operation.variable.typeName)
-							.translateOperation(operation));
+			st.add("functions", translators.get(operation.variable.typeName)
+					.translateOperation(operation));
 		}
 		// 4. Translate outputbinds
 		Set<String> outputBindTypes = new HashSet<String>();
@@ -141,18 +140,15 @@ public class RenderScriptRuntimeDefinition extends RuntimeDefinitionImpl {
 			if (!outputBindTypes.contains(outputBind.variable.typeName)) {
 				outputBindTypes.add(outputBind.variable.typeName);
 				st.add("functions",
-						this.translators.get(outputBind.variable.typeName)
+						translators.get(outputBind.variable.typeName)
 								.translateOutputBind(className, outputBind));
 			}
 		}
 		// 5. Write translated file
-		FileWriter
-				.writeFile(
-						className + ".rs",
-						RuntimeCommonDefinitions.getInstance()
-								.getRSDestinationFolder(
-										this.outputDestinationFolder,
-										packageName), st.render());
+		FileWriter.writeFile(
+				className + ".rs",
+				RuntimeCommonDefinitions.getInstance().getRSDestinationFolder(
+						outputDestinationFolder, packageName), st.render());
 	}
 
 	/**

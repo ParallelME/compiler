@@ -292,13 +292,10 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		BaseUserLibraryTranslator translator = this.getTranslator();
 		String translatedFunction = translator.translateOperationCall(
 				className, operation);
-		ST st = new ST("<kernel>.forEach_foreach123(<varOut>, <varOut>);\n"
-				+ "<varFromImage> = false;");
+		ST st = new ST("<kernel>.forEach_foreach123(<varOut>, <varOut>);\n");
 		st.add("varOut",
 				commonDefinitions.getVariableOutName(operation.variable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
-		st.add("varFromImage",
-				commonDefinitions.getFromImageBooleanName(operation.variable));
 		String expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Parallel with final external variable
@@ -309,15 +306,12 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 				operation);
 		st = new ST(
 				"<kernel>.set_PM_g<UCFinalVarName>Foreach123(<finalVarName>);\n"
-						+ "<kernel>.forEach_foreach123(<varOut>, <varOut>);\n"
-						+ "<varFromImage> = false;");
+						+ "<kernel>.forEach_foreach123(<varOut>, <varOut>);\n");
 		st.add("varOut",
 				commonDefinitions.getVariableOutName(operation.variable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
 		st.add("UCFinalVarName", upperCaseFirstLetter(finalVar.name));
 		st.add("finalVarName", finalVar.name);
-		st.add("varFromImage",
-				commonDefinitions.getFromImageBooleanName(operation.variable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential
@@ -325,12 +319,10 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		translatedFunction = translator.translateOperationCall(className,
 				operation);
 		st = new ST("<kernel>.set_PM_gInputForeach123(<varOut>);\n"
-				+ "<kernel>.invoke_foreach123();\n" + "<varFromImage> = false;");
+				+ "<kernel>.invoke_foreach123();\n");
 		st.add("varOut",
 				commonDefinitions.getVariableOutName(operation.variable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
-		st.add("varFromImage",
-				commonDefinitions.getFromImageBooleanName(operation.variable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential non-final and final variable
@@ -347,8 +339,7 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "<kernel>.set_PM_gInputForeach123(<varOut>);\n"
 						+ "<kernel>.set_PM_g<UCFinalVarName>Foreach123(<finalVarName>);\n"
 						+ "<kernel>.invoke_foreach123();\n"
-						+ "PM_gOutput<UCNonFinalVarName>Foreach123.copyTo(<nonFinalVarName>);\n"
-						+ "<varFromImage> = false;");
+						+ "PM_gOutput<UCNonFinalVarName>Foreach123.copyTo(<nonFinalVarName>);\n");
 		st.add("varOut",
 				commonDefinitions.getVariableOutName(operation.variable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
@@ -356,8 +347,6 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 		st.add("nonFinalVarName", nonFinalVar.name);
 		st.add("UCFinalVarName", upperCaseFirstLetter(finalVar.name));
 		st.add("finalVarName", finalVar.name);
-		st.add("varFromImage",
-				commonDefinitions.getFromImageBooleanName(operation.variable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 		// Sequential non-final
@@ -371,15 +360,12 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "<kernel>.set_PM_gOutput<UCNonFinalVarName>Foreach123(PM_gOutput<UCNonFinalVarName>Foreach123);"
 						+ "<kernel>.set_PM_gInputForeach123(<varOut>);\n"
 						+ "<kernel>.invoke_foreach123();\n"
-						+ "PM_gOutput<UCNonFinalVarName>Foreach123.copyTo(<nonFinalVarName>);\n"
-						+ "<varFromImage> = false;");
+						+ "PM_gOutput<UCNonFinalVarName>Foreach123.copyTo(<nonFinalVarName>);\n");
 		st.add("varOut",
 				commonDefinitions.getVariableOutName(operation.variable));
 		st.add("kernel", commonDefinitions.getKernelName(className));
 		st.add("UCNonFinalVarName", upperCaseFirstLetter(nonFinalVar.name));
 		st.add("nonFinalVarName", nonFinalVar.name);
-		st.add("varFromImage",
-				commonDefinitions.getFromImageBooleanName(operation.variable));
 		expectedTranslation = st.render();
 		this.validateTranslation(expectedTranslation, translatedFunction);
 	}
@@ -1051,7 +1037,7 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "\tint PM_count = 0;\n"
 						+ "\tfor (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gOutputTileFilter123); ++PM_x) {\n"
 						+ "\t\tint PM_value = rsGetElementAt_int(PM_gOutputTileFilter123, PM_x);\n"
-						+ "\t\tif (PM_value > 0) {\n"
+						+ "\t\tif (PM_value >= 0) {\n"
 						+ "\t\t\trsSetElementAt_<type>(PM_gOutputFilter123, rsGetElementAt_<type>(PM_gInputFilter123, PM_value), PM_count++);\n"
 						+ "\t\t}\n" + "\t}\n" + "}");
 		st.add("type", getTranslatedParameterType());
@@ -1087,7 +1073,7 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "\tint PM_count = 0;\n"
 						+ "\tfor (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gOutputTileFilter123); ++PM_x) {\n"
 						+ "\t\tint PM_value = rsGetElementAt_int(PM_gOutputTileFilter123, PM_x);\n"
-						+ "\t\tif (PM_value > 0) {\n"
+						+ "\t\tif (PM_value >= 0) {\n"
 						+ "\t\t\trsSetElementAt_<type>(PM_gOutputFilter123, rsGetElementAt_<type>(PM_gInputFilter123, PM_value), PM_count++);\n"
 						+ "\t\t}\n" + "\t}\n" + "}");
 		st.add("type", getTranslatedParameterType());
@@ -1132,7 +1118,7 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "\tint PM_count = 0;\n"
 						+ "\tfor (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gOutputTileFilter123); ++PM_x) {\n"
 						+ "\t\tint PM_value = rsGetElementAt_int(PM_gOutputTileFilter123, PM_x);\n"
-						+ "\t\tif (PM_value > 0) {\n"
+						+ "\t\tif (PM_value >= 0) {\n"
 						+ "\t\t\trsSetElementAt_<type>(PM_gOutputFilter123, rsGetElementAt_<type>(PM_gInputFilter123, PM_value), PM_count++);\n"
 						+ "\t\t}\n" + "\t}\n" + "}");
 		st.add("UCNonFinalVarName", upperCaseFirstLetter(nonFinalVar.name));
@@ -1170,7 +1156,7 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "\tint PM_count = 0;\n"
 						+ "\tfor (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gOutputTileFilter123); ++PM_x) {\n"
 						+ "\t\tint PM_value = rsGetElementAt_int(PM_gOutputTileFilter123, PM_x);\n"
-						+ "\t\tif (PM_value > 0) {\n"
+						+ "\t\tif (PM_value >= 0) {\n"
 						+ "\t\t\trsSetElementAt_<type>(PM_gOutputFilter123, rsGetElementAt_<type>(PM_gInputFilter123, PM_value), PM_count++);\n"
 						+ "\t\t}\n" + "\t}\n" + "}");
 		st.add("type", getTranslatedParameterType());
@@ -1213,7 +1199,7 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "\tint PM_count = 0;\n"
 						+ "\tfor (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gOutputTileFilter123); ++PM_x) {\n"
 						+ "\t\tint PM_value = rsGetElementAt_int(PM_gOutputTileFilter123, PM_x);\n"
-						+ "\t\tif (PM_value > 0) {\n"
+						+ "\t\tif (PM_value >= 0) {\n"
 						+ "\t\t\trsSetElementAt_<type>(PM_gOutputFilter123, rsGetElementAt_<type>(PM_gInputFilter123, PM_value), PM_count++);\n"
 						+ "\t\t}\n" + "\t}\n" + "}");
 		st.add("UCNonFinalVarName", upperCaseFirstLetter(nonFinalVar.name));
@@ -1257,7 +1243,7 @@ public abstract class RSArrayTranslatorBaseTest extends ArrayTranslatorTest {
 						+ "\tint PM_count = 0;\n"
 						+ "\tfor (int PM_x=0; PM_x\\<rsAllocationGetDimX(PM_gOutputTileFilter123); ++PM_x) {\n"
 						+ "\t\tint PM_value = rsGetElementAt_int(PM_gOutputTileFilter123, PM_x);\n"
-						+ "\t\tif (PM_value > 0) {\n"
+						+ "\t\tif (PM_value >= 0) {\n"
 						+ "\t\t\trsSetElementAt_<type>(PM_gOutputFilter123, rsGetElementAt_<type>(PM_gInputFilter123, PM_value), PM_count++);\n"
 						+ "\t\t}\n" + "\t}\n" + "}");
 		st.add("UCNonFinalVarName", upperCaseFirstLetter(nonFinalVar.name));
