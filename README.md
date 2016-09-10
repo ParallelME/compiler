@@ -31,4 +31,4 @@ After all the above steps, your application written with ParallelME User-library
 
 ## Detailed information
 
-If you need further information about ParallelME compiler, please refer to [ParallelME Reference Manual](https://parallelme.github.io/docs/ParallelME_Reference_Manual.pdf) and check the compiler section.
+If you need detailed information about ParallelME compiler, please refer to [ParallelME Reference Manual](https://parallelme.github.io/docs/ParallelME_Reference_Manual.pdf) and check the compiler section.
