@@ -29,6 +29,6 @@ After all the above steps, your application written with ParallelME User-library
 
 **PS: We have plans for an Android Studio plugin to avoid all these boring steps, but we need help to create it. If you want to help us improve ParallelME, join us!**
 
-# Detailed information
+## Detailed information
 
 If you need detailed information about ParallelME compiler, please refer to [ParallelME Reference Manual](https://parallelme.github.io/docs/ParallelME_Reference_Manual.pdf) and check the compiler section.
